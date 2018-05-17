@@ -1,0 +1,50 @@
+#!/bin/sh -e
+
+ROOT=$(cd "$(dirname "$0")/.."; pwd)
+
+if [ -z "$ROOT" ]; then
+	echo "ERROR: Unknown workspase"
+	exit 1
+fi
+
+PROJECT_NAME=pluginval
+DEPLOYMENT_DIR="$ROOT/bin/mac"
+
+BINARY_NAME="$PROJECT_NAME"
+APP_NAME=$BINARY_NAME".app"
+APP_FILE=$ROOT/Builds/MacOSX/build/Release/$APP_NAME
+
+echo "\n=========================================="
+echo "\nRoot dir: $ROOT"
+
+#============================================================
+#   Build Projucer and generate projects
+#============================================================
+echo "Building Projucer and creating projects"
+PROJUCER_ROOT=$ROOT/modules/juce/extras/Projucer/Builds/MacOSX
+PROJUCER_EXE=$PROJUCER_ROOT/build/Release/Projucer.app/Contents/MacOS/Projucer
+cd "$PROJUCER_ROOT"
+xcodebuild -configuration Release
+
+# Resave project
+"$PROJUCER_EXE" --resave "$ROOT/$PROJECT_NAME.jucer"
+
+
+#============================================================
+#   Build Xcode projects
+#============================================================
+cd $ROOT/Builds/MacOSX
+rm -rf $ROOT/Builds/MacOSX/build/$PROJECT_NAME.build
+xcodebuild -configuration Release clean
+xcodebuild -configuration Release GCC_TREAT_WARNINGS_AS_ERRORS=YES
+
+
+#============================================================
+#   Copy to deployment directory
+#============================================================
+cd $ROOT
+rm -rf $DEPLOYMENT_DIR
+mkdir -p "$DEPLOYMENT_DIR"
+
+echo "\nDeploying to: " $DEPLOYMENT_DIR
+mv -fv "$APP_FILE" "$DEPLOYMENT_DIR/$APP_NAME"
