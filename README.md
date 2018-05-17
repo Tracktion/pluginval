@@ -21,6 +21,7 @@ $ ./mac_build
 
 ### Running in GUI Mode
 Once the app has built for your platform it will be found in `/bin`. Simply open the app to start it in GUI mode. Once open, you'll be presented with an empty plugin list. Click "Options" to scan for plugins, making sure to add any directories required.
+Alterntively, you can drag a plugin file and drop it on the list to add only that plugin.
 
 Once the list has populated, simply select a plugin and press the "Test Selected" button to validate it. The plugin will be loaded and each of the tests run in turn. Any output from the tests will be shown on the "Console" tab.
 If you find problems with a plugin, this can be useful to send to the plugin developers.
@@ -70,7 +71,7 @@ If you have a case you would like tests, please simply write the test in a fork 
  - Create a better logo!
  - Write more Tests
  - Possibly add more command line options
- -- Run only specif tests, either named or from a certain strictness level
+ -- Run only specific tests, either named or from a certain strictness level
  
 License
 ----
