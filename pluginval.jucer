@@ -1,6 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 
-<JUCERPROJECT name="pluginval" projectType="guiapp" jucerVersion="5.3.2" id="IA2Ov0" version="0.1.0">
+<JUCERPROJECT name="pluginval" projectType="guiapp" jucerVersion="5.3.0" id="IA2Ov0"
+              version="0.1.0" companyName="Tracktion">
   <MAINGROUP id="zUhKLj" name="pluginval">
     <GROUP id="{DF1CFAD6-E73F-2DAB-3957-D1F25BDD2E13}" name="Source">
       <GROUP id="{04547814-7137-5CE0-6818-B1EF0B2E6161}" name="binarydata">
@@ -31,7 +32,7 @@
   </LIVE_SETTINGS>
   <EXPORTFORMATS>
     <XCODE_MAC targetFolder="Builds/MacOSX" extraCompilerFlags="-Wall -Wextra -Wconversion -Wconstant-conversion -Wint-conversion -Woverloaded-virtual -Wconditional-uninitialized -Wunused-parameter -Wshorten-64-to-32 -Wstrict-aliasing -Wshadow -Wreorder -Wunused-private-field -Wbool-conversion -Wno-missing-field-initializers -Wno-ignored-qualifiers -Wunreachable-code"
-               smallIcon="k3tDOE" bigIcon="k3tDOE">
+               smallIcon="k3tDOE" bigIcon="k3tDOE" vst3Folder="modules/vst3">
       <CONFIGURATIONS>
         <CONFIGURATION isDebug="1" name="Debug" customXcodeFlags="CLANG_WARN_SUSPICIOUS_IMPLICIT_CONVERSION=YES, GCC_WARN_PEDANTIC=YES"
                        targetName="pluginval"/>
@@ -51,7 +52,8 @@
         <MODULEPATH id="juce_audio_processors" path="modules/juce/modules"/>
       </MODULEPATHS>
     </XCODE_MAC>
-    <VS2017 targetFolder="Builds/VisualStudio2017" smallIcon="k3tDOE" bigIcon="k3tDOE">
+    <VS2017 targetFolder="Builds/VisualStudio2017" smallIcon="k3tDOE" bigIcon="k3tDOE"
+            vst3Folder="modules/vst3">
       <CONFIGURATIONS>
         <CONFIGURATION isDebug="1" name="Debug" targetName="pluginval"/>
         <CONFIGURATION isDebug="0" name="Release" warningsAreErrors="1" targetName="pluginval"/>
@@ -100,5 +102,6 @@
     <MODULE id="juce_gui_basics" showAllCode="1" useLocalCopy="0" useGlobalPath="0"/>
     <MODULE id="juce_gui_extra" showAllCode="1" useLocalCopy="0" useGlobalPath="0"/>
   </MODULES>
-  <JUCEOPTIONS JUCE_PLUGINHOST_VST="1" JUCE_PLUGINHOST_AU="1"/>
+  <JUCEOPTIONS JUCE_PLUGINHOST_VST="1" JUCE_PLUGINHOST_AU="1" JUCE_PLUGINHOST_VST3="1"
+               JUCE_PLUGINHOST_LADSPA="1"/>
 </JUCERPROJECT>
