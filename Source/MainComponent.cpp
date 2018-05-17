@@ -15,6 +15,16 @@
 #include "MainComponent.h"
 #include "PluginTests.h"
 
+void setStrictnessLevel (int newLevel)
+{
+    getAppPreferences().setValue ("strictnessLevel", jlimit (1, 10, newLevel));
+}
+
+int getStrictnessLevel()
+{
+    return jlimit (1, 10, getAppPreferences().getIntValue ("strictnessLevel", 5));
+}
+
 //==============================================================================
 MainComponent::MainComponent (Validator& v)
     : validator (v)
@@ -31,6 +41,8 @@ MainComponent::MainComponent (Validator& v)
     addAndMakeVisible (saveButton);
     addAndMakeVisible (testSelectedButton);
     addAndMakeVisible (testAllButton);
+    addAndMakeVisible (strictnessLabel);
+    addAndMakeVisible (strictnessSlider);
 
     testSelectedButton.onClick = [this]
         {
@@ -41,7 +53,7 @@ MainComponent::MainComponent (Validator& v)
                 if (auto pd = knownPluginList.getType (rows[i]))
                     plugins.add (pd);
 
-            validator.validate (plugins, 10);
+            validator.validate (plugins, getStrictnessLevel());
         };
 
     testAllButton.onClick = [this]
@@ -52,7 +64,7 @@ MainComponent::MainComponent (Validator& v)
                 if (auto pd = knownPluginList.getType (i))
                     plugins.add (pd);
 
-            validator.validate (plugins, 10);
+            validator.validate (plugins, getStrictnessLevel());
         };
 
     clearButton.onClick = [this]
@@ -80,6 +92,16 @@ MainComponent::MainComponent (Validator& v)
                                                       TRANS("Unable to save to the file at location: XYYX").replace ("XYYX", f.getFullPathName()));
                 }
             }
+        };
+
+    strictnessSlider.setTextBoxStyle (Slider::TextBoxLeft, false, 35, 24);
+    strictnessSlider.setSliderStyle (Slider::IncDecButtons);
+    strictnessSlider.setRange ({ 1.0, 10.0 }, 1.0);
+    strictnessSlider.setNumDecimalPlacesToDisplay (0);
+    strictnessSlider.setValue (getStrictnessLevel());
+    strictnessSlider.onValueChange = [this]
+        {
+            setStrictnessLevel (roundToInt (strictnessSlider.getValue()));
         };
 
     if (auto xml = std::unique_ptr<XmlElement> (getAppPreferences().getXmlValue ("scannedPlugins")))
@@ -112,6 +134,9 @@ void MainComponent::resized()
     connectionStatus.setBounds (bottomR.removeFromLeft (bottomR.getHeight()).reduced (2));
     testSelectedButton.setBounds (bottomR.removeFromLeft (130).reduced (2));
     testAllButton.setBounds (bottomR.removeFromLeft (130).reduced (2));
+
+    strictnessLabel.setBounds (bottomR.removeFromLeft (110).reduced (2));
+    strictnessSlider.setBounds (bottomR.removeFromLeft (100).reduced (2));
 
     tabbedComponent.setBounds (r);
 }
