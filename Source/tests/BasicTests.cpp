@@ -233,25 +233,9 @@ static AutomationTest automationTest;
 
 
 //==============================================================================
-struct ParametersTest  : public PluginTest
+namespace ParameterHelpers
 {
-    ParametersTest()
-        : PluginTest ("Parameters", 2)
-    {
-    }
-
-    void runTest (UnitTest& ut, AudioPluginInstance& instance) override
-    {
-        for (auto parameter : instance.getParameters())
-        {
-            ut.logMessage (String ("\nTesting parameter: ") + String (parameter->getParameterIndex()) + " - " + parameter->getName (512));
-            testParameterInfo (ut, *parameter);
-            testParameterDefaults (ut, *parameter);
-        }
-    }
-
-private:
-    void testParameterInfo (UnitTest& ut, AudioProcessorParameter& parameter)
+    static void testParameterInfo (UnitTest& ut, AudioProcessorParameter& parameter)
     {
         const int index = parameter.getParameterIndex();
         const String paramName = parameter.getName (512);
@@ -285,19 +269,58 @@ private:
                     + "all value strings - " + allValueStrings.joinIntoString ("|"));
     }
 
-    void testParameterDefaults (UnitTest& ut, AudioProcessorParameter& parameter)
+    static void testParameterDefaults (UnitTest& ut, AudioProcessorParameter& parameter)
     {
-        ut.logMessage ("\nTesting parameter defaults...");
+        ut.logMessage ("Testing accessers");
         const float value = parameter.getValue();
         const String text = parameter.getText (value, 1024);
         const float valueForText = parameter.getValueForText (text);
         const String currentValueAsText = parameter.getCurrentValueAsText();
         ignoreUnused (value, text, valueForText, currentValueAsText);
     }
+}
+
+struct AutomatableParametersTest  : public PluginTest
+{
+    AutomatableParametersTest()
+        : PluginTest ("Automatable Parameters", 2)
+    {
+    }
+
+    void runTest (UnitTest& ut, AudioPluginInstance& instance) override
+    {
+        for (auto parameter : instance.getParameters())
+        {
+            if (! parameter->isAutomatable())
+                continue;
+
+            ut.logMessage (String ("\nTesting parameter: ") + String (parameter->getParameterIndex()) + " - " + parameter->getName (512));
+            ParameterHelpers::testParameterInfo (ut, *parameter);
+            ParameterHelpers::testParameterDefaults (ut, *parameter);
+        }
+    }
 };
 
-static ParametersTest parametersTest;
+static AutomatableParametersTest automatableParametersTest;
 
+//==============================================================================
+struct AllParametersTest    : public PluginTest
+{
+    AllParametersTest()
+        : PluginTest ("Parameters", 7)
+    {
+    }
+
+    void runTest (UnitTest& ut, AudioPluginInstance& instance) override
+    {
+        for (auto parameter : instance.getParameters())
+        {
+            ut.logMessage (String ("\nTesting parameter: ") + String (parameter->getParameterIndex()) + " - " + parameter->getName (512));
+            ParameterHelpers::testParameterInfo (ut, *parameter);
+            ParameterHelpers::testParameterDefaults (ut, *parameter);
+        }
+    }
+};
 
 //==============================================================================
 struct BackgroundThreadStateTest    : public PluginTest
