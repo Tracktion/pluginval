@@ -22,6 +22,7 @@ $PROJUCER_APP --bump-version $PLUGINVAL_PROJECT
 $PROJUCER_APP --resave $PLUGINVAL_PROJECT
 
 VERSION=$($PROJUCER_APP --get-version $PLUGINVAL_PROJECT)
+cd "$ROOT"
 git commit -a -m "Version $VERSION"
 git tag "v$VERSION"
 git push origin v$VERSION
