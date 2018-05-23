@@ -328,7 +328,8 @@ public:
 
     void handleConnectionLost() override
     {
-        JUCEApplication::quit();
+        // Force terminate to avoid any zombie processed that can't quit cleanly
+        Process::terminate();
     }
 
 private:
