@@ -103,6 +103,7 @@ private:
 //==============================================================================
 struct ConsoleComponent : public Component,
                           private ChangeListener,
+                          private AsyncUpdater,
                           private Validator::Listener
 {
     ConsoleComponent (Validator& v)
@@ -146,6 +147,25 @@ private:
     CodeEditorComponent editor { codeDocument, nullptr };
     String currentID;
 
+    CriticalSection logMessagesLock;
+    StringArray pendingLogMessages;
+
+    void handleAsyncUpdate() override
+    {
+        StringArray logMessages;
+
+        {
+            const ScopedLock sl (logMessagesLock);
+            pendingLogMessages.swapWith (logMessages);
+        }
+
+        for (auto&& m : logMessages)
+        {
+            codeDocument.insertText (editor.getCaretPos(), m + "\n");
+            editor.scrollToKeepCaretOnScreen();
+        }
+    }
+
     void changeListenerCallback (ChangeBroadcaster*) override
     {
         if (! validator.isConnected() && currentID.isNotEmpty())
@@ -163,14 +183,11 @@ private:
 
     void logMessage (const String& m) override
     {
-        MessageManager::getInstance()->callAsync ([sp = SafePointer<ConsoleComponent> (this), m] () mutable
         {
-            if (sp != nullptr)
-            {
-                sp->codeDocument.insertText (sp->editor.getCaretPos(), m + "\n");
-                sp->editor.scrollToKeepCaretOnScreen();
-            }
-        });
+            const ScopedLock sl (logMessagesLock);
+            pendingLogMessages.add (m);
+            triggerAsyncUpdate();
+        }
 
         std::cout << m << "\n";
     }
