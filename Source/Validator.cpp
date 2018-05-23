@@ -188,8 +188,7 @@ public:
             v.appendChild ({ IDs::PLUGIN, {{ IDs::fileOrID, fileOrID }} }, nullptr);
         }
 
-        logMessage ("Sending: " + v.toXmlString());
-        sendMessageToSlave (valueTreeToMemoryBlock (v));
+        sendValueTreeToSlave (v);
     }
 
     /** Triggers validation of a set of PluginDescriptions. */
@@ -201,8 +200,7 @@ public:
             if (auto xml = std::unique_ptr<XmlElement> (pd->createXml()))
                 v.appendChild ({ IDs::PLUGIN, {{ IDs::pluginDescription, Base64::toBase64 (xml->createDocument ("")) }} }, nullptr);
 
-        logMessage ("Sending: " + v.toXmlString());
-        sendMessageToSlave (valueTreeToMemoryBlock (v));
+        sendValueTreeToSlave (v);
     }
 
 private:
@@ -212,6 +210,14 @@ private:
         v.setProperty (IDs::strictnessLevel, strictnessLevel, nullptr);
 
         return v;
+    }
+
+    void sendValueTreeToSlave (const ValueTree& v)
+    {
+        logMessage ("Sending: " + v.toXmlString());
+
+        if (! sendMessageToSlave (valueTreeToMemoryBlock (v)))
+            logMessage ("...failed");
     }
 
     void logMessage (const String& s)
@@ -249,6 +255,11 @@ bool Validator::validate (const Array<PluginDescription*>& pluginsToValidate, in
 }
 
 //==============================================================================
+void Validator::logMessage (const String& m)
+{
+    listeners.call (&Listener::logMessage, m);
+}
+
 bool Validator::ensureConnection()
 {
     if (! masterProcess)
@@ -257,7 +268,7 @@ bool Validator::ensureConnection()
         masterProcess = std::make_unique<ValidatorMasterProcess>();
 
        #if LOG_PIPE_COMMUNICATION
-        masterProcess->logCallback = [this] (const String& m) { DBG(m); };
+        masterProcess->logCallback = [this] (const String& m) { logMessage (m); };
        #endif
         masterProcess->connectionLostCallback = [this]
             {
@@ -270,7 +281,15 @@ bool Validator::ensureConnection()
         masterProcess->validationCompleteCallback   = [this] (const String& id, int numFailures) { listeners.call (&Listener::itemComplete, id, numFailures); };
         masterProcess->completeCallback             = [this] { listeners.call (&Listener::allItemsComplete); triggerAsyncUpdate(); };
 
-        return masterProcess->launch();
+        if (! masterProcess->launch())
+        {
+            logMessage ("Error: Failed to create validation master process");
+            return false;
+        }
+
+        logMessage ("Created validation master process");
+
+        return true;
     }
 
     return true;

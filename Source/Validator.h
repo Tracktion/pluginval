@@ -68,6 +68,7 @@ private:
     std::unique_ptr<ValidatorMasterProcess> masterProcess;
     ListenerList<Listener> listeners;
 
+    void logMessage (const String&);
     bool ensureConnection();
 
     void handleAsyncUpdate() override;
