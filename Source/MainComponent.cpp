@@ -110,11 +110,13 @@ MainComponent::MainComponent (Validator& v)
         {
             enum MenuItem
             {
-                validateInProcess = 1
+                validateInProcess = 1,
+                showSettingsDir
             };
 
             PopupMenu m;
-            m.addItem (MenuItem::validateInProcess, TRANS("Validate in process"), true, getValidateInProcess());
+            m.addItem (validateInProcess, TRANS("Validate in process"), true, getValidateInProcess());
+            m.addItem (showSettingsDir, TRANS("Show settings folder"));
             m.showMenuAsync (PopupMenu::Options().withTargetComponent (&optionsButton),
                              [sp = SafePointer<MainComponent> (this)] (int res) mutable
                              {
@@ -122,6 +124,10 @@ MainComponent::MainComponent (Validator& v)
                                  {
                                      setValidateInProcess (! getValidateInProcess());
                                      sp->validator.setValidateInProcess (getValidateInProcess());
+                                 }
+                                 else if (res == showSettingsDir)
+                                 {
+                                     getAppPreferences().getFile().getParentDirectory().revealToUser();
                                  }
                              });
         };
