@@ -50,7 +50,7 @@ public:
 
         validator = std::make_unique<Validator>();
         propertiesFile.reset (getPropertiesFile());
-        mainWindow = std::make_unique<MainWindow> (*validator, getApplicationName());
+        mainWindow = std::make_unique<MainWindow> (*validator, getApplicationName() + " v" + getApplicationVersion());
     }
 
     void shutdown() override
