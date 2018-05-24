@@ -22,7 +22,7 @@
 #endif
 
 #ifndef LOG_PIPE_SLAVE_COMMUNICATION
- #define LOG_PIPE_SLAVE_COMMUNICATION 0
+ #define LOG_PIPE_SLAVE_COMMUNICATION 1
 #endif
 
 class ValidatorMasterProcess;
