@@ -15,6 +15,7 @@
 #include "MainComponent.h"
 #include "PluginTests.h"
 
+//==============================================================================
 void setStrictnessLevel (int newLevel)
 {
     getAppPreferences().setValue ("strictnessLevel", jlimit (1, 10, newLevel));
@@ -23,6 +24,16 @@ void setStrictnessLevel (int newLevel)
 int getStrictnessLevel()
 {
     return jlimit (1, 10, getAppPreferences().getIntValue ("strictnessLevel", 5));
+}
+
+void setValidateInProcess (bool shouldValidateInProcess)
+{
+    getAppPreferences().setValue ("validateInProcess", shouldValidateInProcess);
+}
+
+bool getValidateInProcess()
+{
+    return getAppPreferences().getBoolValue ("validateInProcess", false);
 }
 
 //==============================================================================
@@ -39,6 +50,7 @@ MainComponent::MainComponent (Validator& v)
     addAndMakeVisible (connectionStatus);
     addAndMakeVisible (clearButton);
     addAndMakeVisible (saveButton);
+    addAndMakeVisible (optionsButton);
     addAndMakeVisible (testSelectedButton);
     addAndMakeVisible (testAllButton);
     addAndMakeVisible (strictnessLabel);
@@ -94,6 +106,26 @@ MainComponent::MainComponent (Validator& v)
             }
         };
 
+    optionsButton.onClick = [this]
+        {
+            enum MenuItem
+            {
+                validateInProcess = 1
+            };
+
+            PopupMenu m;
+            m.addItem (MenuItem::validateInProcess, TRANS("Validate in process"), true, getValidateInProcess());
+            m.showMenuAsync (PopupMenu::Options().withTargetComponent (&optionsButton),
+                             [sp = SafePointer<MainComponent> (this)] (int res) mutable
+                             {
+                                 if (res == validateInProcess)
+                                 {
+                                     setValidateInProcess (! getValidateInProcess());
+                                     sp->validator.setValidateInProcess (getValidateInProcess());
+                                 }
+                             });
+        };
+
     strictnessSlider.setTextBoxStyle (Slider::TextBoxLeft, false, 35, 24);
     strictnessSlider.setSliderStyle (Slider::IncDecButtons);
     strictnessSlider.setRange ({ 1.0, 10.0 }, 1.0);
@@ -130,6 +162,7 @@ void MainComponent::resized()
     auto bottomR = r.removeFromBottom (28);
     saveButton.setBounds (bottomR.removeFromRight (100).reduced (2));
     clearButton.setBounds (bottomR.removeFromRight (100).reduced (2));
+    optionsButton.setBounds (bottomR.removeFromRight (80).reduced (2));
 
     connectionStatus.setBounds (bottomR.removeFromLeft (bottomR.getHeight()).reduced (2));
     testSelectedButton.setBounds (bottomR.removeFromLeft (130).reduced (2));

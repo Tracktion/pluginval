@@ -52,6 +52,12 @@ public:
     /** Validates an array of PluginDescriptions. */
     bool validate (const Array<PluginDescription*>& pluginsToValidate, int strictnessLevel);
 
+    /** Call this to make validation happen in the same process.
+        This can be useful for debugging but should not generally be used as a crashing
+        plugin will bring down the app.
+    */
+    void setValidateInProcess (bool useSameProcess);
+
     //==============================================================================
     struct Listener
     {
@@ -71,6 +77,7 @@ private:
     //==============================================================================
     std::unique_ptr<ValidatorMasterProcess> masterProcess;
     ListenerList<Listener> listeners;
+    bool launchInProcess = false;
 
     void logMessage (const String&);
     bool ensureConnection();

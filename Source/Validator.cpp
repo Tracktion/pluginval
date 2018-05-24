@@ -132,211 +132,6 @@ static String toXmlString (const ValueTree& v)
 
 
 //==============================================================================
-class ValidatorMasterProcess    : public ChildProcessMaster
-{
-public:
-    ValidatorMasterProcess() = default;
-
-    // Callback which can be set to log any calls sent to the slave
-    std::function<void (const String&)> logCallback;
-
-    // Callback which can be set to be notified of a lost connection
-    std::function<void()> connectionLostCallback;
-
-    //==============================================================================
-    // Callback which can be set to be informed when validation starts
-    std::function<void (const String&)> validationStartedCallback;
-
-    // Callback which can be set to be informed when a log message is posted
-    std::function<void (const String&)> logMessageCallback;
-
-    // Callback which can be set to be informed when a validation completes
-    std::function<void (const String&, int)> validationCompleteCallback;
-
-    // Callback which can be set to be informed when all validations have been completed
-    std::function<void()> completeCallback;
-
-    //==============================================================================
-    Result launch()
-    {
-        // Make sure we send 0 as the streamFlags args or the pipe can hang during DBG messages
-        const bool ok = launchSlaveProcess (File::getSpecialLocation (File::currentExecutableFile),
-                                            validatorCommandLineUID, 2000, 0);
-
-        if (! connectionWaiter.wait (5000))
-            return Result::fail ("Error: Slave took too long to launch");
-
-        return ok ? Result::ok() : Result::fail ("Error: Slave failed to launch");
-    }
-
-    //==============================================================================
-    void handleMessageFromSlave (const MemoryBlock& mb) override
-    {
-        auto v = memoryBlockToValueTree (mb);
-
-        if (v.hasType (IDs::MESSAGE))
-        {
-            const auto type = v[IDs::type].toString();
-
-            if (logMessageCallback && type == "log")
-                logMessageCallback (v[IDs::text].toString());
-
-            if (validationCompleteCallback && type == "result")
-                validationCompleteCallback (v[IDs::fileOrID].toString(), v[IDs::numFailures]);
-
-            if (validationStartedCallback && type == "started")
-                validationStartedCallback (v[IDs::fileOrID].toString());
-
-            if (completeCallback && type == "complete")
-                completeCallback();
-
-            if (type == "connected")
-                connectionWaiter.signal();
-        }
-
-        logMessage ("Received: " + toXmlString (v));
-    }
-
-    // This gets called if the slave process dies.
-    void handleConnectionLost() override
-    {
-        logMessage ("Connection lost to child process!");
-
-        if (connectionLostCallback)
-            connectionLostCallback();
-    }
-
-    //==============================================================================
-    /** Triggers validation of a set of files or IDs. */
-    void validate (const StringArray& fileOrIDsToValidate, int strictnessLevel)
-    {
-        auto v = createPluginsTree (strictnessLevel);
-
-        for (auto fileOrID : fileOrIDsToValidate)
-        {
-            jassert (fileOrID.isNotEmpty());
-            v.appendChild ({ IDs::PLUGIN, {{ IDs::fileOrID, fileOrID }} }, nullptr);
-        }
-
-        sendValueTreeToSlave (v);
-    }
-
-    /** Triggers validation of a set of PluginDescriptions. */
-    void validate (const Array<PluginDescription*>& pluginsToValidate, int strictnessLevel)
-    {
-        auto v = createPluginsTree (strictnessLevel);
-
-        for (auto pd : pluginsToValidate)
-            if (auto xml = std::unique_ptr<XmlElement> (pd->createXml()))
-                v.appendChild ({ IDs::PLUGIN, {{ IDs::pluginDescription, Base64::toBase64 (xml->createDocument ("")) }} }, nullptr);
-
-        sendValueTreeToSlave (v);
-    }
-
-private:
-    WaitableEvent connectionWaiter;
-
-    static ValueTree createPluginsTree (int strictnessLevel)
-    {
-        ValueTree v (IDs::PLUGINS);
-        v.setProperty (IDs::strictnessLevel, strictnessLevel, nullptr);
-
-        return v;
-    }
-
-    void sendValueTreeToSlave (const ValueTree& v)
-    {
-        logMessage ("Sending: " + toXmlString (v));
-
-        if (! sendMessageToSlave (valueTreeToMemoryBlock (v)))
-            logMessage ("...failed");
-    }
-
-    void logMessage (const String& s)
-    {
-        if (logCallback)
-            logCallback (s);
-    }
-};
-
-//==============================================================================
-Validator::Validator() {}
-Validator::~Validator() {}
-
-bool Validator::isConnected() const
-{
-    return masterProcess != nullptr;
-}
-
-bool Validator::validate (const StringArray& fileOrIDsToValidate, int strictnessLevel)
-{
-    if (! ensureConnection())
-        return false;
-
-    masterProcess->validate (fileOrIDsToValidate, strictnessLevel);
-    return true;
-}
-
-bool Validator::validate (const Array<PluginDescription*>& pluginsToValidate, int strictnessLevel)
-{
-    if (! ensureConnection())
-        return false;
-
-    masterProcess->validate (pluginsToValidate, strictnessLevel);
-    return true;
-}
-
-//==============================================================================
-void Validator::logMessage (const String& m)
-{
-    listeners.call (&Listener::logMessage, m);
-}
-
-bool Validator::ensureConnection()
-{
-    if (! masterProcess)
-    {
-        sendChangeMessage();
-        masterProcess = std::make_unique<ValidatorMasterProcess>();
-
-       #if LOG_PIPE_COMMUNICATION
-        masterProcess->logCallback = [this] (const String& m) { logMessage (m); };
-       #endif
-        masterProcess->connectionLostCallback = [this]
-            {
-                listeners.call (&Listener::connectionLost);
-                triggerAsyncUpdate();
-            };
-
-        masterProcess->validationStartedCallback    = [this] (const String& id) { listeners.call (&Listener::validationStarted, id); };
-        masterProcess->logMessageCallback           = [this] (const String& m) { listeners.call (&Listener::logMessage, m); };
-        masterProcess->validationCompleteCallback   = [this] (const String& id, int numFailures) { listeners.call (&Listener::itemComplete, id, numFailures); };
-        masterProcess->completeCallback             = [this] { listeners.call (&Listener::allItemsComplete); triggerAsyncUpdate(); };
-
-        const auto result = masterProcess->launch();
-
-        if (result.failed())
-        {
-            logMessage (result.getErrorMessage());
-            return false;
-        }
-
-        logMessage (String (ProjectInfo::projectName) + " v" + ProjectInfo::versionString
-                    + " - " + SystemStats::getJUCEVersion());
-
-        return true;
-    }
-
-    return true;
-}
-
-void Validator::handleAsyncUpdate()
-{
-    masterProcess.reset();
-    sendChangeMessage();
-}
-
-//==============================================================================
 /*  This class gets instantiated in the child process, and receives messages from
     the master process.
 */
@@ -361,7 +156,15 @@ public:
     void setConnected (bool isNowConnected) noexcept
     {
         isConnected = isNowConnected;
-        sendValueTreeToMaster ({ IDs::MESSAGE, {{ IDs::type, "connected" }} });
+
+        if (isConnected)
+            sendValueTreeToMaster ({ IDs::MESSAGE, {{ IDs::type, "connected" }} });
+    }
+
+    void setMasterProcess (ChildProcessMaster* newMaster)
+    {
+        master = newMaster;
+        setConnected (master != nullptr);
     }
 
     void handleMessageFromMaster (const MemoryBlock& mb) override
@@ -431,6 +234,7 @@ private:
     std::vector<MemoryBlock> requestsToProcess;
     LogMessagesSender logMessagesSender { *this };
     std::atomic<bool> isConnected { false };
+    ChildProcessMaster* master = nullptr;
 
     void logMessage (const String& m)
     {
@@ -439,6 +243,12 @@ private:
 
     void sendValueTreeToMaster (const ValueTree& v)
     {
+        if (master != nullptr)
+        {
+            master->handleMessageFromSlave (valueTreeToMemoryBlock (v));
+            return;
+        }
+
         LOG_TO_MASTER(toXmlString (v));
         sendMessageToMaster (valueTreeToMemoryBlock (v));
     }
@@ -557,6 +367,234 @@ private:
     }
 };
 
+//==============================================================================
+class ValidatorMasterProcess    : public ChildProcessMaster
+{
+public:
+    ValidatorMasterProcess() = default;
+
+    // Callback which can be set to log any calls sent to the slave
+    std::function<void (const String&)> logCallback;
+
+    // Callback which can be set to be notified of a lost connection
+    std::function<void()> connectionLostCallback;
+
+    //==============================================================================
+    // Callback which can be set to be informed when validation starts
+    std::function<void (const String&)> validationStartedCallback;
+
+    // Callback which can be set to be informed when a log message is posted
+    std::function<void (const String&)> logMessageCallback;
+
+    // Callback which can be set to be informed when a validation completes
+    std::function<void (const String&, int)> validationCompleteCallback;
+
+    // Callback which can be set to be informed when all validations have been completed
+    std::function<void()> completeCallback;
+
+    //==============================================================================
+    Result launchInProcess()
+    {
+        validatorSlaveProcess = std::make_unique<ValidatorSlaveProcess>();
+        validatorSlaveProcess->setMasterProcess (this);
+
+        return Result::ok();
+    }
+
+    Result launch()
+    {
+        // Make sure we send 0 as the streamFlags args or the pipe can hang during DBG messages
+        const bool ok = launchSlaveProcess (File::getSpecialLocation (File::currentExecutableFile),
+                                            validatorCommandLineUID, 2000, 0);
+
+        if (! connectionWaiter.wait (25000))
+            return Result::fail ("Error: Slave took too long to launch");
+
+        return ok ? Result::ok() : Result::fail ("Error: Slave failed to launch");
+    }
+
+    //==============================================================================
+    void handleMessageFromSlave (const MemoryBlock& mb) override
+    {
+        auto v = memoryBlockToValueTree (mb);
+
+        if (v.hasType (IDs::MESSAGE))
+        {
+            const auto type = v[IDs::type].toString();
+
+            if (logMessageCallback && type == "log")
+                logMessageCallback (v[IDs::text].toString());
+
+            if (validationCompleteCallback && type == "result")
+                validationCompleteCallback (v[IDs::fileOrID].toString(), v[IDs::numFailures]);
+
+            if (validationStartedCallback && type == "started")
+                validationStartedCallback (v[IDs::fileOrID].toString());
+
+            if (completeCallback && type == "complete")
+                completeCallback();
+
+            if (type == "connected")
+                connectionWaiter.signal();
+        }
+
+        logMessage ("Received: " + toXmlString (v));
+    }
+
+    // This gets called if the slave process dies.
+    void handleConnectionLost() override
+    {
+        logMessage ("Connection lost to child process!");
+
+        if (connectionLostCallback)
+            connectionLostCallback();
+    }
+
+    //==============================================================================
+    /** Triggers validation of a set of files or IDs. */
+    void validate (const StringArray& fileOrIDsToValidate, int strictnessLevel)
+    {
+        auto v = createPluginsTree (strictnessLevel);
+
+        for (auto fileOrID : fileOrIDsToValidate)
+        {
+            jassert (fileOrID.isNotEmpty());
+            v.appendChild ({ IDs::PLUGIN, {{ IDs::fileOrID, fileOrID }} }, nullptr);
+        }
+
+        sendValueTreeToSlave (v);
+    }
+
+    /** Triggers validation of a set of PluginDescriptions. */
+    void validate (const Array<PluginDescription*>& pluginsToValidate, int strictnessLevel)
+    {
+        auto v = createPluginsTree (strictnessLevel);
+
+        for (auto pd : pluginsToValidate)
+            if (auto xml = std::unique_ptr<XmlElement> (pd->createXml()))
+                v.appendChild ({ IDs::PLUGIN, {{ IDs::pluginDescription, Base64::toBase64 (xml->createDocument ("")) }} }, nullptr);
+
+        sendValueTreeToSlave (v);
+    }
+
+private:
+    WaitableEvent connectionWaiter;
+    std::unique_ptr<ValidatorSlaveProcess> validatorSlaveProcess;
+
+    static ValueTree createPluginsTree (int strictnessLevel)
+    {
+        ValueTree v (IDs::PLUGINS);
+        v.setProperty (IDs::strictnessLevel, strictnessLevel, nullptr);
+
+        return v;
+    }
+
+    void sendValueTreeToSlave (const ValueTree& v)
+    {
+        if (validatorSlaveProcess)
+        {
+            validatorSlaveProcess->handleMessageFromMaster (valueTreeToMemoryBlock (v));
+            return;
+        }
+
+        logMessage ("Sending: " + toXmlString (v));
+
+        if (! sendMessageToSlave (valueTreeToMemoryBlock (v)))
+            logMessage ("...failed");
+    }
+
+    void logMessage (const String& s)
+    {
+        if (logCallback)
+            logCallback (s);
+    }
+};
+
+//==============================================================================
+Validator::Validator() {}
+Validator::~Validator() {}
+
+bool Validator::isConnected() const
+{
+    return masterProcess != nullptr;
+}
+
+bool Validator::validate (const StringArray& fileOrIDsToValidate, int strictnessLevel)
+{
+    if (! ensureConnection())
+        return false;
+
+    masterProcess->validate (fileOrIDsToValidate, strictnessLevel);
+    return true;
+}
+
+bool Validator::validate (const Array<PluginDescription*>& pluginsToValidate, int strictnessLevel)
+{
+    if (! ensureConnection())
+        return false;
+
+    masterProcess->validate (pluginsToValidate, strictnessLevel);
+    return true;
+}
+
+void Validator::setValidateInProcess (bool useSomeProcess)
+{
+    launchInProcess = useSomeProcess;
+}
+
+//==============================================================================
+void Validator::logMessage (const String& m)
+{
+    listeners.call (&Listener::logMessage, m);
+}
+
+bool Validator::ensureConnection()
+{
+    if (! masterProcess)
+    {
+        sendChangeMessage();
+        masterProcess = std::make_unique<ValidatorMasterProcess>();
+
+       #if LOG_PIPE_COMMUNICATION
+        masterProcess->logCallback = [this] (const String& m) { logMessage (m); };
+       #endif
+        masterProcess->connectionLostCallback = [this]
+            {
+                listeners.call (&Listener::connectionLost);
+                triggerAsyncUpdate();
+            };
+
+        masterProcess->validationStartedCallback    = [this] (const String& id) { listeners.call (&Listener::validationStarted, id); };
+        masterProcess->logMessageCallback           = [this] (const String& m) { listeners.call (&Listener::logMessage, m); };
+        masterProcess->validationCompleteCallback   = [this] (const String& id, int numFailures) { listeners.call (&Listener::itemComplete, id, numFailures); };
+        masterProcess->completeCallback             = [this] { listeners.call (&Listener::allItemsComplete); triggerAsyncUpdate(); };
+
+        const auto result = launchInProcess ? masterProcess->launchInProcess()
+                                            : masterProcess->launch();
+
+        if (result.failed())
+        {
+            logMessage (result.getErrorMessage());
+            return false;
+        }
+
+        logMessage (String (ProjectInfo::projectName) + " v" + ProjectInfo::versionString
+                    + " - " + SystemStats::getJUCEVersion());
+
+        return true;
+    }
+
+    return true;
+}
+
+void Validator::handleAsyncUpdate()
+{
+    masterProcess.reset();
+    sendChangeMessage();
+}
+
+
+//==============================================================================
 #if JUCE_MAC
 static void killWithoutMercy (int)
 {

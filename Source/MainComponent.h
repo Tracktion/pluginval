@@ -238,7 +238,8 @@ private:
                                               getAppPreferences().getFile().getSiblingFile ("PluginsListDeadMansPedal"),
                                               &getAppPreferences() };
     ConsoleComponent console { validator };
-    TextButton testSelectedButton { "Test Selected" }, testAllButton { "Test All" }, clearButton { "Clear log" }, saveButton { "Save log" };
+    TextButton testSelectedButton { "Test Selected" }, testAllButton { "Test All" },
+               clearButton { "Clear log" }, saveButton { "Save log" }, optionsButton { "Options" };
     Slider strictnessSlider;
     Label strictnessLabel { {}, "Strictness Level" };
     ConnectionStatus connectionStatus { validator };
