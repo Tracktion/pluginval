@@ -20,9 +20,9 @@
 extern void slaveInitialised();
 
 #if LOG_PIPE_SLAVE_COMMUNICATION
- #define LOG_FROM_MASTER(textToLog) Logger::writeToLog ("*** Recieved:\n" + textToLog);
- #define LOG_TO_MASTER(textToLog)   Logger::writeToLog ("*** Sending:\n" + textToLog);
- #define LOG_SLAVE(textToLog)       Logger::writeToLog ("*** Log:\n" + String (textToLog));
+ #define LOG_FROM_MASTER(textToLog) if (Logger::getCurrentLogger() != nullptr) Logger::writeToLog ("*** Recieved:\n" + textToLog);
+ #define LOG_TO_MASTER(textToLog)   if (Logger::getCurrentLogger() != nullptr) Logger::writeToLog ("*** Sending:\n" + textToLog);
+ #define LOG_SLAVE(textToLog)       if (Logger::getCurrentLogger() != nullptr) Logger::writeToLog ("*** Log:\n" + String (textToLog));
 #else
  #define LOG_FROM_MASTER(textToLog)
  #define LOG_TO_MASTER(textToLog)
