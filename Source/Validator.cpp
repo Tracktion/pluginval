@@ -16,6 +16,17 @@
 #include "PluginTests.h"
 #include <numeric>
 
+// Defined in Main.cpp, used to create the file logger as early as possible
+extern void slaveInitialised();
+
+#if LOG_PIPE_SLAVE_COMMUNICATION
+ #define LOG_FROM_MASTER(textToLog) Logger::writeToLog ("*** Recieved:\n" + textToLog);
+ #define LOG_TO_MASTER(textToLog)   Logger::writeToLog ("*** Sending:\n" + textToLog);
+#else
+ #define LOG_FROM_MASTER(textToLog)
+ #define LOG_TO_MASTER(textToLog)
+#endif
+
 //==============================================================================
 struct ForwardingUnitTestRunner : public UnitTestRunner
 {
@@ -109,6 +120,15 @@ static MemoryBlock valueTreeToMemoryBlock (const ValueTree& v)
     return mo.getMemoryBlock();
 }
 
+static String toXmlString (const ValueTree& v)
+{
+    if (auto xml = std::unique_ptr<XmlElement> (v.createXml()))
+        return xml->createDocument ({}, false, false);
+
+    return {};
+}
+
+
 //==============================================================================
 class ValidatorMasterProcess    : public ChildProcessMaster
 {
@@ -172,7 +192,7 @@ public:
                 connectionWaiter.signal();
         }
 
-        logMessage ("Received: " + v.toXmlString());
+        logMessage ("Received: " + toXmlString (v));
     }
 
     // This gets called if the slave process dies.
@@ -224,7 +244,7 @@ private:
 
     void sendValueTreeToSlave (const ValueTree& v)
     {
-        logMessage ("Sending: " + v.toXmlString());
+        logMessage ("Sending: " + toXmlString (v));
 
         if (! sendMessageToSlave (valueTreeToMemoryBlock (v)))
             logMessage ("...failed");
@@ -342,6 +362,7 @@ public:
 
     void handleMessageFromMaster (const MemoryBlock& mb) override
     {
+        LOG_FROM_MASTER(toXmlString (memoryBlockToValueTree (mb)));
         addRequest (mb);
     }
 
@@ -414,6 +435,7 @@ private:
 
     void sendValueTreeToMaster (const ValueTree& v)
     {
+        LOG_TO_MASTER(toXmlString (v));
         sendMessageToMaster (valueTreeToMemoryBlock (v));
     }
 
@@ -540,6 +562,7 @@ bool invokeSlaveProcessValidator (const String& commandLine)
 
     if (slave->initialiseFromCommandLine (commandLine, validatorCommandLineUID))
     {
+        slaveInitialised();
         slave->setConnected (true);
         slave.release(); // allow the slave object to stay alive - it'll handle its own deletion.
         return true;

@@ -31,6 +31,15 @@ public:
         return *propertiesFile;
     }
 
+    void initialiseSlaveFileLogger()
+    {
+       #if LOG_PIPE_SLAVE_COMMUNICATION
+        fileLogger = std::make_unique<FileLogger> (getPropertiesFileOptions().getDefaultFile().getSiblingFile ("slave_log.txt"),
+                                                   getApplicationName() + " v" + getApplicationVersion(), 1024 * 1024);
+        Logger::setCurrentLogger (fileLogger.get());
+       #endif
+    }
+
     //==============================================================================
     const String getApplicationName() override       { return ProjectInfo::projectName; }
     const String getApplicationVersion() override    { return ProjectInfo::versionString; }
@@ -57,6 +66,7 @@ public:
     {
         mainWindow.reset();
         validator.reset();
+        Logger::setCurrentLogger (nullptr);
     }
 
     //==============================================================================
@@ -119,8 +129,9 @@ private:
     std::unique_ptr<Validator> validator;
     std::unique_ptr<PropertiesFile> propertiesFile;
     std::unique_ptr<MainWindow> mainWindow;
+    std::unique_ptr<FileLogger> fileLogger;
 
-    static PropertiesFile* getPropertiesFile()
+    static PropertiesFile::Options getPropertiesFileOptions()
     {
         PropertiesFile::Options opts;
         opts.millisecondsBeforeSaving = 2000;
@@ -131,6 +142,12 @@ private:
         opts.folderName = "PluginValidator";
         opts.osxLibrarySubFolder = "Application Support";
 
+        return opts;
+    }
+
+    static PropertiesFile* getPropertiesFile()
+    {
+        auto opts = getPropertiesFileOptions();
         return new PropertiesFile (opts.getDefaultFile(), opts);
     }
 
@@ -149,4 +166,9 @@ PropertiesFile& getAppPreferences()
 {
     auto app = dynamic_cast<PluginValidatorApplication*> (PluginValidatorApplication::getInstance());
     return app->getAppPreferences();
+}
+
+void slaveInitialised()
+{
+    dynamic_cast<PluginValidatorApplication*> (PluginValidatorApplication::getInstance())->initialiseSlaveFileLogger();
 }

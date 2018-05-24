@@ -21,6 +21,10 @@
  #define LOG_PIPE_COMMUNICATION 0
 #endif
 
+#ifndef LOG_PIPE_SLAVE_COMMUNICATION
+ #define LOG_PIPE_SLAVE_COMMUNICATION 0
+#endif
+
 class ValidatorMasterProcess;
 
 //==============================================================================
