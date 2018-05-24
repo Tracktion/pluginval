@@ -22,9 +22,11 @@ extern void slaveInitialised();
 #if LOG_PIPE_SLAVE_COMMUNICATION
  #define LOG_FROM_MASTER(textToLog) Logger::writeToLog ("*** Recieved:\n" + textToLog);
  #define LOG_TO_MASTER(textToLog)   Logger::writeToLog ("*** Sending:\n" + textToLog);
+ #define LOG_SLAVE(textToLog)       Logger::writeToLog ("*** Log:\n" + String (textToLog));
 #else
  #define LOG_FROM_MASTER(textToLog)
  #define LOG_TO_MASTER(textToLog)
+ #define LOG_SLAVE(textToLog)
 #endif
 
 //==============================================================================
@@ -478,6 +480,7 @@ private:
     void processRequest (MemoryBlock mb)
     {
         const ValueTree v (memoryBlockToValueTree (mb));
+        LOG_SLAVE("processRequest:\n" + toXmlString (v));
 
         if (v.hasType (IDs::PLUGINS))
         {
@@ -487,6 +490,7 @@ private:
             {
                 String fileOrID;
                 Array<UnitTestRunner::TestResult> results;
+                LOG_SLAVE("processRequest - child:\n" + toXmlString (c));
 
                 if (c.hasProperty (IDs::fileOrID))
                 {
@@ -516,7 +520,19 @@ private:
 
                                 results = validate (pd, strictnessLevel, [this] (const String& m) { logMessage (m); });
                             }
+                            else
+                            {
+                                LOG_SLAVE("processRequest - failed to load PluginDescription from XML:\n" + ms.toString());
+                            }
                         }
+                        else
+                        {
+                            LOG_SLAVE("processRequest - failed to parse pluginDescription:\n" + ms.toString());
+                        }
+                    }
+                    else
+                    {
+                        LOG_SLAVE("processRequest - failed to convert pluginDescription from base64:\n" + ms.toString());
                     }
                 }
 
