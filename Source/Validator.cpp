@@ -321,6 +321,11 @@ public:
         stopThread (5000);
     }
 
+    void setConnected (bool isNowConnected) noexcept
+    {
+        isConnected = isNowConnected;
+    }
+
     void handleMessageFromMaster (const MemoryBlock& mb) override
     {
         addRequest (mb);
@@ -333,12 +338,64 @@ public:
     }
 
 private:
+    struct LogMessagesSender    : public Thread
+    {
+        LogMessagesSender (ValidatorSlaveProcess& vsp)
+            : Thread ("SlaveMessageSender"), owner (vsp)
+        {
+            startThread (1);
+        }
+
+        ~LogMessagesSender()
+        {
+            stopThread (2000);
+            sendLogMessages();
+        }
+
+        void logMessage (const String& m)
+        {
+            if (! owner.isConnected)
+                return;
+
+            const ScopedLock sl (logMessagesLock);
+            logMessages.add (m);
+        }
+
+        void run() override
+        {
+            while (! threadShouldExit())
+            {
+                sendLogMessages();
+                Thread::sleep (200);
+            }
+        }
+
+        void sendLogMessages()
+        {
+            StringArray messagesToSend;
+
+            {
+                const ScopedLock sl (logMessagesLock);
+                messagesToSend.swapWith (logMessages);
+            }
+
+            if (owner.isConnected && ! messagesToSend.isEmpty())
+                owner.sendMessageToMaster (valueTreeToMemoryBlock ({ IDs::MESSAGE, {{ IDs::type, "log" }, { IDs::text, messagesToSend.joinIntoString ("\n") }} }));
+        }
+
+        ValidatorSlaveProcess& owner;
+        CriticalSection logMessagesLock;
+        StringArray logMessages;
+    };
+
     CriticalSection requestsLock;
     std::vector<MemoryBlock> requestsToProcess;
+    LogMessagesSender logMessagesSender { *this };
+    std::atomic<bool> isConnected { false };
 
     void logMessage (const String& m)
     {
-        sendMessageToMaster (valueTreeToMemoryBlock ({ IDs::MESSAGE, {{ IDs::type, "log" }, { IDs::text, m }} }));
+        logMessagesSender.logMessage (m);
     }
 
     void run() override
@@ -460,10 +517,11 @@ bool invokeSlaveProcessValidator (const String& commandLine)
     setupSignalHandling();
    #endif
 
-    ScopedPointer<ValidatorSlaveProcess> slave (new ValidatorSlaveProcess());
+    auto slave = std::make_unique<ValidatorSlaveProcess>();
 
     if (slave->initialiseFromCommandLine (commandLine, validatorCommandLineUID))
     {
+        slave->setConnected (true);
         slave.release(); // allow the slave object to stay alive - it'll handle its own deletion.
         return true;
     }
