@@ -232,8 +232,8 @@ private:
 
     CriticalSection requestsLock;
     std::vector<MemoryBlock> requestsToProcess;
-    LogMessagesSender logMessagesSender { *this };
     std::atomic<bool> isConnected { false };
+    LogMessagesSender logMessagesSender { *this };
     ChildProcessMaster* master = nullptr;
 
     void logMessage (const String& m)
