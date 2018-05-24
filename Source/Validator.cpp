@@ -135,11 +135,16 @@ public:
     std::function<void()> completeCallback;
 
     //==============================================================================
-    bool launch()
+    Result launch()
     {
         // Make sure we send 0 as the streamFlags args or the pipe can hang during DBG messages
-        return launchSlaveProcess (File::getSpecialLocation (File::currentExecutableFile),
-                                   validatorCommandLineUID, 2000, 0);
+        const bool ok = launchSlaveProcess (File::getSpecialLocation (File::currentExecutableFile),
+                                            validatorCommandLineUID, 2000, 0);
+
+        if (! connectionWaiter.wait (5000))
+            return Result::fail ("Error: Slave took too long to launch");
+
+        return ok ? Result::ok() : Result::fail ("Error: Slave failed to launch");
     }
 
     //==============================================================================
@@ -162,6 +167,9 @@ public:
 
             if (completeCallback && type == "complete")
                 completeCallback();
+
+            if (type == "connected")
+                connectionWaiter.signal();
         }
 
         logMessage ("Received: " + v.toXmlString());
@@ -204,6 +212,8 @@ public:
     }
 
 private:
+    WaitableEvent connectionWaiter;
+
     static ValueTree createPluginsTree (int strictnessLevel)
     {
         ValueTree v (IDs::PLUGINS);
@@ -281,13 +291,16 @@ bool Validator::ensureConnection()
         masterProcess->validationCompleteCallback   = [this] (const String& id, int numFailures) { listeners.call (&Listener::itemComplete, id, numFailures); };
         masterProcess->completeCallback             = [this] { listeners.call (&Listener::allItemsComplete); triggerAsyncUpdate(); };
 
-        if (! masterProcess->launch())
+        const auto result = masterProcess->launch();
+
+        if (result.failed())
         {
-            logMessage ("Error: Failed to create validation master process");
+            logMessage (result.getErrorMessage());
             return false;
         }
 
-        logMessage ("Created validation master process");
+        logMessage (String (ProjectInfo::projectName) + " v" + ProjectInfo::versionString
+                    + " - " + SystemStats::getJUCEVersion());
 
         return true;
     }
@@ -324,6 +337,7 @@ public:
     void setConnected (bool isNowConnected) noexcept
     {
         isConnected = isNowConnected;
+        sendValueTreeToMaster ({ IDs::MESSAGE, {{ IDs::type, "connected" }} });
     }
 
     void handleMessageFromMaster (const MemoryBlock& mb) override
@@ -380,7 +394,7 @@ private:
             }
 
             if (owner.isConnected && ! messagesToSend.isEmpty())
-                owner.sendMessageToMaster (valueTreeToMemoryBlock ({ IDs::MESSAGE, {{ IDs::type, "log" }, { IDs::text, messagesToSend.joinIntoString ("\n") }} }));
+                owner.sendValueTreeToMaster ({ IDs::MESSAGE, {{ IDs::type, "log" }, { IDs::text, messagesToSend.joinIntoString ("\n") }} });
         }
 
         ValidatorSlaveProcess& owner;
@@ -396,6 +410,11 @@ private:
     void logMessage (const String& m)
     {
         logMessagesSender.logMessage (m);
+    }
+
+    void sendValueTreeToMaster (const ValueTree& v)
+    {
+        sendMessageToMaster (valueTreeToMemoryBlock (v));
     }
 
     void run() override
@@ -450,9 +469,9 @@ private:
                 if (c.hasProperty (IDs::fileOrID))
                 {
                     fileOrID = c[IDs::fileOrID].toString();
-                    sendMessageToMaster (valueTreeToMemoryBlock ({
+                    sendValueTreeToMaster ({
                         IDs::MESSAGE, {{ IDs::type, "started" }, { IDs::fileOrID, fileOrID }}
-                    }));
+                    });
 
                     results = validate (c[IDs::fileOrID].toString(), strictnessLevel, [this] (const String& m) { logMessage (m); });
                 }
@@ -469,9 +488,9 @@ private:
                             if (pd.loadFromXml (*xml))
                             {
                                 fileOrID = pd.createIdentifierString();
-                                sendMessageToMaster (valueTreeToMemoryBlock ({
+                                sendValueTreeToMaster ({
                                     IDs::MESSAGE, {{ IDs::type, "started" }, { IDs::fileOrID, fileOrID }}
-                                }));
+                                });
 
                                 results = validate (pd, strictnessLevel, [this] (const String& m) { logMessage (m); });
                             }
@@ -480,15 +499,15 @@ private:
                 }
 
                 jassert (fileOrID.isNotEmpty());
-                sendMessageToMaster (valueTreeToMemoryBlock ({
+                sendValueTreeToMaster ({
                     IDs::MESSAGE, {{ IDs::type, "result" }, { IDs::fileOrID, fileOrID }, { IDs::numFailures, getNumFailures (results) }}
-                }));
+                });
             }
         }
 
-        sendMessageToMaster (valueTreeToMemoryBlock ({
+        sendValueTreeToMaster ({
             IDs::MESSAGE, {{ IDs::type, "complete" }}
-        }));
+        });
     }
 };
 
