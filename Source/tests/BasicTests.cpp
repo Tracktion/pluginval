@@ -223,7 +223,11 @@ struct AutomationTest  : public PluginTest
 
                 ut.expectEquals (countNaNs (ab), 0, "NaNs found in buffer");
                 ut.expectEquals (countInfs (ab), 0, "Infs found in buffer");
-                ut.expectEquals (countSubnormals (ab), 0, "Subnormals found in buffer");
+
+                const int subnormals = countSubnormals (ab);
+
+                if (subnormals > 0)
+                    ut.logMessage ("!!! WARNGING: " + String (countSubnormals (ab)) + " submnormals found in buffer");
             }
         }
     }
