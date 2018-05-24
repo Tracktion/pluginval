@@ -348,11 +348,13 @@ public:
     ValidatorSlaveProcess()
         : Thread ("ValidatorSlaveProcess")
     {
+        LOG_SLAVE("Constructing ValidatorSlaveProcess");
         startThread (4);
     }
 
     ~ValidatorSlaveProcess()
     {
+        LOG_SLAVE("Destructing ValidatorSlaveProcess");
         stopThread (5000);
     }
 
@@ -443,6 +445,8 @@ private:
 
     void run() override
     {
+        LOG_SLAVE("Starting slave thread");
+
         while (! threadShouldExit())
         {
             processRequests();
@@ -452,6 +456,8 @@ private:
             if (requestsToProcess.empty())
                 Thread::sleep (500);
         }
+
+        LOG_SLAVE("Ended slave thread");
     }
 
     void addRequest (const MemoryBlock& mb)
@@ -472,6 +478,8 @@ private:
             const ScopedLock sl (requestsLock);
             requests.swap (requestsToProcess);
         }
+
+        LOG_SLAVE("processRequests:\n" + String ((int) requests.size()));
 
         for (const auto& r : requests)
             processRequest (r);
