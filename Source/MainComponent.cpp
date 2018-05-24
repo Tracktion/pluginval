@@ -106,7 +106,7 @@ MainComponent::MainComponent (Validator& v)
             }
         };
 
-    optionsButton.onClick = [this]
+    optionsButton.onClick = [this, sp = SafePointer<MainComponent> (this)]
         {
             enum MenuItem
             {
@@ -118,7 +118,7 @@ MainComponent::MainComponent (Validator& v)
             m.addItem (validateInProcess, TRANS("Validate in process"), true, getValidateInProcess());
             m.addItem (showSettingsDir, TRANS("Show settings folder"));
             m.showMenuAsync (PopupMenu::Options().withTargetComponent (&optionsButton),
-                             [sp = SafePointer<MainComponent> (this)] (int res) mutable
+                             [sp] (int res) mutable
                              {
                                  if (res == validateInProcess)
                                  {
@@ -127,7 +127,7 @@ MainComponent::MainComponent (Validator& v)
                                  }
                                  else if (res == showSettingsDir)
                                  {
-                                     getAppPreferences().getFile().getParentDirectory().revealToUser();
+                                     getAppPreferences().getFile().revealToUser();
                                  }
                              });
         };
