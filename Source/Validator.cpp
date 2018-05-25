@@ -222,7 +222,7 @@ private:
             }
 
             if (owner.isConnected && ! messagesToSend.isEmpty())
-                owner.sendValueTreeToMaster ({ IDs::MESSAGE, {{ IDs::type, "log" }, { IDs::text, messagesToSend.joinIntoString ("\n") }} });
+                owner.sendValueTreeToMaster ({ IDs::MESSAGE, {{ IDs::type, "log" }, { IDs::text, messagesToSend.joinIntoString ("\n") }} }, false);
         }
 
         ValidatorSlaveProcess& owner;
@@ -241,8 +241,11 @@ private:
         logMessagesSender.logMessage (m);
     }
 
-    void sendValueTreeToMaster (const ValueTree& v)
+    void sendValueTreeToMaster (const ValueTree& v, bool flushLog = true)
     {
+        if (flushLog)
+            logMessagesSender.sendLogMessages();
+
         if (master != nullptr)
         {
             master->handleMessageFromSlave (valueTreeToMemoryBlock (v));
@@ -407,7 +410,7 @@ public:
         const bool ok = launchSlaveProcess (File::getSpecialLocation (File::currentExecutableFile),
                                             validatorCommandLineUID, 2000, 0);
 
-        if (! connectionWaiter.wait (25000))
+        if (! connectionWaiter.wait (5000))
             return Result::fail ("Error: Slave took too long to launch");
 
         return ok ? Result::ok() : Result::fail ("Error: Slave failed to launch");
