@@ -24,7 +24,7 @@ set PROJUCER_ROOT=%ROOT%/modules/juce/extras/Projucer/Builds/VisualStudio2017
 set PROJUCER_EXE=%PROJUCER_ROOT%/x64/Release/App/Projucer.exe
 set PLUGINS_PIP_DIR=%ROOT%/modules/juce/examples/Plugins
 set TEMP_DIR=%ROOT%/tmp
-::rd /S /Q "%TEMP_DIR%"
+rd /S /Q "%TEMP_DIR%"
 
 cd "%PROJUCER_ROOT%"
 "C:\Program Files (x86)\Microsoft Visual Studio\2017\Community\MSBuild\15.0\Bin\MSBuild.exe" Projucer.sln /p:VisualStudioVersion=15.0 /m /p:Configuration=Release /p:Platform=x64 /p:PreferredToolArchitecture=x64
