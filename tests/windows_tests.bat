@@ -13,7 +13,7 @@ set PLUGINVAL_EXE=%DEPLOYMENT_DIR%\%PROJECT_NAME%.exe
 ::============================================================
 ::   First build pluginval
 ::============================================================
-call %ROOT%/install/windows_build.bat || exit 1
+call "%ROOT%/install/windows_build.bat" || exit 1
 
 ::============================================================
 ::   Build Projucer and generate test plugin projects
