@@ -34,8 +34,8 @@ if not exist "%PROJUCER_EXE%" exit 1
 ::============================================================
 ::   Test plugins
 ::============================================================
-call "%PROJUCER_EXE%" --set-global-search-path windows defaultJuceModulePath %ROOT%/modules/juce/modules
-call "%PROJUCER_EXE%" --set-global-search-path windows vst3Path %ROOT%/vst3
+call "%PROJUCER_EXE%" --set-global-search-path windows defaultJuceModulePath "%ROOT%/modules/juce/modules"
+call "%PROJUCER_EXE%" --set-global-search-path windows vst3Path "%ROOT%/vst3"
 call :TestPlugin "ArpeggiatorPlugin", "ArpeggiatorPluginDemo.h"
 call :TestPlugin "AudioPluginDemo", "AudioPluginDemo.h"
 call :TestPlugin "DSPModulePluginDemo", "DSPModulePluginDemo.h"
