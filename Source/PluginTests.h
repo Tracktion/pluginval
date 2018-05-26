@@ -90,6 +90,11 @@ struct PluginTest
     }
 
     //==============================================================================
+    /** Can be overridden to return an ID which should uniquely identify the test.
+        By default this is an empty string as not all tests need to be identified by ID.
+    */
+    virtual String getID()                                      { return {}; }
+
     /** By default tests are run on background threads, you can override this to
         return true of you need the runTest method to be called on the message thread.
     */
