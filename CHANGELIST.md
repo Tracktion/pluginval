@@ -5,3 +5,4 @@
   - Added an option to validate in the same process in GUI mode
   - Added the "--validate-in-process" command line flag
   - Replaced the "strictnessLevel" command line option with the more canonical "strictness-level" form
+  - Added a timeout option which can be set from the GUI "Options" menu or the command line "--timeoutMs [numMs]" flag

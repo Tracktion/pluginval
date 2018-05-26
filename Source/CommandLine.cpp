@@ -183,6 +183,26 @@ static int getStrictnessLevel (const StringArray& args)
     return 5;
 }
 
+int64 getTimeout (const StringArray& args)
+{
+    const int timeoutIndex = indexOfArgument (args, "timeout-ms");
+
+    if (timeoutIndex != -1)
+    {
+        if (args.size() > timeoutIndex)
+        {
+            const int64 timeoutMs = args[timeoutIndex + 1].getLargeIntValue();
+
+            if (timeoutMs >= -1)
+                return timeoutMs;
+        }
+
+        throw CommandLineError ("Missing timeout-ms level argument!");
+    }
+
+    return 30000;
+}
+
 static void validate (CommandLineValidator& validator, const StringArray& args)
 {
     hideDockIcon();
@@ -202,6 +222,7 @@ static void validate (CommandLineValidator& validator, const StringArray& args)
         {
             PluginTests::Options options;
             options.strictnessLevel = getStrictnessLevel (args);
+            options.timeoutMs = getTimeout (args);
             
             validator.validate (fileOrIDs,
                                 options,
@@ -243,6 +264,9 @@ static void showHelp()
               << "    Validates the files (or IDs for AUs)." << std::endl
               << "  --strictness-level [1-10]" << std::endl
               << "    Sets the strictness level to use. A minimum level of 5 (also the default) is recomended for compatibility. Higher levels include longer, more thorough tests such as fuzzing." << std::endl
+              << "  --timeout-ms [numMilliseconds]" << std::endl
+              << "    Sets a timout which will stop validation with an error if no output from any test has happened for this number of ms." << std::endl
+              << "    By default this is 30s but can be set to -1 to never timeout." << std::endl
               << "  --validate-in-process" << std::endl
               << "    If specified, validates the list in the calling process. This can be useful for debugging or when using the command line." << std::endl
               << std::endl

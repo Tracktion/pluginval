@@ -36,20 +36,45 @@ bool getValidateInProcess()
     return getAppPreferences().getBoolValue ("validateInProcess", false);
 }
 
+void setTimeoutMs (int64 newTimeout)
+{
+    getAppPreferences().setValue ("timeoutMs", newTimeout);
+}
+
+int64 getTimeoutMs()
+{
+    return getAppPreferences().getIntValue ("timeoutMs", 30000);
+}
+
 PluginTests::Options getTestOptions()
 {
     PluginTests::Options options;
     options.strictnessLevel = getStrictnessLevel();
+    options.timeoutMs = getTimeoutMs();
 
     return options;
+}
+
+//==============================================================================
+void showTimeoutDialog()
+{
+    const String message = TRANS("Set the duration in milliseconds after which to kill the validation if there has been no output from it");
+    std::shared_ptr<AlertWindow> aw (LookAndFeel::getDefaultLookAndFeel().createAlertWindow (TRANS("Set Timeout (ms)"), message,
+                                                                                             TRANS("OK"), TRANS("Cancel"), String(),
+                                                                                             AlertWindow::QuestionIcon, 2, nullptr));
+    aw->addTextEditor ("timeoutMs", String (getTimeoutMs()));
+    aw->enterModalState (true, ModalCallbackFunction::create ([aw] (int res)
+                                                              {
+                                                                  if (res == 1)
+                                                                      if (auto te = aw->getTextEditor ("timeoutMs"))
+                                                                          setTimeoutMs (te->getText().getLargeIntValue());
+                                                              }));
 }
 
 //==============================================================================
 MainComponent::MainComponent (Validator& v)
     : validator (v)
 {
-    validator.setValidateInProcess (getValidateInProcess());
-
     formatManager.addDefaultFormats();
 
     const auto tabCol = getLookAndFeel().findColour (ResizableWindow::backgroundColourId);
@@ -75,6 +100,7 @@ MainComponent::MainComponent (Validator& v)
                 if (auto pd = knownPluginList.getType (rows[i]))
                     plugins.add (pd);
 
+            validator.setValidateInProcess (getValidateInProcess());
             validator.validate (plugins, getTestOptions());
         };
 
@@ -86,6 +112,7 @@ MainComponent::MainComponent (Validator& v)
                 if (auto pd = knownPluginList.getType (i))
                     plugins.add (pd);
 
+            validator.setValidateInProcess (getValidateInProcess());
             validator.validate (plugins, getTestOptions());
         };
 
@@ -121,11 +148,14 @@ MainComponent::MainComponent (Validator& v)
             enum MenuItem
             {
                 validateInProcess = 1,
+                showTimeout,
                 showSettingsDir
             };
 
             PopupMenu m;
             m.addItem (validateInProcess, TRANS("Validate in process"), true, getValidateInProcess());
+            m.addItem (showTimeout, TRANS("Set timeout (123ms)").replace ("123", String (getTimeoutMs())));
+            m.addSeparator();
             m.addItem (showSettingsDir, TRANS("Show settings folder"));
             m.showMenuAsync (PopupMenu::Options().withTargetComponent (&optionsButton),
                              [sp] (int res) mutable
@@ -134,6 +164,10 @@ MainComponent::MainComponent (Validator& v)
                                  {
                                      setValidateInProcess (! getValidateInProcess());
                                      sp->validator.setValidateInProcess (getValidateInProcess());
+                                 }
+                                 else if (res == showTimeout)
+                                 {
+                                     showTimeoutDialog();
                                  }
                                  else if (res == showSettingsDir)
                                  {

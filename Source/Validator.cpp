@@ -30,21 +30,62 @@ extern void slaveInitialised();
 #endif
 
 //==============================================================================
-struct ForwardingUnitTestRunner : public UnitTestRunner
+struct PluginsUnitTestRunner    : public UnitTestRunner,
+                                  private Thread
 {
-    ForwardingUnitTestRunner (std::function<void (const String&)> fn)
-        : callback (std::move (fn))
+    PluginsUnitTestRunner (std::function<void (const String&)> logCallback, int64 timeoutInMs)
+        : Thread ("TimoutThread"),
+          callback (std::move (logCallback)),
+          timeoutMs (timeoutInMs)
     {
         jassert (callback);
+
+        if (timeoutInMs > 0)
+            startThread (1);
+    }
+
+    ~PluginsUnitTestRunner()
+    {
+        stopThread (5000);
+    }
+
+    void resultsUpdated() override
+    {
+        resetTimeout();
     }
 
     void logMessage (const String& message) override
     {
+        resetTimeout();
         callback (message);
     }
 
 private:
     std::function<void (const String&)> callback;
+    const int64 timeoutMs = -1;
+    std::atomic<int64> timoutTime;
+
+    void resetTimeout()
+    {
+        timoutTime = (Time::getCurrentTime() + RelativeTime::milliseconds (timeoutMs)).toMilliseconds();
+    }
+
+    void run() override
+    {
+        while (! threadShouldExit())
+        {
+            if (Time::getCurrentTime().toMilliseconds() > timoutTime)
+            {
+                logMessage ("*** FAILED: Timeout after " + RelativeTime::milliseconds (timeoutMs).getDescription());
+
+                // Give the log a second to flush the message before terminating
+                Thread::sleep (1000);
+                Process::terminate();
+            }
+
+            Thread::sleep (200);
+        }
+    }
 };
 
 
@@ -52,7 +93,7 @@ private:
 inline Array<UnitTestRunner::TestResult> runTests (PluginTests& test, std::function<void (const String&)> callback)
 {
     Array<UnitTestRunner::TestResult> results;
-    ForwardingUnitTestRunner testRunner (std::move (callback));
+    PluginsUnitTestRunner testRunner (std::move (callback), test.getOptions().timeoutMs);
     testRunner.setAssertOnFailure (false);
 
     Array<UnitTest*> testsToRun;
@@ -93,6 +134,7 @@ namespace IDs
     DECLARE_ID(fileOrID)
     DECLARE_ID(pluginDescription)
     DECLARE_ID(strictnessLevel)
+    DECLARE_ID(timeoutMs)
 
     DECLARE_ID(MESSAGE)
     DECLARE_ID(type)
@@ -307,6 +349,7 @@ private:
         {
             PluginTests::Options options;
             options.strictnessLevel = v.getProperty (IDs::strictnessLevel, 5);
+            options.timeoutMs = v.getProperty (IDs::timeoutMs, -1);
 
             for (auto c : v)
             {
@@ -489,6 +532,7 @@ private:
     {
         ValueTree v (IDs::PLUGINS);
         v.setProperty (IDs::strictnessLevel, options.strictnessLevel, nullptr);
+        v.setProperty (IDs::timeoutMs, options.timeoutMs, nullptr);
 
         return v;
     }
@@ -541,9 +585,9 @@ bool Validator::validate (const Array<PluginDescription*>& pluginsToValidate, Pl
     return true;
 }
 
-void Validator::setValidateInProcess (bool useSomeProcess)
+void Validator::setValidateInProcess (bool useSameProcess)
 {
-    launchInProcess = useSomeProcess;
+    launchInProcess = useSameProcess;
 }
 
 //==============================================================================

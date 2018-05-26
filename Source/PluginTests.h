@@ -27,6 +27,7 @@ struct PluginTests : public UnitTest
     struct Options
     {
         int strictnessLevel = 5;
+        int64 timeoutMs = 30000;
     };
 
     /** Creates a set of tests for a fileOrIdentifier. */
