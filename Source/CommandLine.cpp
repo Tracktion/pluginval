@@ -15,6 +15,7 @@
 #include "CommandLine.h"
 #include "Validator.h"
 
+
 //==============================================================================
 struct CommandLineError
 {
@@ -23,14 +24,12 @@ struct CommandLineError
     const String message;
 };
 
-struct TestError
+void exitWithError (const String& error)
 {
-    TestError (const String& s) : message (s) {}
-    TestError (const String& s, int code) : message (s), exitCode (code) {}
-
-    const String message;
-    const int exitCode = 1;
-};
+    std::cout << error << std::endl << std::endl;
+    JUCEApplication::getInstance()->setApplicationReturnValue (1);
+    JUCEApplication::getInstance()->quit();
+}
 
 
 //==============================================================================
@@ -73,126 +72,100 @@ static void hideDockIcon()
    #endif
 }
 
-
 //==============================================================================
-struct CommandLineValidator : private ChangeListener,
-                              private Validator::Listener
+static String& getCurrentID()
 {
-    CommandLineValidator()
-    {
-        validator.addChangeListener (this);
-        validator.addListener (this);
-    }
-
-    ~CommandLineValidator()
-    {
-        validator.removeChangeListener (this);
-        validator.removeListener (this);
-    }
-
-    void validate (const StringArray& fileOrIDs, int strictnessLevel)
-    {
-        inProgress = true;
-        validator.validate (fileOrIDs, strictnessLevel);
-
-        while (inProgress && validator.isConnected())
-            Thread::sleep (100);
-
-        if (exitError)
-            throw (*exitError);
-
-        if (numFailures > 0)
-            throw (TestError ("*** FAILED: " + String (numFailures) + " TESTS"));
-    }
-
-private:
-    Validator validator;
-    String currentID;
-    std::atomic<bool> inProgress { false };
-    std::atomic<int> numFailures { 0 };
-    std::unique_ptr<TestError> exitError;
-
-    void changeListenerCallback (ChangeBroadcaster*) override
-    {
-        if (! validator.isConnected() && currentID.isNotEmpty())
-        {
-            logMessage ("\n*** FAILED: VALIDATION CRASHED");
-            currentID = String();
-        }
-
-        if (! validator.isConnected())
-            inProgress = false;
-    }
-
-    void validationStarted (const String& id) override
-    {
-        currentID = id;
-        logMessage ("Started validating: " + id);
-    }
-
-    void logMessage (const String& m) override
-    {
-        std::cout << m << "\n";
-    }
-
-    void itemComplete (const String& id, int numItemFailures) override
-    {
-        logMessage ("\nFinished validating: " + id);
-
-        if (numItemFailures == 0)
-            logMessage ("ALL TESTS PASSED");
-        else
-            logMessage ("*** FAILED: " + String (numItemFailures) + " TESTS");
-
-        numFailures += numItemFailures;
-        currentID = String();
-        inProgress = false;
-    }
-
-    void allItemsComplete() override
-    {
-    }
-
-    void connectionLost() override
-    {
-        if (currentID.isNotEmpty())
-        {
-            logMessage ("\n*** FAILED: VALIDATION CRASHED");
-            exitError = std::make_unique<TestError> ("\n*** FAILED: VALIDATION CRASHED WHILST VALIDATING " + currentID);
-            currentID = String();
-        }
-        else
-        {
-            exitError = std::make_unique<TestError> ("\n*** FAILED: VALIDATION CRASHED");
-        }
-
-        inProgress = false;
-    }
-};
-
-static void validate (const StringArray& args, int strictnessLevel)
-{
-    hideDockIcon();
-    checkArgumentCount (args, 2);
-    const int startIndex = indexOfArgument (args, "--validate");
-
-    if (startIndex != -1)
-    {
-        StringArray fileOrIDs;
-        fileOrIDs.addArray (args, startIndex + 1);
-
-        for (int i = fileOrIDs.size(); --i >= 0;)
-            if (fileOrIDs.getReference (i).startsWith ("--"))
-                fileOrIDs.remove (i);
-
-        if (! fileOrIDs.isEmpty())
-            CommandLineValidator().validate (fileOrIDs, strictnessLevel);
-    }
+    static String currentID;
+    return currentID;
 }
 
+void setCurrentID (const String& currentID)
+{
+    getCurrentID() = currentID;
+}
+
+void handleCrash (void*)
+{
+    const auto id = getCurrentID();
+
+    if (id.isNotEmpty())
+        std::cout << "\n*** FAILED: VALIDATION CRASHED WHILST VALIDATING " << getCurrentID() << std::endl;
+    else
+        std::cout << "\n*** FAILED: VALIDATION CRASHED" << std::endl;
+}
+
+//==============================================================================
+CommandLineValidator::CommandLineValidator()
+{
+    SystemStats::setApplicationCrashHandler (handleCrash);
+
+    validator.addChangeListener (this);
+    validator.addListener (this);
+}
+
+CommandLineValidator::~CommandLineValidator()
+{
+}
+
+void CommandLineValidator::validate (const StringArray& fileOrIDs, int strictnessLevel, bool validateInProcess)
+{
+    validator.setValidateInProcess (validateInProcess);
+    validator.validate (fileOrIDs, strictnessLevel);
+}
+
+void CommandLineValidator::changeListenerCallback (ChangeBroadcaster*)
+{
+    if (! validator.isConnected() && currentID.isNotEmpty())
+        exitWithError ("\n*** FAILED: VALIDATION CRASHED");
+}
+
+void CommandLineValidator::validationStarted (const String& id)
+{
+    setCurrentID (id);
+    currentID = id;
+    logMessage ("Started validating: " + id);
+}
+
+void CommandLineValidator::logMessage (const String& m)
+{
+    std::cout << m << "\n";
+}
+
+void CommandLineValidator::itemComplete (const String& id, int numItemFailures)
+{
+    logMessage ("\nFinished validating: " + id);
+
+    if (numItemFailures == 0)
+        logMessage ("ALL TESTS PASSED");
+    else
+        logMessage ("*** FAILED: " + String (numItemFailures) + " TESTS");
+
+    numFailures += numItemFailures;
+    setCurrentID (String());
+    currentID = String();
+}
+
+void CommandLineValidator::allItemsComplete()
+{
+    if (numFailures > 0)
+        exitWithError ("*** FAILED: " + String (numFailures) + " TESTS");
+
+    JUCEApplication::getInstance()->quit();
+}
+
+void CommandLineValidator::connectionLost()
+{
+    if (currentID.isNotEmpty())
+        exitWithError ("\n*** FAILED: VALIDATION CRASHED WHILST VALIDATING " + currentID);
+    else
+        exitWithError ("\n*** FAILED: VALIDATION CRASHED");
+}
+
+
+//==============================================================================
 static int getStrictnessLevel (const StringArray& args)
 {
-    const int strictnessIndex = indexOfArgument (args, "strictnessLevel");
+    const int strictnessIndex = indexOfArgument (args, "strictness-level");
 
     if (strictnessIndex != -1)
     {
@@ -210,17 +183,40 @@ static int getStrictnessLevel (const StringArray& args)
     return 5;
 }
 
+static void validate (CommandLineValidator& validator, const StringArray& args)
+{
+    hideDockIcon();
+    checkArgumentCount (args, 2);
+    const int startIndex = indexOfArgument (args, "validate");
+
+    if (startIndex != -1)
+    {
+        StringArray fileOrIDs;
+        fileOrIDs.addArray (args, startIndex + 1);
+
+        for (int i = fileOrIDs.size(); --i >= 0;)
+            if (fileOrIDs.getReference (i).startsWith ("--"))
+                fileOrIDs.remove (i);
+
+        if (! fileOrIDs.isEmpty())
+            validator.validate (fileOrIDs,
+                                getStrictnessLevel (args),
+                                containsArgument (args, "validate-in-process"));
+    }
+}
+
 //==============================================================================
-String replaceLegacyCommandLineArgs (String commandLine)
+String parseCommandLineArgs (String commandLine)
 {
     if (commandLine.contains ("strictnessLevel"))
     {
         std::cout << "!!! WARNING:\n\t\"strictnessLevel\" is deprecated and will be removed in a future version.\n"
                   << "\tPlease use --strictness-level instead\n\n";
-        commandLine = commandLine.replace ("strictnessLevel", "strictness-level");
     }
 
-    return commandLine;
+    return commandLine.replace ("strictnessLevel", "strictness-level")
+                      .replace ("-NSDocumentRevisionsDebugMode YES", "")
+                      .trim();
 }
 
 //==============================================================================
@@ -242,6 +238,8 @@ static void showHelp()
               << "    Validates the files (or IDs for AUs)." << std::endl
               << "  --strictness-level [1-10]" << std::endl
               << "    Sets the strictness level to use. A minimum level of 5 (also the default) is recomended for compatibility. Higher levels include longer, more thorough tests such as fuzzing." << std::endl
+              << "  --validate-in-process" << std::endl
+              << "    If specified, validates the list in the calling process. This can be useful for debugging or when using the command line." << std::endl
               << std::endl
               << "Exit code: "
               << std::endl
@@ -251,10 +249,10 @@ static void showHelp()
 
 
 //==============================================================================
-int performCommandLine (const String& commandLine)
+void performCommandLine (CommandLineValidator& validator, const String& commandLine)
 {
     StringArray args;
-    args.addTokens (replaceLegacyCommandLineArgs (commandLine), true);
+    args.addTokens (parseCommandLineArgs (commandLine), true);
     args.trim();
 
     for (auto& s : args)
@@ -264,24 +262,18 @@ int performCommandLine (const String& commandLine)
 
     try
     {
-        if (matchArgument (command, "help"))                     { showHelp(); return 0; }
-        if (matchArgument (command, "h"))                        { showHelp(); return 0; }
-        if (containsArgument (args, "validate"))                 { validate (args, getStrictnessLevel (args)); return 0; }
-    }
-    catch (const TestError& error)
-    {
-        std::cout << error.message << std::endl << std::endl;
-        JUCEApplication::getInstance()->setApplicationReturnValue (error.exitCode);
-
-        return error.exitCode;
+        if (matchArgument (command, "help"))                     { showHelp(); }
+        if (matchArgument (command, "h"))                        { showHelp(); }
+        if (containsArgument (args, "validate"))                 { validate (validator, args); return; }
     }
     catch (const CommandLineError& error)
     {
         std::cout << error.message << std::endl << std::endl;
-        return 1;
+        JUCEApplication::getInstance()->setApplicationReturnValue (1);
     }
 
-    return commandLineNotPerformed;
+    // If we get here the command has completed so quit the app
+    JUCEApplication::getInstance()->quit();
 }
 
 bool shouldPerformCommandLine (const String& commandLine)

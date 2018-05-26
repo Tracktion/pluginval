@@ -15,8 +15,32 @@
 #pragma once
 
 #include <JuceHeader.h>
+#include "Validator.h"
 
-int performCommandLine (const String& commandLine);
+struct CommandLineValidator : private ChangeListener,
+                              private Validator::Listener
+{
+    CommandLineValidator();
+    ~CommandLineValidator();
+
+    void validate (const StringArray& fileOrIDs, int strictnessLevel, bool validateInProcess);
+
+private:
+    Validator validator;
+    String currentID;
+    std::atomic<int> numFailures { 0 };
+
+    void changeListenerCallback (ChangeBroadcaster*) override;
+
+    void validationStarted (const String&) override;
+    void logMessage (const String& m) override;
+    void itemComplete (const String&, int numItemFailures) override;
+    void allItemsComplete() override;
+    void connectionLost() override;
+};
+
+//==============================================================================
+void performCommandLine (CommandLineValidator&, const String& commandLine);
 bool shouldPerformCommandLine (const String& commandLine);
 
 enum { commandLineNotPerformed = 0x72346231 };

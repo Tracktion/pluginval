@@ -130,6 +130,7 @@ private:
     std::unique_ptr<PropertiesFile> propertiesFile;
     std::unique_ptr<MainWindow> mainWindow;
     std::unique_ptr<FileLogger> fileLogger;
+    std::unique_ptr<CommandLineValidator> commandLineValidator;
 
     static PropertiesFile::Options getPropertiesFileOptions()
     {
@@ -153,8 +154,8 @@ private:
 
 	void handleAsyncUpdate() override
 	{
-		if (performCommandLine (JUCEApplication::getCommandLineParameters()) != commandLineNotPerformed)
-			quit();
+        commandLineValidator = std::make_unique<CommandLineValidator>();
+        performCommandLine (*commandLineValidator, JUCEApplication::getCommandLineParameters());
     }
 };
 
