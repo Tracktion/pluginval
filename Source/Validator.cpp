@@ -135,6 +135,7 @@ namespace IDs
     DECLARE_ID(pluginDescription)
     DECLARE_ID(strictnessLevel)
     DECLARE_ID(timeoutMs)
+    DECLARE_ID(dataFile)
 
     DECLARE_ID(MESSAGE)
     DECLARE_ID(type)
@@ -350,6 +351,7 @@ private:
             PluginTests::Options options;
             options.strictnessLevel = v.getProperty (IDs::strictnessLevel, 5);
             options.timeoutMs = v.getProperty (IDs::timeoutMs, -1);
+            options.dataFile = File (v.getProperty (IDs::dataFile, String()));
 
             for (auto c : v)
             {
@@ -533,6 +535,7 @@ private:
         ValueTree v (IDs::PLUGINS);
         v.setProperty (IDs::strictnessLevel, options.strictnessLevel, nullptr);
         v.setProperty (IDs::timeoutMs, options.timeoutMs, nullptr);
+        v.setProperty (IDs::dataFile, options.dataFile.getFullPathName(), nullptr);
 
         return v;
     }

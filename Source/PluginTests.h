@@ -26,8 +26,9 @@ struct PluginTests : public UnitTest
     /** A set of options to use when running tests. */
     struct Options
     {
-        int strictnessLevel = 5;
-        int64 timeoutMs = 30000;
+        int strictnessLevel = 5;    /**< Max test level to run. */
+        int64 timeoutMs = 30000;    /**< Timeout after which to kill the test. */
+        File dataFile;              /**< File which tests can use to run user provided data. */
     };
 
     /** Creates a set of tests for a fileOrIdentifier. */

@@ -173,7 +173,7 @@ static int getStrictnessLevel (const StringArray& args)
         {
             const int strictness = args[strictnessIndex + 1].getIntValue();
 
-            if (strictness > 1 && strictness <= 10)
+            if (strictness >= 1 && strictness <= 10)
                 return strictness;
         }
 
@@ -203,6 +203,26 @@ int64 getTimeout (const StringArray& args)
     return 30000;
 }
 
+File getDataFile (const StringArray& args)
+{
+    const int fileIndex = indexOfArgument (args, "data-file");
+
+    if (fileIndex != -1)
+    {
+        if (args.size() > fileIndex)
+        {
+            const String path = args[fileIndex + 1];
+
+            if (path.isNotEmpty())
+                return path;
+        }
+
+        throw CommandLineError ("Missing data-file path argument!");
+    }
+
+    return {};
+}
+
 static void validate (CommandLineValidator& validator, const StringArray& args)
 {
     hideDockIcon();
@@ -223,6 +243,7 @@ static void validate (CommandLineValidator& validator, const StringArray& args)
             PluginTests::Options options;
             options.strictnessLevel = getStrictnessLevel (args);
             options.timeoutMs = getTimeout (args);
+            options.dataFile = getDataFile (args);
             
             validator.validate (fileOrIDs,
                                 options,
@@ -269,6 +290,8 @@ static void showHelp()
               << "    By default this is 30s but can be set to -1 to never timeout." << std::endl
               << "  --validate-in-process" << std::endl
               << "    If specified, validates the list in the calling process. This can be useful for debugging or when using the command line." << std::endl
+              << "  --data-file [pathToFile]" << std::endl
+              << "    If specified, sets a path to a data file which can be used by tests to configure themselves. This can be useful for things like known audio output." << std::endl
               << std::endl
               << "Exit code: "
               << std::endl
