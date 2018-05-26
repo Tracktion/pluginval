@@ -211,6 +211,19 @@ static int getStrictnessLevel (const StringArray& args)
 }
 
 //==============================================================================
+String replaceLegacyCommandLineArgs (String commandLine)
+{
+    if (commandLine.contains ("strictnessLevel"))
+    {
+        std::cout << "!!! WARNING:\n\t\"strictnessLevel\" is deprecated and will be removed in a future version.\n"
+                  << "\tPlease use --strictness-level instead\n\n";
+        commandLine = commandLine.replace ("strictnessLevel", "strictness-level");
+    }
+
+    return commandLine;
+}
+
+//==============================================================================
 static void showHelp()
 {
     hideDockIcon();
@@ -227,7 +240,7 @@ static void showHelp()
               << std::endl
               << "  --validate [list]" << std::endl
               << "    Validates the files (or IDs for AUs)." << std::endl
-              << "  --strictnessLevel [1-10]" << std::endl
+              << "  --strictness-level [1-10]" << std::endl
               << "    Sets the strictness level to use. A minimum level of 5 (also the default) is recomended for compatibility. Higher levels include longer, more thorough tests such as fuzzing." << std::endl
               << std::endl
               << "Exit code: "
@@ -241,7 +254,7 @@ static void showHelp()
 int performCommandLine (const String& commandLine)
 {
     StringArray args;
-    args.addTokens (commandLine, true);
+    args.addTokens (replaceLegacyCommandLineArgs (commandLine), true);
     args.trim();
 
     for (auto& s : args)
