@@ -48,6 +48,8 @@ PluginTests::Options getTestOptions()
 MainComponent::MainComponent (Validator& v)
     : validator (v)
 {
+    validator.setValidateInProcess (getValidateInProcess());
+
     formatManager.addDefaultFormats();
 
     const auto tabCol = getLookAndFeel().findColour (ResizableWindow::backgroundColourId);
