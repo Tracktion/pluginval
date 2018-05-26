@@ -138,10 +138,26 @@ private:
         opts.millisecondsBeforeSaving = 2000;
         opts.storageFormat = PropertiesFile::storeAsXML;
 
-        opts.applicationName = "PluginValidator";
+        opts.applicationName = String (ProjectInfo::projectName);
         opts.filenameSuffix = ".xml";
-        opts.folderName = "PluginValidator";
+        opts.folderName = opts.applicationName;
         opts.osxLibrarySubFolder = "Application Support";
+
+        // Move old settings if possible
+        if (! opts.getDefaultFile().exists())
+        {
+            const auto newFile = opts.getDefaultFile();
+            auto oldOpts = opts;
+            oldOpts.applicationName = oldOpts.folderName = "PluginValidator";
+            const auto oldFile = oldOpts.getDefaultFile();
+
+            if (oldFile.existsAsFile())
+            {
+                oldFile.getParentDirectory().copyDirectoryTo (newFile.getParentDirectory());
+                newFile.getParentDirectory().getChildFile (oldFile.getFileName()).moveFileTo (newFile);
+                oldFile.getParentDirectory().deleteRecursively();
+            }
+        }
 
         return opts;
     }
