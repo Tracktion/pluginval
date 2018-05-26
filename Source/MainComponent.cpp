@@ -36,6 +36,14 @@ bool getValidateInProcess()
     return getAppPreferences().getBoolValue ("validateInProcess", false);
 }
 
+PluginTests::Options getTestOptions()
+{
+    PluginTests::Options options;
+    options.strictnessLevel = getStrictnessLevel();
+
+    return options;
+}
+
 //==============================================================================
 MainComponent::MainComponent (Validator& v)
     : validator (v)
@@ -65,7 +73,7 @@ MainComponent::MainComponent (Validator& v)
                 if (auto pd = knownPluginList.getType (rows[i]))
                     plugins.add (pd);
 
-            validator.validate (plugins, getStrictnessLevel());
+            validator.validate (plugins, getTestOptions());
         };
 
     testAllButton.onClick = [this]
@@ -76,7 +84,7 @@ MainComponent::MainComponent (Validator& v)
                 if (auto pd = knownPluginList.getType (i))
                     plugins.add (pd);
 
-            validator.validate (plugins, getStrictnessLevel());
+            validator.validate (plugins, getTestOptions());
         };
 
     clearButton.onClick = [this]

@@ -65,15 +65,15 @@ inline Array<UnitTestRunner::TestResult> runTests (PluginTests& test, std::funct
     return results;
 }
 
-inline Array<UnitTestRunner::TestResult> validate (const PluginDescription& pluginToValidate, int strictnessLevel, std::function<void (const String&)> callback)
+inline Array<UnitTestRunner::TestResult> validate (const PluginDescription& pluginToValidate, PluginTests::Options options, std::function<void (const String&)> callback)
 {
-    PluginTests test (pluginToValidate, strictnessLevel);
+    PluginTests test (pluginToValidate, options);
     return runTests (test, std::move (callback));
 }
 
-inline Array<UnitTestRunner::TestResult> validate (const String& fileOrIDToValidate, int strictnessLevel, std::function<void (const String&)> callback)
+inline Array<UnitTestRunner::TestResult> validate (const String& fileOrIDToValidate, PluginTests::Options options, std::function<void (const String&)> callback)
 {
-    PluginTests test (fileOrIDToValidate, strictnessLevel);
+    PluginTests test (fileOrIDToValidate, options);
     return runTests (test, std::move (callback));
 }
 
@@ -305,7 +305,8 @@ private:
 
         if (v.hasType (IDs::PLUGINS))
         {
-            const int strictnessLevel = v.getProperty (IDs::strictnessLevel, 5);
+            PluginTests::Options options;
+            options.strictnessLevel = v.getProperty (IDs::strictnessLevel, 5);
 
             for (auto c : v)
             {
@@ -320,7 +321,7 @@ private:
                         IDs::MESSAGE, {{ IDs::type, "started" }, { IDs::fileOrID, fileOrID }}
                     });
 
-                    results = validate (c[IDs::fileOrID].toString(), strictnessLevel, [this] (const String& m) { logMessage (m); });
+                    results = validate (c[IDs::fileOrID].toString(), options, [this] (const String& m) { logMessage (m); });
                 }
                 else if (c.hasProperty (IDs::pluginDescription))
                 {
@@ -339,7 +340,7 @@ private:
                                     IDs::MESSAGE, {{ IDs::type, "started" }, { IDs::fileOrID, fileOrID }}
                                 });
 
-                                results = validate (pd, strictnessLevel, [this] (const String& m) { logMessage (m); });
+                                results = validate (pd, options, [this] (const String& m) { logMessage (m); });
                             }
                             else
                             {
@@ -455,9 +456,9 @@ public:
 
     //==============================================================================
     /** Triggers validation of a set of files or IDs. */
-    void validate (const StringArray& fileOrIDsToValidate, int strictnessLevel)
+    void validate (const StringArray& fileOrIDsToValidate, PluginTests::Options options)
     {
-        auto v = createPluginsTree (strictnessLevel);
+        auto v = createPluginsTree (options);
 
         for (auto fileOrID : fileOrIDsToValidate)
         {
@@ -469,9 +470,9 @@ public:
     }
 
     /** Triggers validation of a set of PluginDescriptions. */
-    void validate (const Array<PluginDescription*>& pluginsToValidate, int strictnessLevel)
+    void validate (const Array<PluginDescription*>& pluginsToValidate, PluginTests::Options options)
     {
-        auto v = createPluginsTree (strictnessLevel);
+        auto v = createPluginsTree (options);
 
         for (auto pd : pluginsToValidate)
             if (auto xml = std::unique_ptr<XmlElement> (pd->createXml()))
@@ -484,10 +485,10 @@ private:
     WaitableEvent connectionWaiter;
     std::unique_ptr<ValidatorSlaveProcess> validatorSlaveProcess;
 
-    static ValueTree createPluginsTree (int strictnessLevel)
+    static ValueTree createPluginsTree (PluginTests::Options options)
     {
         ValueTree v (IDs::PLUGINS);
-        v.setProperty (IDs::strictnessLevel, strictnessLevel, nullptr);
+        v.setProperty (IDs::strictnessLevel, options.strictnessLevel, nullptr);
 
         return v;
     }
@@ -522,21 +523,21 @@ bool Validator::isConnected() const
     return masterProcess != nullptr;
 }
 
-bool Validator::validate (const StringArray& fileOrIDsToValidate, int strictnessLevel)
+bool Validator::validate (const StringArray& fileOrIDsToValidate, PluginTests::Options options)
 {
     if (! ensureConnection())
         return false;
 
-    masterProcess->validate (fileOrIDsToValidate, strictnessLevel);
+    masterProcess->validate (fileOrIDsToValidate, options);
     return true;
 }
 
-bool Validator::validate (const Array<PluginDescription*>& pluginsToValidate, int strictnessLevel)
+bool Validator::validate (const Array<PluginDescription*>& pluginsToValidate, PluginTests::Options options)
 {
     if (! ensureConnection())
         return false;
 
-    masterProcess->validate (pluginsToValidate, strictnessLevel);
+    masterProcess->validate (pluginsToValidate, options);
     return true;
 }
 

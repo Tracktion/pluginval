@@ -18,6 +18,45 @@
 
 //==============================================================================
 /**
+    The UnitTest which will create the plugins and run each of the registered tests on them.
+*/
+struct PluginTests : public UnitTest
+{
+    //==============================================================================
+    /** A set of options to use when running tests. */
+    struct Options
+    {
+        int strictnessLevel = 5;
+    };
+
+    /** Creates a set of tests for a fileOrIdentifier. */
+    PluginTests (const String& fileOrIdentifier, Options);
+
+    /** Creates a set of tests for a PluginDescription. */
+    PluginTests (const PluginDescription&, Options);
+
+    //==============================================================================
+    /** Returns the set of options currently being used to run the tests. */
+    Options getOptions() const                       { return options; }
+
+    //==============================================================================
+    /** @internal. */
+    void runTest() override;
+
+private:
+    const String fileOrID;
+    const Options options;
+    AudioPluginFormatManager formatManager;
+    KnownPluginList knownPluginList;
+
+    OwnedArray<PluginDescription> typesFound;
+
+    std::unique_ptr<AudioPluginInstance> testOpenPlugin (const PluginDescription&);
+    void testType (const PluginDescription&);
+};
+
+//==============================================================================
+/**
     Represents a test to be run on a plugin instance.
     Override the runTest test method to perform the tests.
     Create a static instance of any subclasses to automatically register tests.
@@ -60,37 +99,9 @@ struct PluginTest
         in the AudioPluginInstance), you can use the UnitTest parameter to log messages or
         call expect etc.
     */
-    virtual void runTest (UnitTest& runningTest, AudioPluginInstance&) = 0;
+    virtual void runTest (PluginTests& runningTest, AudioPluginInstance&) = 0;
 
     //==============================================================================
     const String name;
     const int strictnessLevel;
-};
-
-
-//==============================================================================
-/**
-    The UnitTest which will create the plugins and run each of the registered tests on them.
-*/
-struct PluginTests : public UnitTest
-{
-    /** Creates a set of tests for a fileOrIdentifier. */
-    PluginTests (const String& fileOrIdentifier, int strictnessLevelToTest);
-
-    /** Creates a set of tests for a PluginDescription. */
-    PluginTests (const PluginDescription&, int strictnessLevelToTest);
-
-    /** @internal. */
-    void runTest() override;
-
-private:
-    const String fileOrID;
-    const int strictnessLevel;
-    AudioPluginFormatManager formatManager;
-    KnownPluginList knownPluginList;
-
-    OwnedArray<PluginDescription> typesFound;
-
-    std::unique_ptr<AudioPluginInstance> testOpenPlugin (const PluginDescription&);
-    void testType (const PluginDescription&);
 };

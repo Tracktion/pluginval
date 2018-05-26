@@ -23,7 +23,7 @@ struct CommandLineValidator : private ChangeListener,
     CommandLineValidator();
     ~CommandLineValidator();
 
-    void validate (const StringArray& fileOrIDs, int strictnessLevel, bool validateInProcess);
+    void validate (const StringArray& fileOrIDs, PluginTests::Options, bool validateInProcess);
 
 private:
     Validator validator;

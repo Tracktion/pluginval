@@ -23,7 +23,7 @@ struct PluginInfoTest   : public PluginTest
     {
     }
 
-    void runTest (UnitTest& ut, AudioPluginInstance& instance) override
+    void runTest (PluginTests& ut, AudioPluginInstance& instance) override
     {
         ut.logMessage ("\nPlugin name: " + instance.getName());
         ut.logMessage ("Alternative names: " + instance.getAlternateDisplayNames().joinIntoString ("|"));
@@ -49,7 +49,7 @@ struct EditorTest   : public PluginTest
         return true;
     }
 
-    void runTest (UnitTest& ut, AudioPluginInstance& instance) override
+    void runTest (PluginTests& ut, AudioPluginInstance& instance) override
     {
         if (instance.hasEditor())
         {
@@ -96,7 +96,7 @@ struct AudioProcessingTest  : public PluginTest
     {
     }
 
-    void runTest (UnitTest& ut, AudioPluginInstance& instance) override
+    void runTest (PluginTests& ut, AudioPluginInstance& instance) override
     {
         const double sampleRates[] = { 44100.0, 48000.0, 96000.0 };
         const int blockSizes[] = { 64, 128, 256, 512, 1024 };
@@ -141,7 +141,7 @@ struct PluginStateTest  : public PluginTest
     {
     }
 
-    void runTest (UnitTest& ut, AudioPluginInstance& instance) override
+    void runTest (PluginTests& ut, AudioPluginInstance& instance) override
     {
         auto& parameters = instance.getParameters();
         MemoryBlock originalState;
@@ -169,8 +169,9 @@ struct AutomationTest  : public PluginTest
     {
     }
 
-    void runTest (UnitTest& ut, AudioPluginInstance& instance) override
+    void runTest (PluginTests& ut, AudioPluginInstance& instance) override
     {
+        const bool subnormalsAreErrors = ut.getOptions().strictnessLevel > 5;
         const double sampleRates[] = { 44100.0, 48000.0, 96000.0 };
         const int blockSizes[] = { 64, 128, 256, 512, 1024 };
 
@@ -226,7 +227,9 @@ struct AutomationTest  : public PluginTest
 
                 const int subnormals = countSubnormals (ab);
 
-                if (subnormals > 0)
+                if (subnormalsAreErrors)
+                    ut.expectEquals (countInfs (ab), 0, "Submnormals found in buffer");
+                else if (subnormals > 0)
                     ut.logMessage ("!!! WARNGING: " + String (countSubnormals (ab)) + " submnormals found in buffer");
             }
         }
@@ -239,7 +242,7 @@ static AutomationTest automationTest;
 //==============================================================================
 namespace ParameterHelpers
 {
-    static void testParameterInfo (UnitTest& ut, AudioProcessorParameter& parameter)
+    static void testParameterInfo (PluginTests& ut, AudioProcessorParameter& parameter)
     {
         const int index = parameter.getParameterIndex();
         const String paramName = parameter.getName (512);
@@ -273,7 +276,7 @@ namespace ParameterHelpers
                     + "all value strings - " + allValueStrings.joinIntoString ("|"));
     }
 
-    static void testParameterDefaults (UnitTest& ut, AudioProcessorParameter& parameter)
+    static void testParameterDefaults (PluginTests& ut, AudioProcessorParameter& parameter)
     {
         ut.logMessage ("Testing accessers");
         const float value = parameter.getValue();
@@ -291,7 +294,7 @@ struct AutomatableParametersTest  : public PluginTest
     {
     }
 
-    void runTest (UnitTest& ut, AudioPluginInstance& instance) override
+    void runTest (PluginTests& ut, AudioPluginInstance& instance) override
     {
         for (auto parameter : instance.getParameters())
         {
@@ -315,7 +318,7 @@ struct AllParametersTest    : public PluginTest
     {
     }
 
-    void runTest (UnitTest& ut, AudioPluginInstance& instance) override
+    void runTest (PluginTests& ut, AudioPluginInstance& instance) override
     {
         for (auto parameter : instance.getParameters())
         {
@@ -336,7 +339,7 @@ struct BackgroundThreadStateTest    : public PluginTest
     {
     }
 
-    void runTest (UnitTest& ut, AudioPluginInstance& instance) override
+    void runTest (PluginTests& ut, AudioPluginInstance& instance) override
     {
         WaitableEvent waiter;
         std::unique_ptr<AudioProcessorEditor> editor;

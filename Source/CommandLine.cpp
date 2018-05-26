@@ -107,10 +107,10 @@ CommandLineValidator::~CommandLineValidator()
 {
 }
 
-void CommandLineValidator::validate (const StringArray& fileOrIDs, int strictnessLevel, bool validateInProcess)
+void CommandLineValidator::validate (const StringArray& fileOrIDs, PluginTests::Options options, bool validateInProcess)
 {
     validator.setValidateInProcess (validateInProcess);
-    validator.validate (fileOrIDs, strictnessLevel);
+    validator.validate (fileOrIDs, options);
 }
 
 void CommandLineValidator::changeListenerCallback (ChangeBroadcaster*)
@@ -199,9 +199,14 @@ static void validate (CommandLineValidator& validator, const StringArray& args)
                 fileOrIDs.remove (i);
 
         if (! fileOrIDs.isEmpty())
+        {
+            PluginTests::Options options;
+            options.strictnessLevel = getStrictnessLevel (args);
+            
             validator.validate (fileOrIDs,
-                                getStrictnessLevel (args),
+                                options,
                                 containsArgument (args, "validate-in-process"));
+        }
     }
 }
 

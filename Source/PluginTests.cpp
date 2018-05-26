@@ -15,17 +15,17 @@
 #include "PluginTests.h"
 #include "TestUtilities.h"
 
-PluginTests::PluginTests (const String& fileOrIdentifier, int strictnessLevelToTest)
+PluginTests::PluginTests (const String& fileOrIdentifier, Options opts)
     : UnitTest ("PluginValidator"),
       fileOrID (fileOrIdentifier),
-      strictnessLevel (strictnessLevelToTest)
+      options (opts)
 {
-    jassert (isPositiveAndNotGreaterThan (strictnessLevelToTest, 10));
+    jassert (isPositiveAndNotGreaterThan (options.strictnessLevel, 10));
     formatManager.addDefaultFormats();
 }
 
-PluginTests::PluginTests (const PluginDescription& desc, int strictnessLevelToTest)
-    : PluginTests (String(), strictnessLevelToTest)
+PluginTests::PluginTests (const PluginDescription& desc, Options opts)
+    : PluginTests (String(), opts)
 {
     typesFound.add (new PluginDescription (desc));
 }
@@ -78,7 +78,7 @@ void PluginTests::testType (const PluginDescription& pd)
 
             for (auto t : PluginTest::getAllTests())
             {
-                if (strictnessLevel < t->strictnessLevel)
+                if (options.strictnessLevel < t->strictnessLevel)
                     continue;
 
                 StopwatchTimer sw2;

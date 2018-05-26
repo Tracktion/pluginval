@@ -23,7 +23,7 @@ struct FuzzParametersTest  : public PluginTest
     {
     }
 
-    void runTest (UnitTest& ut, AudioPluginInstance& instance) override
+    void runTest (PluginTests& ut, AudioPluginInstance& instance) override
     {
         for (auto parameter : instance.getParameters())
             fuzzTestParameter (ut, *parameter);
