@@ -326,6 +326,8 @@ struct AllParametersTest    : public PluginTest
     }
 };
 
+static AllParametersTest allParametersTest;
+
 //==============================================================================
 struct BackgroundThreadStateTest    : public PluginTest
 {
