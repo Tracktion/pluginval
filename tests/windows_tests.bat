@@ -57,6 +57,11 @@ exit /B %ERRORLEVEL%
 	cd "%TEMP_DIR%/%PLUGIN_NAME%/Builds/VisualStudio2017"
 	"C:\Program Files (x86)\Microsoft Visual Studio\2017\Community\MSBuild\15.0\Bin\MSBuild.exe" %PLUGIN_NAME%.sln /p:VisualStudioVersion=15.0 /m /t:Build /p:Configuration=Release /p:Platform=x64 /p:PreferredToolArchitecture=x64  /p:TreatWarningsAsErrors=true
 
+	:: Test out of process
 	call "%PLUGINVAL_EXE%" --strictnessLevel 5 --validate %PLUGIN_VST%
+	if %ERRORLEVEL% NEQ 0 exit 1
+
+	:: Test in process
+	call "%PLUGINVAL_EXE%" --validate-in-process --strictnessLevel 5 --validate %PLUGIN_VST%
 	if %ERRORLEVEL% NEQ 0 exit 1
 exit /B 0
