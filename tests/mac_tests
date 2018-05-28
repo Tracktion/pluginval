@@ -1,0 +1,73 @@
+#!/bin/sh -e
+
+ROOT=$(cd "$(dirname "$0")/.."; pwd)
+echo ROOT: "$ROOT"
+
+if [ -z "$ROOT" ]; then
+	echo "ERROR: Unknown workspase"
+	exit 1
+fi
+
+cd $ROOT
+
+
+PROJECT_NAME=pluginval
+DEPLOYMENT_DIR="$ROOT/bin/mac"
+PLUGINVAL_EXE="$DEPLOYMENT_DIR/$PROJECT_NAME.app/Contents/MacOS/$PROJECT_NAME"
+
+#============================================================
+#   First build pluginval
+#============================================================
+"$ROOT/install/mac_build"
+
+
+#============================================================
+#   Build Projucer and generate test plugin projects
+#============================================================
+echo "Building Projucer and creating projects"
+
+PROJUCER_ROOT="$ROOT/modules/juce/extras/Projucer/Builds/MacOSX"
+PROJUCER_EXE="$PROJUCER_ROOT/build/Release/Projucer.app/Contents/MacOS/Projucer"
+PLUGINS_PIP_DIR="$ROOT/modules/juce/examples/Plugins"
+TEMP_DIR="$ROOT/tmp"
+rm -rf "$TEMP_DIR"
+
+cd "$PROJUCER_ROOT"
+xcodebuild -configuration Release
+
+
+#============================================================
+#   Test plugins
+#============================================================
+function testPlugin()
+{
+	echo "=========================================================="
+	echo "Testing: $1"
+	PLUGIN_NAME=$1
+	PLUGIN_PIP_FILE=$2
+	PLUGIN_VST="$TEMP_DIR/$PLUGIN_NAME/Builds/MacOSX/build/Release/$PLUGIN_NAME.vst"
+	PLUGIN_AU="$TEMP_DIR/$PLUGIN_NAME/Builds/MacOSX/build/Release/$PLUGIN_NAME.component"
+    "$PROJUCER_EXE" --create-project-from-pip "$PLUGINS_PIP_DIR/$PLUGIN_PIP_FILE" "$TEMP_DIR"
+    "$PROJUCER_EXE" --resave "$TEMP_DIR/$PLUGIN_NAME/$PLUGIN_NAME.jucer"
+	cd "$TEMP_DIR/$PLUGIN_NAME/Builds/MacOSX"
+	xcodebuild -configuration Release
+
+	# Test out of process
+#	"$PLUGINVAL_EXE" --strictness-level 5 --validate "$PLUGIN_VST"
+#	"$PLUGINVAL_EXE" --strictness-level 5 --validate "$PLUGIN_AU"
+
+	# Test in process
+	"$PLUGINVAL_EXE" --validate-in-process --strictness-level 5 --validate "$PLUGIN_VST"
+	"$PLUGINVAL_EXE" --validate-in-process --strictness-level 5 --validate "$PLUGIN_AU"
+}
+
+"$PROJUCER_EXE" --set-global-search-path windows defaultJuceModulePath "$ROOT/modules/juce/modules"
+"$PROJUCER_EXE" --set-global-search-path windows vst3Path "$ROOT/vst3"
+testPlugin "ArpeggiatorPlugin" "ArpeggiatorPluginDemo.h"
+testPlugin "AudioPluginDemo" "AudioPluginDemo.h"
+testPlugin "DSPModulePluginDemo" "DSPModulePluginDemo.h"
+testPlugin "GainPlugin" "GainPluginDemo.h"
+testPlugin "MultiOutSynthPlugin" "MultiOutSynthPluginDemo.h"
+testPlugin "NoiseGatePlugin" "NoiseGatePluginDemo.h"
+testPlugin "SamplerPlugin" "SamplerPluginDemo.h"
+testPlugin "SurroundPlugin" "SurroundPluginDemo.h"
