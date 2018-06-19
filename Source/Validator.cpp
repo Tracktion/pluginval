@@ -39,6 +39,7 @@ struct PluginsUnitTestRunner    : public UnitTestRunner,
           timeoutMs (timeoutInMs)
     {
         jassert (callback);
+        resetTimeout();
 
         if (timeoutInMs > 0)
             startThread (1);
