@@ -28,6 +28,7 @@ struct PluginTests : public UnitTest
     {
         int strictnessLevel = 5;    /**< Max test level to run. */
         int64 timeoutMs = 30000;    /**< Timeout after which to kill the test. */
+        bool verbose = false;       /**< Whether or not to log additional information. */
         File dataFile;              /**< File which tests can use to run user provided data. */
     };
 
@@ -40,6 +41,9 @@ struct PluginTests : public UnitTest
     //==============================================================================
     /** Returns the set of options currently being used to run the tests. */
     Options getOptions() const                       { return options; }
+
+    /** Logs a verbose message which may be ommited from logs if the verbose option is not specified. */
+    void logVerboseMessage (const String& message);
 
     //==============================================================================
     /** @internal. */

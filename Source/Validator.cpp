@@ -57,7 +57,9 @@ struct PluginsUnitTestRunner    : public UnitTestRunner,
     void logMessage (const String& message) override
     {
         resetTimeout();
-        callback (message);
+
+        if (message.isNotEmpty())
+            callback (message);
     }
 
 private:
@@ -92,8 +94,9 @@ private:
 //==============================================================================
 inline Array<UnitTestRunner::TestResult> runTests (PluginTests& test, std::function<void (const String&)> callback)
 {
+    const auto options = test.getOptions();
     Array<UnitTestRunner::TestResult> results;
-    PluginsUnitTestRunner testRunner (std::move (callback), test.getOptions().timeoutMs);
+    PluginsUnitTestRunner testRunner (std::move (callback), options.timeoutMs);
     testRunner.setAssertOnFailure (false);
 
     Array<UnitTest*> testsToRun;
@@ -135,6 +138,7 @@ namespace IDs
     DECLARE_ID(pluginDescription)
     DECLARE_ID(strictnessLevel)
     DECLARE_ID(timeoutMs)
+    DECLARE_ID(verbose)
     DECLARE_ID(dataFile)
 
     DECLARE_ID(MESSAGE)
@@ -351,6 +355,7 @@ private:
             PluginTests::Options options;
             options.strictnessLevel = v.getProperty (IDs::strictnessLevel, 5);
             options.timeoutMs = v.getProperty (IDs::timeoutMs, -1);
+            options.verbose = v.getProperty (IDs::verbose, false);
             options.dataFile = File (v.getProperty (IDs::dataFile, String()));
 
             for (auto c : v)
@@ -535,6 +540,7 @@ private:
         ValueTree v (IDs::PLUGINS);
         v.setProperty (IDs::strictnessLevel, options.strictnessLevel, nullptr);
         v.setProperty (IDs::timeoutMs, options.timeoutMs, nullptr);
+        v.setProperty (IDs::verbose, options.verbose, nullptr);
         v.setProperty (IDs::dataFile, options.dataFile.getFullPathName(), nullptr);
 
         return v;

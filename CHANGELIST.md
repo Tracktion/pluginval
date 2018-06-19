@@ -1,5 +1,9 @@
 # pluginval Change List
 
+### 1.1.3
+  - Reduced the amount of default logging
+  - Added the "--verbose" command line flag
+
 ### 1.1.2
   - Added optional logging from the slave process
   - Added an option to validate in the same process in GUI mode

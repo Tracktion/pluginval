@@ -30,6 +30,12 @@ PluginTests::PluginTests (const PluginDescription& desc, Options opts)
     typesFound.add (new PluginDescription (desc));
 }
 
+void PluginTests::logVerboseMessage (const String& message)
+{
+    // We still need to send an empty message or the test may timeout
+    logMessage (options.verbose ? message : String());
+}
+
 void PluginTests::runTest()
 {
     logMessage ("Validation started: " + Time::getCurrentTime().toString (true, true) + "\n");

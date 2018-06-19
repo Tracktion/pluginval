@@ -3,6 +3,7 @@
 <JUCERPROJECT name="pluginval" projectType="guiapp" jucerVersion="5.3.2" id="IA2Ov0"
               version="0.1.2" companyName="Tracktion">
   <MAINGROUP id="zUhKLj" name="pluginval">
+    <FILE id="gV5MZv" name="CHANGELIST.md" compile="0" resource="0" file="CHANGELIST.md"/>
     <GROUP id="{DF1CFAD6-E73F-2DAB-3957-D1F25BDD2E13}" name="Source">
       <GROUP id="{04547814-7137-5CE0-6818-B1EF0B2E6161}" name="binarydata">
         <FILE id="k3tDOE" name="icon.png" compile="0" resource="0" file="Source/binarydata/icon.png"/>

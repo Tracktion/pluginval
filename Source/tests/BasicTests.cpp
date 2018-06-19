@@ -261,24 +261,25 @@ namespace ParameterHelpers
 
         #define LOGP(x) JUCE_STRINGIFY(x) + " - " + String (x) + ", "
         #define LOGP_B(x) JUCE_STRINGIFY(x) + " - " + String (static_cast<int> (x)) + ", "
-        ut.logMessage (String ("Parameter info: ")
-                    + LOGP(index)
-                    + LOGP(paramName)
-                    + LOGP(defaultValue)
-                    + LOGP(label)
-                    + LOGP(numSteps)
-                    + LOGP_B(isDiscrete)
-                    + LOGP_B(isBoolean)
-                    + LOGP_B(isOrientationInverted)
-                    + LOGP_B(isAutomatable)
-                    + LOGP_B(isMetaParameter)
-                    + LOGP_B(category)
-                    + "all value strings - " + allValueStrings.joinIntoString ("|"));
+        ut.logVerboseMessage (String ("Parameter info: ")
+                              + LOGP(index)
+                              + LOGP(paramName)
+                              + LOGP(defaultValue)
+                              + LOGP(label)
+                              + LOGP(numSteps)
+                              + LOGP_B(isDiscrete)
+                              + LOGP_B(isBoolean)
+                              + LOGP_B(isOrientationInverted)
+                              + LOGP_B(isAutomatable)
+                              + LOGP_B(isMetaParameter)
+                              + LOGP_B(category)
+                              + "all value strings - " + allValueStrings.joinIntoString ("|"));
     }
 
     static void testParameterDefaults (PluginTests& ut, AudioProcessorParameter& parameter)
     {
-        ut.logMessage ("Testing accessers");
+        ut.logVerboseMessage ("Testing accessers");
+
         const float value = parameter.getValue();
         const String text = parameter.getText (value, 1024);
         const float valueForText = parameter.getValueForText (text);
@@ -301,7 +302,8 @@ struct AutomatableParametersTest  : public PluginTest
             if (! parameter->isAutomatable())
                 continue;
 
-            ut.logMessage (String ("\nTesting parameter: ") + String (parameter->getParameterIndex()) + " - " + parameter->getName (512));
+            ut.logVerboseMessage (String ("\nTesting parameter: ") + String (parameter->getParameterIndex()) + " - " + parameter->getName (512));
+
             ParameterHelpers::testParameterInfo (ut, *parameter);
             ParameterHelpers::testParameterDefaults (ut, *parameter);
         }
@@ -322,7 +324,8 @@ struct AllParametersTest    : public PluginTest
     {
         for (auto parameter : instance.getParameters())
         {
-            ut.logMessage (String ("\nTesting parameter: ") + String (parameter->getParameterIndex()) + " - " + parameter->getName (512));
+            ut.logVerboseMessage (String ("\nTesting parameter: ") + String (parameter->getParameterIndex()) + " - " + parameter->getName (512));
+
             ParameterHelpers::testParameterInfo (ut, *parameter);
             ParameterHelpers::testParameterDefaults (ut, *parameter);
         }

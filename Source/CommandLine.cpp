@@ -243,6 +243,7 @@ static void validate (CommandLineValidator& validator, const StringArray& args)
             PluginTests::Options options;
             options.strictnessLevel = getStrictnessLevel (args);
             options.timeoutMs = getTimeout (args);
+            options.verbose = containsArgument (args, "verbose");
             options.dataFile = getDataFile (args);
             
             validator.validate (fileOrIDs,
@@ -288,6 +289,8 @@ static void showHelp()
               << "  --timeout-ms [numMilliseconds]" << std::endl
               << "    Sets a timout which will stop validation with an error if no output from any test has happened for this number of ms." << std::endl
               << "    By default this is 30s but can be set to -1 to never timeout." << std::endl
+              << "  --verbose" << std::endl
+              << "    If specified, outputs additional logging information. It can be useful to turn this off when building with CI to avoid huge log files." << std::endl
               << "  --validate-in-process" << std::endl
               << "    If specified, validates the list in the calling process. This can be useful for debugging or when using the command line." << std::endl
               << "  --data-file [pathToFile]" << std::endl

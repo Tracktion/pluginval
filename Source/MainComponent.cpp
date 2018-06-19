@@ -46,11 +46,22 @@ int64 getTimeoutMs()
     return getAppPreferences().getIntValue ("timeoutMs", 30000);
 }
 
+void setVerboseLogging (bool verbose)
+{
+    getAppPreferences().setValue ("verbose", verbose);
+}
+
+bool getVerboseLogging()
+{
+    return getAppPreferences().getBoolValue ("verbose", false);
+}
+
 PluginTests::Options getTestOptions()
 {
     PluginTests::Options options;
     options.strictnessLevel = getStrictnessLevel();
     options.timeoutMs = getTimeoutMs();
+    options.verbose = getVerboseLogging();
 
     return options;
 }
@@ -149,12 +160,14 @@ MainComponent::MainComponent (Validator& v)
             {
                 validateInProcess = 1,
                 showTimeout,
+                verboseLogging,
                 showSettingsDir
             };
 
             PopupMenu m;
             m.addItem (validateInProcess, TRANS("Validate in process"), true, getValidateInProcess());
             m.addItem (showTimeout, TRANS("Set timeout (123ms)").replace ("123", String (getTimeoutMs())));
+            m.addItem (verboseLogging, TRANS("Verbose logging"), true, getVerboseLogging());
             m.addSeparator();
             m.addItem (showSettingsDir, TRANS("Show settings folder"));
             m.showMenuAsync (PopupMenu::Options().withTargetComponent (&optionsButton),
@@ -168,6 +181,10 @@ MainComponent::MainComponent (Validator& v)
                                  else if (res == showTimeout)
                                  {
                                      showTimeoutDialog();
+                                 }
+                                 else if (res == verboseLogging)
+                                 {
+                                     setVerboseLogging (! getVerboseLogging());
                                  }
                                  else if (res == showSettingsDir)
                                  {
