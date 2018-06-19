@@ -3,6 +3,7 @@
 ### 1.1.3
   - Reduced the amount of default logging
   - Added the "--verbose" command line flag
+  - Added some basic bus tests
 
 ### 1.1.2
   - Added optional logging from the slave process

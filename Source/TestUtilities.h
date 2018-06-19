@@ -95,3 +95,40 @@ static inline int countSubnormals (AudioBuffer<float>& ab) noexcept
 
     return count;
 }
+
+//==============================================================================
+struct ScopedPluginDeinitialiser
+{
+    ScopedPluginDeinitialiser (AudioProcessor& ap)
+        : processor (ap), sampleRate (ap.getSampleRate()), blockSize (ap.getBlockSize())
+    {
+        processor.releaseResources();
+    }
+
+    ~ScopedPluginDeinitialiser()
+    {
+        if (blockSize != 0 && sampleRate != 0.0)
+            processor.prepareToPlay (sampleRate, blockSize);
+    }
+
+    AudioProcessor& processor;
+    const double sampleRate;
+    const int blockSize;
+};
+
+//==============================================================================
+struct ScopedBusesLayout
+{
+    ScopedBusesLayout (AudioProcessor& ap)
+        : processor (ap), currentLayout (ap.getBusesLayout())
+    {
+    }
+
+    ~ScopedBusesLayout()
+    {
+        processor.setBusesLayout (currentLayout);
+    }
+
+    AudioProcessor& processor;
+    AudioProcessor::BusesLayout currentLayout;
+};

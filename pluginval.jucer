@@ -18,6 +18,7 @@
       <FILE id="t9juvd" name="PluginTests.h" compile="0" resource="0" file="Source/PluginTests.h"/>
       <GROUP id="{5A268DBB-8AE4-A62D-4575-0AA6E5B66AE6}" name="tests">
         <FILE id="I2l3NS" name="BasicTests.cpp" compile="1" resource="0" file="Source/tests/BasicTests.cpp"/>
+        <FILE id="hHnl2z" name="BusTests.cpp" compile="1" resource="0" file="Source/tests/BusTests.cpp"/>
         <FILE id="xWrMCm" name="ParameterFuzzTests.cpp" compile="1" resource="0"
               file="Source/tests/ParameterFuzzTests.cpp"/>
       </GROUP>
