@@ -15,6 +15,35 @@
 #include "PluginTests.h"
 #include "TestUtilities.h"
 
+namespace
+{
+    /** Deletes a plugin asyncronously on the message thread */
+    void deletePluginAsync (std::unique_ptr<AudioPluginInstance> pluginInstance)
+    {
+        WaitableEvent completionEvent;
+
+        struct AsyncDeleter : public CallbackMessage
+        {
+            AsyncDeleter (std::unique_ptr<AudioPluginInstance> api, WaitableEvent& we)
+                : instance (std::move (api)), event (we)
+            {}
+
+            void messageCallback() override
+            {
+                instance.reset();
+                Thread::sleep (150); // Pause a few ms to let the plugin clean up after itself
+                event.signal();
+            }
+
+            std::unique_ptr<AudioPluginInstance> instance;
+            WaitableEvent& event;
+        };
+
+        (new AsyncDeleter (std::move (pluginInstance), completionEvent))->post();
+        completionEvent.wait();
+    }
+}
+
 PluginTests::PluginTests (const String& fileOrIdentifier, Options opts)
     : UnitTest ("PluginValidator"),
       fileOrID (fileOrIdentifier),
@@ -43,7 +72,15 @@ void PluginTests::runTest()
     if (fileOrID.isNotEmpty())
     {
         beginTest ("Scan for known types: " + fileOrID);
-        knownPluginList.scanAndAddDragAndDroppedFiles (formatManager, StringArray (fileOrID), typesFound);
+
+        WaitableEvent completionEvent;
+        MessageManager::getInstance()->callAsync ([&, this]() mutable
+                                                  {
+                                                      knownPluginList.scanAndAddDragAndDroppedFiles (formatManager, StringArray (fileOrID), typesFound);
+                                                      completionEvent.signal();
+                                                  });
+        completionEvent.wait();
+
         logMessage ("Num types found: " + String (typesFound.size()));
         expect (! typesFound.isEmpty(), "No types found");
     }
@@ -70,7 +107,7 @@ void PluginTests::testType (const PluginDescription& pd)
     {
         beginTest ("Open plugin (cold)");
         StopwatchTimer sw;
-        testOpenPlugin (pd);
+        deletePluginAsync (testOpenPlugin (pd));
         logMessage ("\nTime taken to open plugin (cold): " + sw.getDescription());
     }
 
@@ -107,6 +144,8 @@ void PluginTests::testType (const PluginDescription& pd)
 
                 logMessage ("\nTime taken to run test: " + sw2.getDescription());
             }
+
+            deletePluginAsync (std::move (instance));
         }
     }
 }
