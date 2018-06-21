@@ -3,15 +3,3 @@
 	url = git@github.com:WeAreROLI/JUCE.git
 	shallow = true
 	branch = develop
-[submodule "vst3_base"]
-	path = modules/vst3/base
-	url = git@github.com:steinbergmedia/vst3_base.git
-	shallow = true
-[submodule "pluginterfaces"]
-	path = modules/vst3/pluginterfaces
-	url = git@github.com:steinbergmedia/vst3_pluginterfaces.git
-	shallow = true
-[submodule "public.sdk"]
-	path = modules/vst3/public.sdk
-	url = git@github.com:steinbergmedia/vst3_public_sdk.git
-	shallow = true
