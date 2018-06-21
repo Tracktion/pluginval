@@ -35,7 +35,6 @@ if not exist "%PROJUCER_EXE%" exit 1
 ::   Test plugins
 ::============================================================
 call "%PROJUCER_EXE%" --set-global-search-path windows defaultJuceModulePath "%ROOT%/modules/juce/modules"
-call "%PROJUCER_EXE%" --set-global-search-path windows vst3Path "%ROOT%/vst3"
 call :TestPlugin "ArpeggiatorPlugin", "ArpeggiatorPluginDemo.h"
 call :TestPlugin "AudioPluginDemo", "AudioPluginDemo.h"
 call :TestPlugin "DSPModulePluginDemo", "DSPModulePluginDemo.h"
@@ -58,10 +57,10 @@ exit /B %ERRORLEVEL%
 	"C:\Program Files (x86)\Microsoft Visual Studio\2017\Community\MSBuild\15.0\Bin\MSBuild.exe" %PLUGIN_NAME%.sln /p:VisualStudioVersion=15.0 /m /t:Build /p:Configuration=Release /p:Platform=x64 /p:PreferredToolArchitecture=x64  /p:TreatWarningsAsErrors=true
 
 	:: Test out of process
-	call "%PLUGINVAL_EXE%" --strictnessLevel 5 --validate %PLUGIN_VST%
+	call "%PLUGINVAL_EXE%" --strictness-level 5 --validate %PLUGIN_VST%
 	if %ERRORLEVEL% NEQ 0 exit 1
 
 	:: Test in process
-	call "%PLUGINVAL_EXE%" --validate-in-process --strictnessLevel 5 --validate %PLUGIN_VST%
+	call "%PLUGINVAL_EXE%" --validate-in-process --strictness-level 5 --validate %PLUGIN_VST%
 	if %ERRORLEVEL% NEQ 0 exit 1
 exit /B 0

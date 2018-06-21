@@ -61,8 +61,7 @@ function testPlugin()
 	"$PLUGINVAL_EXE" --validate-in-process --strictness-level 5 --validate "$PLUGIN_AU"
 }
 
-"$PROJUCER_EXE" --set-global-search-path windows defaultJuceModulePath "$ROOT/modules/juce/modules"
-"$PROJUCER_EXE" --set-global-search-path windows vst3Path "$ROOT/vst3"
+"$PROJUCER_EXE" --set-global-search-path osx defaultJuceModulePath "$ROOT/modules/juce/modules"
 testPlugin "ArpeggiatorPlugin" "ArpeggiatorPluginDemo.h"
 testPlugin "AudioPluginDemo" "AudioPluginDemo.h"
 testPlugin "DSPModulePluginDemo" "DSPModulePluginDemo.h"
