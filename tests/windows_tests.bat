@@ -27,6 +27,7 @@ set TEMP_DIR=%ROOT%/tmp
 rd /S /Q "%TEMP_DIR%"
 
 cd "%PROJUCER_ROOT%"
+set CL=/DJUCER_ENABLE_GPL_MODE
 "C:\Program Files (x86)\Microsoft Visual Studio\2017\Community\MSBuild\15.0\Bin\MSBuild.exe" Projucer.sln /p:VisualStudioVersion=15.0 /m /p:Configuration=Release /p:Platform=x64 /p:PreferredToolArchitecture=x64
 if not exist "%PROJUCER_EXE%" exit 1
 

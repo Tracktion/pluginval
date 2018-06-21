@@ -50,7 +50,7 @@ function testPlugin()
     "$PROJUCER_EXE" --create-project-from-pip "$PLUGINS_PIP_DIR/$PLUGIN_PIP_FILE" "$TEMP_DIR"
     "$PROJUCER_EXE" --resave "$TEMP_DIR/$PLUGIN_NAME/$PLUGIN_NAME.jucer"
 	cd "$TEMP_DIR/$PLUGIN_NAME/Builds/MacOSX"
-	xcodebuild -configuration Release
+	xcodebuild -configuration Release GCC_PREPROCESSOR_DEFINITIONS='$GCC_PREPROCESSOR_DEFINITIONS JUCER_ENABLE_GPL_MODE=1'
 
 	# Test out of process
 #	"$PLUGINVAL_EXE" --strictness-level 5 --validate "$PLUGIN_VST"
