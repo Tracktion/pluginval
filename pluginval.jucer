@@ -10,6 +10,9 @@
       </GROUP>
       <FILE id="GETG4h" name="CommandLine.cpp" compile="1" resource="0" file="Source/CommandLine.cpp"/>
       <FILE id="NAVn5k" name="CommandLine.h" compile="0" resource="0" file="Source/CommandLine.h"/>
+      <FILE id="uySO29" name="CrashHandler.cpp" compile="1" resource="0"
+            file="Source/CrashHandler.cpp"/>
+      <FILE id="SEMs0R" name="CrashHandler.h" compile="0" resource="0" file="Source/CrashHandler.h"/>
       <FILE id="RlIdi3" name="Main.cpp" compile="1" resource="0" file="Source/Main.cpp"/>
       <FILE id="h9UFpe" name="MainComponent.cpp" compile="1" resource="0"
             file="Source/MainComponent.cpp"/>
@@ -58,7 +61,8 @@
             vst3Folder="modules/vst3">
       <CONFIGURATIONS>
         <CONFIGURATION isDebug="1" name="Debug" targetName="pluginval"/>
-        <CONFIGURATION isDebug="0" name="Release" warningsAreErrors="1" targetName="pluginval"/>
+        <CONFIGURATION isDebug="0" name="Release" warningsAreErrors="1" targetName="pluginval"
+                       alwaysGenerateDebugSymbols="1"/>
       </CONFIGURATIONS>
       <MODULEPATHS>
         <MODULEPATH id="juce_gui_extra" path="modules/juce/modules"/>

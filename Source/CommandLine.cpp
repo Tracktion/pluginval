@@ -14,6 +14,7 @@
 
 #include "CommandLine.h"
 #include "Validator.h"
+#include "CrashHandler.h"
 
 
 //==============================================================================
@@ -84,21 +85,9 @@ void setCurrentID (const String& currentID)
     getCurrentID() = currentID;
 }
 
-void handleCrash (void*)
-{
-    const auto id = getCurrentID();
-
-    if (id.isNotEmpty())
-        std::cout << "\n*** FAILED: VALIDATION CRASHED WHILST VALIDATING " << getCurrentID() << std::endl;
-    else
-        std::cout << "\n*** FAILED: VALIDATION CRASHED" << std::endl;
-}
-
 //==============================================================================
 CommandLineValidator::CommandLineValidator()
 {
-    SystemStats::setApplicationCrashHandler (handleCrash);
-
     validator.addChangeListener (this);
     validator.addListener (this);
 }
@@ -116,7 +105,7 @@ void CommandLineValidator::validate (const StringArray& fileOrIDs, PluginTests::
 void CommandLineValidator::changeListenerCallback (ChangeBroadcaster*)
 {
     if (! validator.isConnected() && currentID.isNotEmpty())
-        exitWithError ("\n*** FAILED: VALIDATION CRASHED");
+        exitWithError ("\n*** FAILED: VALIDATION CRASHED" + getCrashLog());
 }
 
 void CommandLineValidator::validationStarted (const String& id)
@@ -156,9 +145,9 @@ void CommandLineValidator::allItemsComplete()
 void CommandLineValidator::connectionLost()
 {
     if (currentID.isNotEmpty())
-        exitWithError ("\n*** FAILED: VALIDATION CRASHED WHILST VALIDATING " + currentID);
+        exitWithError ("\n*** FAILED: VALIDATION CRASHED WHILST VALIDATING " + currentID + getCrashLog());
     else
-        exitWithError ("\n*** FAILED: VALIDATION CRASHED");
+        exitWithError ("\n*** FAILED: VALIDATION CRASHED" + getCrashLog());
 }
 
 

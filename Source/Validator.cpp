@@ -14,6 +14,7 @@
 
 #include "Validator.h"
 #include "PluginTests.h"
+#include "CrashHandler.h"
 #include <numeric>
 
 // Defined in Main.cpp, used to create the file logger as early as possible
@@ -192,6 +193,9 @@ public:
         : Thread ("ValidatorSlaveProcess")
     {
         LOG_SLAVE("Constructing ValidatorSlaveProcess");
+
+        // Initialise the crash handler to clear any previous crash logs
+        initialiseCrashHandler();
         startThread (4);
     }
 

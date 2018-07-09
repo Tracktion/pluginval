@@ -16,6 +16,7 @@
 
 #include "../JuceLibraryCode/JuceHeader.h"
 #include "Validator.h"
+#include "CrashHandler.h"
 
 PropertiesFile& getAppPreferences();
 
@@ -171,6 +172,7 @@ private:
         if (! validator.isConnected() && currentID.isNotEmpty())
         {
             logMessage ("\n*** FAILED: VALIDATION CRASHED");
+            logMessage (getCrashLog());
             currentID = String();
         }
     }
