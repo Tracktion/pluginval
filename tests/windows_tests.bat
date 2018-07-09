@@ -47,21 +47,21 @@ call :TestPlugin "SurroundPlugin", "SurroundPluginDemo.h"
 exit /B %ERRORLEVEL%
 
 :TestPlugin
-	echo "=========================================================="
-	echo "Testing: %~1%"
-	set PLUGIN_NAME=%~1%
-	set PLUGIN_PIP_FILE=%~2%
-	set PLUGIN_VST="%TEMP_DIR%/%PLUGIN_NAME%/Builds/VisualStudio2017/x64/Release/VST/%PLUGIN_NAME%.dll"
+    echo "=========================================================="
+    echo "Testing: %~1%"
+    set PLUGIN_NAME=%~1%
+    set PLUGIN_PIP_FILE=%~2%
+    set PLUGIN_VST3="%TEMP_DIR%/%PLUGIN_NAME%/Builds/VisualStudio2017/x64/Release/VST3/%PLUGIN_NAME%.vst3"
     call "%PROJUCER_EXE%" --create-project-from-pip "%PLUGINS_PIP_DIR%\%PLUGIN_PIP_FILE%" "%TEMP_DIR%"
     call "%PROJUCER_EXE%" --resave "%TEMP_DIR%/%PLUGIN_NAME%/%PLUGIN_NAME%.jucer"
-	cd "%TEMP_DIR%/%PLUGIN_NAME%/Builds/VisualStudio2017"
-	"C:\Program Files (x86)\Microsoft Visual Studio\2017\Community\MSBuild\15.0\Bin\MSBuild.exe" %PLUGIN_NAME%.sln /p:VisualStudioVersion=15.0 /m /t:Build /p:Configuration=Release /p:Platform=x64 /p:PreferredToolArchitecture=x64  /p:TreatWarningsAsErrors=true
+    cd "%TEMP_DIR%/%PLUGIN_NAME%/Builds/VisualStudio2017"
+    "C:\Program Files (x86)\Microsoft Visual Studio\2017\Community\MSBuild\15.0\Bin\MSBuild.exe" %PLUGIN_NAME%.sln /p:VisualStudioVersion=15.0 /m /t:Build /p:Configuration=Release /p:Platform=x64 /p:PreferredToolArchitecture=x64  /p:TreatWarningsAsErrors=true
 
-	:: Test out of process
-	call "%PLUGINVAL_EXE%" --strictness-level 5 --validate %PLUGIN_VST%
-	if %ERRORLEVEL% NEQ 0 exit 1
+    :: Test out of process
+    call "%PLUGINVAL_EXE%" --strictness-level 5 --validate %PLUGIN_VST3%
+    if %ERRORLEVEL% NEQ 0 exit 1
 
-	:: Test in process
-	call "%PLUGINVAL_EXE%" --validate-in-process --strictness-level 5 --validate %PLUGIN_VST%
-	if %ERRORLEVEL% NEQ 0 exit 1
+    :: Test in process
+    call "%PLUGINVAL_EXE%" --validate-in-process --strictness-level 5 --validate %PLUGIN_VST3%
+    if %ERRORLEVEL% NEQ 0 exit 1
 exit /B 0
