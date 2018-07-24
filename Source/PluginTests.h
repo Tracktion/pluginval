@@ -101,7 +101,7 @@ struct PluginTest
     virtual bool needsToRunOnMessageThread()                    { return false; }
 
     /** Override to perform any tests.
-        Note that because PluginTest doesn't not inherit from UnitTest (due to being passed
+        Note that because PluginTest doesn't inherit from UnitTest (due to being passed
         in the AudioPluginInstance), you can use the UnitTest parameter to log messages or
         call expect etc.
     */

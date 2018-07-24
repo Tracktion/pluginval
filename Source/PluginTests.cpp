@@ -118,6 +118,7 @@ void PluginTests::testType (const PluginDescription& pd)
         if (auto instance = testOpenPlugin (pd))
         {
             logMessage ("\nTime taken to open plugin (warm): " + sw.getDescription());
+            Thread::sleep (150); // Allow time for plugin async initialisation
 
             for (auto t : PluginTest::getAllTests())
             {
