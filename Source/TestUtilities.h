@@ -96,6 +96,16 @@ static inline int countSubnormals (AudioBuffer<float>& ab) noexcept
     return count;
 }
 
+static inline void addNoteOn (MidiBuffer& mb, int channel, int noteNumber, int sample) noexcept
+{
+    mb.addEvent (juce::MidiMessage::noteOn (channel, noteNumber, 0.5f), sample);
+}
+
+static inline void addNoteOff (MidiBuffer& mb, int channel, int noteNumber, int sample) noexcept
+{
+    mb.addEvent (juce::MidiMessage::noteOff (channel, noteNumber, 0.5f), sample);
+}
+
 //==============================================================================
 struct ScopedPluginDeinitialiser
 {

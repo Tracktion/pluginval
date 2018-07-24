@@ -98,6 +98,7 @@ struct AudioProcessingTest  : public PluginTest
 
     void runTest (PluginTests& ut, AudioPluginInstance& instance) override
     {
+        const bool isPluginInstrument = instance.getPluginDescription().isInstrument;
         const double sampleRates[] = { 44100.0, 48000.0, 96000.0 };
         const int blockSizes[] = { 64, 128, 256, 512, 1024 };
 
@@ -115,11 +116,22 @@ struct AudioProcessingTest  : public PluginTest
                 AudioBuffer<float> ab (numChannelsRequired, bs);
                 MidiBuffer mb;
 
+                // Add a random note on if the plugin is a synth
+                const int noteChannel = ut.getRandom().nextInt (15);
+                const int noteNumber = ut.getRandom().nextInt (127);
+
+                if (isPluginInstrument)
+                    addNoteOn (mb, noteChannel, noteNumber, jmin (10, bs));
+
                 for (int i = 0; i < 10; ++i)
                 {
-                    mb.clear();
+                    // Add note off in last block if plugin is a synth
+                    if (isPluginInstrument && i == 9)
+                        addNoteOn (mb, noteChannel, noteNumber, 0);
+
                     fillNoise (ab);
                     instance.processBlock (ab, mb);
+                    mb.clear();
                 }
 
                 ut.expectEquals (countNaNs (ab), 0, "NaNs found in buffer");
@@ -172,6 +184,7 @@ struct AutomationTest  : public PluginTest
     void runTest (PluginTests& ut, AudioPluginInstance& instance) override
     {
         const bool subnormalsAreErrors = ut.getOptions().strictnessLevel > 5;
+        const bool isPluginInstrument = instance.getPluginDescription().isInstrument;
         const double sampleRates[] = { 44100.0, 48000.0, 96000.0 };
         const int blockSizes[] = { 64, 128, 256, 512, 1024 };
 
@@ -193,6 +206,13 @@ struct AutomationTest  : public PluginTest
                 AudioBuffer<float> ab (numChannelsRequired, bs);
                 MidiBuffer mb;
 
+                // Add a random note on if the plugin is a synth
+                const int noteChannel = ut.getRandom().nextInt (15);
+                const int noteNumber = ut.getRandom().nextInt (127);
+
+                if (isPluginInstrument)
+                    addNoteOn (mb, noteChannel, noteNumber, jmin (10, subBlockSize));
+
                 for (;;)
                 {
                     // Set random parameter values
@@ -208,7 +228,10 @@ struct AutomationTest  : public PluginTest
 
                     // Create a sub-buffer and process
                     const int numSamplesThisTime = jmin (subBlockSize, bs - numSamplesDone);
-                    mb.clear();
+
+                    // Trigger a note off in the last sub block
+                    if (isPluginInstrument && (bs - numSamplesDone) <= subBlockSize)
+                        addNoteOn (mb, noteChannel, noteNumber, jmin (10, subBlockSize));
 
                     AudioBuffer<float> subBuffer (ab.getArrayOfWritePointers(),
                                                   ab.getNumChannels(),
@@ -217,6 +240,8 @@ struct AutomationTest  : public PluginTest
                     fillNoise (subBuffer);
                     instance.processBlock (subBuffer, mb);
                     numSamplesDone += numSamplesThisTime;
+
+                    mb.clear();
 
                     if (numSamplesDone >= bs)
                         break;
