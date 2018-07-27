@@ -156,9 +156,10 @@ struct PluginStateTest  : public PluginTest
     void runTest (PluginTests& ut, AudioPluginInstance& instance) override
     {
         auto& parameters = instance.getParameters();
-        MemoryBlock originalState;
+        const float originalParamsSum = getParametersSum (instance);
 
         // Read state
+        MemoryBlock originalState;
         instance.getStateInformation (originalState);
 
         // Set random parameter values
@@ -167,6 +168,20 @@ struct PluginStateTest  : public PluginTest
 
         // Restore original state
         instance.setStateInformation (originalState.getData(), (int) originalState.getSize());
+
+        // Check parameter values return to original
+        ut.expectWithinAbsoluteError (getParametersSum (instance), originalParamsSum, 0.1f,
+                                      "Parameters not restored on setStateInformation");
+    }
+
+    float getParametersSum (AudioPluginInstance& instance)
+    {
+        float value = 0.0f;
+
+        for (auto parameter : instance.getParameters())
+            value += parameter->getValue();
+
+        return value;
     }
 };
 
