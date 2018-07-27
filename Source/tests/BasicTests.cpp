@@ -149,18 +149,20 @@ static AudioProcessingTest audioProcessingTest;
 struct PluginStateTest  : public PluginTest
 {
     PluginStateTest()
-        : PluginTest ("Plugin state", 2)
+        : PluginTest ("Plugin state restoration", 2)
     {
     }
 
     void runTest (PluginTests& ut, AudioPluginInstance& instance) override
     {
         auto& parameters = instance.getParameters();
-        const float originalParamsSum = getParametersSum (instance);
 
         // Read state
         MemoryBlock originalState;
         instance.getStateInformation (originalState);
+
+        // Check current sum of parameter values
+        const float originalParamsSum = getParametersSum (instance);
 
         // Set random parameter values
         for (auto parameter : parameters)
@@ -169,9 +171,22 @@ struct PluginStateTest  : public PluginTest
         // Restore original state
         instance.setStateInformation (originalState.getData(), (int) originalState.getSize());
 
-        // Check parameter values return to original
-        ut.expectWithinAbsoluteError (getParametersSum (instance), originalParamsSum, 0.1f,
-                                      "Parameters not restored on setStateInformation");
+        if (strictnessLevel >= 6)
+        {
+            // Check parameter values return to original
+            ut.expectWithinAbsoluteError (getParametersSum (instance), originalParamsSum, 0.1f,
+                                          "Parameters not restored on setStateInformation");
+        }
+
+        if (strictnessLevel >= 8)
+        {
+            // Read state again and compare to what we set
+            MemoryBlock duplicateState;
+            instance.getStateInformation (duplicateState);
+
+            ut.expect (duplicateState.matches (originalState.getData(), originalState.getSize()),
+                       "Returned state differs from that set by host");
+        }
     }
 
     float getParametersSum (AudioPluginInstance& instance)
