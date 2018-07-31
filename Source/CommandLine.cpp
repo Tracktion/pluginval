@@ -263,7 +263,7 @@ static void showHelp()
 
     const String appName (JUCEApplication::getInstance()->getApplicationName());
 
-    std::cout << "//=============================================================================="
+    std::cout << "//==============================================================================" << std::endl
               << appName << std::endl
               << SystemStats::getJUCEVersion() << std::endl
               << std::endl
@@ -284,6 +284,8 @@ static void showHelp()
               << "    If specified, validates the list in the calling process. This can be useful for debugging or when using the command line." << std::endl
               << "  --data-file [pathToFile]" << std::endl
               << "    If specified, sets a path to a data file which can be used by tests to configure themselves. This can be useful for things like known audio output." << std::endl
+              << "  --version" << std::endl
+              << "    Print pluginval version." << std::endl
               << std::endl
               << "Exit code: "
               << std::endl
@@ -291,6 +293,10 @@ static void showHelp()
               << "  1 if there are any errors" << std::endl;
 }
 
+static void showVersion()
+{
+    std::cout << ProjectInfo::projectName << " - " << ProjectInfo::versionString << std::endl;
+}
 
 //==============================================================================
 void performCommandLine (CommandLineValidator& validator, const String& commandLine)
@@ -306,6 +312,7 @@ void performCommandLine (CommandLineValidator& validator, const String& commandL
 
     try
     {
+        if (matchArgument (command, "version"))                  { showVersion(); }
         if (matchArgument (command, "help"))                     { showHelp(); }
         if (matchArgument (command, "h"))                        { showHelp(); }
         if (containsArgument (args, "validate"))                 { validate (validator, args); return; }
@@ -328,6 +335,7 @@ bool shouldPerformCommandLine (const String& commandLine)
 
     String command (args[0]);
 
+    if (matchArgument (command, "version"))     return true;
     if (matchArgument (command, "help"))        return true;
     if (matchArgument (command, "h"))           return true;
     if (containsArgument (args, "validate"))    return true;
