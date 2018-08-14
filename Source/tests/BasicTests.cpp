@@ -19,7 +19,7 @@
 struct PluginInfoTest   : public PluginTest
 {
     PluginInfoTest()
-        : PluginTest ("Plugin info", 1)
+    : PluginTest ("Plugin info", 1, getDefaultRequirements())
     {
     }
 
@@ -40,13 +40,8 @@ static PluginInfoTest pluginInfoTest;
 struct EditorTest   : public PluginTest
 {
     EditorTest()
-        : PluginTest ("Editor", 2)
+    : PluginTest ("Editor", 2, { Requirements::messageThread, Requirements::requiresGui })
     {
-    }
-
-    bool needsToRunOnMessageThread() override
-    {
-        return true;
     }
 
     void runTest (PluginTests& ut, AudioPluginInstance& instance) override
@@ -92,7 +87,7 @@ static EditorTest editorTest;
 struct AudioProcessingTest  : public PluginTest
 {
     AudioProcessingTest()
-        : PluginTest ("Audio processing", 3)
+    : PluginTest ("Audio processing", 3, getDefaultRequirements())
     {
     }
 
@@ -101,6 +96,7 @@ struct AudioProcessingTest  : public PluginTest
         const bool isPluginInstrument = instance.getPluginDescription().isInstrument;
         const double sampleRates[] = { 44100.0, 48000.0, 96000.0 };
         const int blockSizes[] = { 64, 128, 256, 512, 1024 };
+        const int numBlocks = 10;
 
         for (auto sr : sampleRates)
         {
@@ -123,11 +119,11 @@ struct AudioProcessingTest  : public PluginTest
                 if (isPluginInstrument)
                     addNoteOn (mb, noteChannel, noteNumber, jmin (10, bs));
 
-                for (int i = 0; i < 10; ++i)
+                for (int i = 0; i < numBlocks; ++i)
                 {
                     // Add note off in last block if plugin is a synth
-                    if (isPluginInstrument && i == 9)
-                        addNoteOn (mb, noteChannel, noteNumber, 0);
+                    if (isPluginInstrument && i == (numBlocks - 1))
+                        addNoteOff (mb, noteChannel, noteNumber, 0);
 
                     fillNoise (ab);
                     instance.processBlock (ab, mb);
@@ -149,7 +145,7 @@ static AudioProcessingTest audioProcessingTest;
 struct PluginStateTest  : public PluginTest
 {
     PluginStateTest()
-        : PluginTest ("Plugin state restoration", 2)
+    : PluginTest ("Plugin state restoration", 2, getDefaultRequirements())
     {
     }
 
@@ -207,7 +203,7 @@ static PluginStateTest pluginStateTest;
 struct AutomationTest  : public PluginTest
 {
     AutomationTest()
-        : PluginTest ("Automation", 3)
+    : PluginTest ("Automation", 3, getDefaultRequirements())
     {
     }
 
@@ -261,7 +257,7 @@ struct AutomationTest  : public PluginTest
 
                     // Trigger a note off in the last sub block
                     if (isPluginInstrument && (bs - numSamplesDone) <= subBlockSize)
-                        addNoteOn (mb, noteChannel, noteNumber, jmin (10, subBlockSize));
+                        addNoteOff (mb, noteChannel, noteNumber, jmin (10, subBlockSize));
 
                     AudioBuffer<float> subBuffer (ab.getArrayOfWritePointers(),
                                                   ab.getNumChannels(),
@@ -346,7 +342,7 @@ namespace ParameterHelpers
 struct AutomatableParametersTest  : public PluginTest
 {
     AutomatableParametersTest()
-        : PluginTest ("Automatable Parameters", 2)
+    : PluginTest ("Automatable Parameters", 2, getDefaultRequirements())
     {
     }
 
@@ -371,7 +367,7 @@ static AutomatableParametersTest automatableParametersTest;
 struct AllParametersTest    : public PluginTest
 {
     AllParametersTest()
-        : PluginTest ("Parameters", 7)
+    : PluginTest ("Parameters", 7, getDefaultRequirements())
     {
     }
 
@@ -390,10 +386,13 @@ struct AllParametersTest    : public PluginTest
 static AllParametersTest allParametersTest;
 
 //==============================================================================
+/** Sets plugin state from a background thread whilst the plugin window is
+    created on the main thread. This simulates behaviour seen in certain hosts.
+ */
 struct BackgroundThreadStateTest    : public PluginTest
 {
     BackgroundThreadStateTest()
-        : PluginTest ("Background thread state", 7)
+    : PluginTest ("Background thread state", 7, { Requirements::backgroundThread, Requirements::requiresGui })
     {
     }
 
@@ -403,6 +402,8 @@ struct BackgroundThreadStateTest    : public PluginTest
         std::unique_ptr<AudioProcessorEditor> editor;
         MessageManager::getInstance()->callAsync ([&]
                                                   {
+                                                      std::cout << "Async message delivered! \n"; // Remove, debugging hangs on Jenkins
+
                                                       editor.reset (instance.createEditor());
                                                       ut.expect (editor != nullptr, "Unable to create editor");
 
@@ -441,3 +442,73 @@ struct BackgroundThreadStateTest    : public PluginTest
 };
 
 static BackgroundThreadStateTest backgroundThreadStateTest;
+
+//==============================================================================
+/** Sets plugin parameters from a background thread and the main thread at the
+    same time, as if via host automation and UI simultenously.
+ */
+struct ParameterThreadSafetyTest    : public PluginTest
+{
+    ParameterThreadSafetyTest()
+    : PluginTest ("Parameter thread safety", 7, getDefaultRequirements())
+    {
+    }
+
+    void runTest (PluginTests& ut, AudioPluginInstance& instance) override
+    {
+        WaitableEvent waiter;
+        auto random = ut.getRandom();
+        auto& parameters = instance.getParameters();
+        const bool isPluginInstrument = instance.getPluginDescription().isInstrument;
+        const int numBlocks = 500;
+
+        MessageManager::getInstance()->callAsync ([&]() mutable
+                                                  {
+                                                      std::cout << "Async message delivered! \n"; // Remove, debugging hangs on Jenkins
+                                                      auto threadRandom = random; // give thread own random object
+
+                                                      waiter.signal();
+
+                                                      for (int i = 0; i < numBlocks; ++i)
+                                                          for (auto* param : parameters)
+                                                              param->setValueNotifyingHost (threadRandom.nextFloat());
+
+                                                      waiter.signal();
+                                                  });
+
+        const int blockSize = 32;
+        instance.releaseResources();
+        instance.prepareToPlay (44100.0, blockSize);
+
+        const int numChannelsRequired = jmax (instance.getTotalNumInputChannels(), instance.getTotalNumOutputChannels());
+        AudioBuffer<float> ab (numChannelsRequired, blockSize);
+        MidiBuffer mb;
+
+        // Add a random note on if the plugin is a synth
+        const int noteChannel = ut.getRandom().nextInt (15);
+        const int noteNumber = ut.getRandom().nextInt (127);
+
+        if (isPluginInstrument)
+            addNoteOn (mb, noteChannel, noteNumber, jmin (10, blockSize));
+
+        waiter.wait();
+
+        for (int i = 0; i < numBlocks; ++i)
+        {
+            // Add note off in last block if plugin is a synth
+            if (isPluginInstrument && i == (numBlocks - 1))
+                addNoteOn (mb, noteChannel, noteNumber, 0);
+
+            for (auto* param : parameters)
+                param->setValue (random.nextFloat());
+
+            fillNoise (ab);
+            instance.processBlock (ab, mb);
+            mb.clear();
+        }
+
+        waiter.wait();
+    }
+};
+
+static ParameterThreadSafetyTest parameterThreadSafetyTest;

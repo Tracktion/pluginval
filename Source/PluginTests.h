@@ -29,6 +29,7 @@ struct PluginTests : public UnitTest
         int strictnessLevel = 5;    /**< Max test level to run. */
         int64 timeoutMs = 30000;    /**< Timeout after which to kill the test. */
         bool verbose = false;       /**< Whether or not to log additional information. */
+        bool noGui = false;         /**< Whether or not avoid tests that instantiate a gui. */
         File dataFile;              /**< File which tests can use to run user provided data. */
     };
 
@@ -69,13 +70,40 @@ private:
 */
 struct PluginTest
 {
+    //==============================================================================
+    /** Describes some requirements of the test, allowing the runner to execute
+        the test in a suitable environment.
+     */
+    struct Requirements
+    {
+        /** By default tests are run on a background thread. Set this if you need
+            the runTest method to be called on the message thread.
+         */
+        enum Thread { backgroundThread, messageThread };
+
+        /** Some test environments may not allow gui windows. set this to true
+            if your test tries to create an editor to
+         */
+        enum Gui { noGui, requiresGui };
+
+        Thread thread = Thread::backgroundThread;
+        Gui gui = Gui::noGui;
+    };
+
+    static Requirements getDefaultRequirements() { return {}; }
+
+    //==============================================================================
     /**
         Creates a named PluginTest.
         @param testName                 The name of the test
         @param testStrictnessLevel      The conformance level of the test
     */
-    PluginTest (const String& testName, int testStrictnessLevel)
-        : name (testName), strictnessLevel (testStrictnessLevel)
+    PluginTest (const String& testName,
+                int testStrictnessLevel,
+                Requirements testRequirements)
+        : name (testName),
+          strictnessLevel (testStrictnessLevel),
+          requirements (testRequirements)
     {
         jassert (isPositiveAndNotGreaterThan (strictnessLevel, 10));
         getAllTests().add (this);
@@ -95,11 +123,6 @@ struct PluginTest
     }
 
     //==============================================================================
-    /** By default tests are run on background threads, you can override this to
-        return true of you need the runTest method to be called on the message thread.
-    */
-    virtual bool needsToRunOnMessageThread()                    { return false; }
-
     /** Override to perform any tests.
         Note that because PluginTest doesn't inherit from UnitTest (due to being passed
         in the AudioPluginInstance), you can use the UnitTest parameter to log messages or
@@ -108,6 +131,10 @@ struct PluginTest
     virtual void runTest (PluginTests& runningTest, AudioPluginInstance&) = 0;
 
     //==============================================================================
+    bool needsToRunOnMessageThread() const { return requirements.thread == Requirements::messageThread; }
+    bool requiresGui() const { return requirements.gui == Requirements::requiresGui; }
+
     const String name;
     const int strictnessLevel;
+    const Requirements requirements;
 };

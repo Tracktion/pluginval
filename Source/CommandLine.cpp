@@ -233,6 +233,7 @@ static void validate (CommandLineValidator& validator, const StringArray& args)
             options.strictnessLevel = getStrictnessLevel (args);
             options.timeoutMs = getTimeout (args);
             options.verbose = containsArgument (args, "verbose");
+            options.noGui = containsArgument (args, "skip-gui-tests");
             options.dataFile = getDataFile (args);
             
             validator.validate (fileOrIDs,
@@ -282,6 +283,8 @@ static void showHelp()
               << "    If specified, outputs additional logging information. It can be useful to turn this off when building with CI to avoid huge log files." << std::endl
               << "  --validate-in-process" << std::endl
               << "    If specified, validates the list in the calling process. This can be useful for debugging or when using the command line." << std::endl
+              << "  --skip-gui-tests" << std::endl
+              << "    If specified, avoids tests that create GUI windows. These can sometimes cause problems on CI systems that work via ssh." << std::endl
               << "  --data-file [pathToFile]" << std::endl
               << "    If specified, sets a path to a data file which can be used by tests to configure themselves. This can be useful for things like known audio output." << std::endl
               << "  --version" << std::endl

@@ -19,7 +19,7 @@
 struct BasicBusTest   : public PluginTest
 {
     BasicBusTest()
-        : PluginTest ("Basic bus", 4)
+        : PluginTest ("Basic bus", 4, getDefaultRequirements())
     {
     }
 
