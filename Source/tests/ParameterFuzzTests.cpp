@@ -19,7 +19,7 @@
 struct FuzzParametersTest  : public PluginTest
 {
     FuzzParametersTest()
-        : PluginTest ("Fuzz parameters", 6)
+        : PluginTest ("Fuzz parameters", 6, getDefaultRequirements())
     {
     }
 

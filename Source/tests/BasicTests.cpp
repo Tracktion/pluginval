@@ -19,7 +19,7 @@
 struct PluginInfoTest   : public PluginTest
 {
     PluginInfoTest()
-        : PluginTest ("Plugin info", 1)
+    : PluginTest ("Plugin info", 1, getDefaultRequirements())
     {
     }
 
@@ -40,13 +40,8 @@ static PluginInfoTest pluginInfoTest;
 struct EditorTest   : public PluginTest
 {
     EditorTest()
-        : PluginTest ("Editor", 2)
+    : PluginTest ("Editor", 2, { Requirements::messageThread, Requirements::requiresGui })
     {
-    }
-
-    bool needsToRunOnMessageThread() override
-    {
-        return true;
     }
 
     void runTest (PluginTests& ut, AudioPluginInstance& instance) override
@@ -92,7 +87,7 @@ static EditorTest editorTest;
 struct AudioProcessingTest  : public PluginTest
 {
     AudioProcessingTest()
-        : PluginTest ("Audio processing", 3)
+    : PluginTest ("Audio processing", 3, getDefaultRequirements())
     {
     }
 
@@ -150,7 +145,7 @@ static AudioProcessingTest audioProcessingTest;
 struct PluginStateTest  : public PluginTest
 {
     PluginStateTest()
-        : PluginTest ("Plugin state restoration", 2)
+    : PluginTest ("Plugin state restoration", 2, getDefaultRequirements())
     {
     }
 
@@ -208,7 +203,7 @@ static PluginStateTest pluginStateTest;
 struct AutomationTest  : public PluginTest
 {
     AutomationTest()
-        : PluginTest ("Automation", 3)
+    : PluginTest ("Automation", 3, getDefaultRequirements())
     {
     }
 
@@ -347,7 +342,7 @@ namespace ParameterHelpers
 struct AutomatableParametersTest  : public PluginTest
 {
     AutomatableParametersTest()
-        : PluginTest ("Automatable Parameters", 2)
+    : PluginTest ("Automatable Parameters", 2, getDefaultRequirements())
     {
     }
 
@@ -372,7 +367,7 @@ static AutomatableParametersTest automatableParametersTest;
 struct AllParametersTest    : public PluginTest
 {
     AllParametersTest()
-        : PluginTest ("Parameters", 7)
+    : PluginTest ("Parameters", 7, getDefaultRequirements())
     {
     }
 
@@ -397,7 +392,7 @@ static AllParametersTest allParametersTest;
 struct BackgroundThreadStateTest    : public PluginTest
 {
     BackgroundThreadStateTest()
-        : PluginTest ("Background thread state", 7)
+    : PluginTest ("Background thread state", 7, { Requirements::backgroundThread, Requirements::requiresGui })
     {
     }
 
@@ -407,6 +402,8 @@ struct BackgroundThreadStateTest    : public PluginTest
         std::unique_ptr<AudioProcessorEditor> editor;
         MessageManager::getInstance()->callAsync ([&]
                                                   {
+                                                      std::cout << "Async message delivered! \n"; // Remove, debugging hangs on Jenkins
+
                                                       editor.reset (instance.createEditor());
                                                       ut.expect (editor != nullptr, "Unable to create editor");
 
@@ -453,7 +450,7 @@ static BackgroundThreadStateTest backgroundThreadStateTest;
 struct ParameterThreadSafetyTest    : public PluginTest
 {
     ParameterThreadSafetyTest()
-    : PluginTest ("Parameter thread safety", 7)
+    : PluginTest ("Parameter thread safety", 7, getDefaultRequirements())
     {
     }
 
@@ -467,6 +464,7 @@ struct ParameterThreadSafetyTest    : public PluginTest
 
         MessageManager::getInstance()->callAsync ([&]() mutable
                                                   {
+                                                      std::cout << "Async message delivered! \n"; // Remove, debugging hangs on Jenkins
                                                       auto threadRandom = random; // give thread own random object
 
                                                       waiter.signal();
