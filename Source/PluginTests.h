@@ -29,7 +29,7 @@ struct PluginTests : public UnitTest
         int strictnessLevel = 5;    /**< Max test level to run. */
         int64 timeoutMs = 30000;    /**< Timeout after which to kill the test. */
         bool verbose = false;       /**< Whether or not to log additional information. */
-        bool noGui = false;         /**< Whether or not avoid tests that instantiate a gui. */
+        bool withGui = true;        /**< Whether or not avoid tests that instantiate a gui. */
         File dataFile;              /**< File which tests can use to run user provided data. */
     };
 

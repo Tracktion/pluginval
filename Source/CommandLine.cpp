@@ -236,7 +236,7 @@ static void validate (CommandLineValidator& validator, const StringArray& args)
             options.strictnessLevel = getStrictnessLevel (args);
             options.timeoutMs = getTimeout (args);
             options.verbose = containsArgument (args, "verbose");
-            options.noGui = environmentSkipGui || containsArgument (args, "skip-gui-tests");
+            options.withGui = ! (environmentSkipGui || containsArgument (args, "skip-gui-tests"));
             options.dataFile = getDataFile (args);
             
             validator.validate (fileOrIDs,
