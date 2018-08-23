@@ -47,7 +47,7 @@ function testPlugin()
 	PLUGIN_PIP_FILE=$2
 	PLUGIN_VST3="$TEMP_DIR/$PLUGIN_NAME/Builds/MacOSX/build/Release/$PLUGIN_NAME.vst3"
 	PLUGIN_AU="$TEMP_DIR/$PLUGIN_NAME/Builds/MacOSX/build/Release/$PLUGIN_NAME.component"
-    "$PROJUCER_EXE" --create-project-from-pip "$PLUGINS_PIP_DIR/$PLUGIN_PIP_FILE" "$TEMP_DIR"
+    "$PROJUCER_EXE" --create-project-from-pip "$PLUGINS_PIP_DIR/$PLUGIN_PIP_FILE" "$TEMP_DIR" "$ROOT/modules/juce/modules"
     "$PROJUCER_EXE" --resave "$TEMP_DIR/$PLUGIN_NAME/$PLUGIN_NAME.jucer"
 	cd "$TEMP_DIR/$PLUGIN_NAME/Builds/MacOSX"
 	xcodebuild -configuration Release GCC_PREPROCESSOR_DEFINITIONS='$GCC_PREPROCESSOR_DEFINITIONS JUCER_ENABLE_GPL_MODE=1'
@@ -61,7 +61,6 @@ function testPlugin()
 	"$PLUGINVAL_EXE" --validate-in-process --strictness-level 5 --validate "$PLUGIN_AU"
 }
 
-"$PROJUCER_EXE" --set-global-search-path osx defaultJuceModulePath "$ROOT/modules/juce/modules"
 testPlugin "ArpeggiatorPlugin" "ArpeggiatorPluginDemo.h"
 testPlugin "AudioPluginDemo" "AudioPluginDemo.h"
 testPlugin "DSPModulePluginDemo" "DSPModulePluginDemo.h"
