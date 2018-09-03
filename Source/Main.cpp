@@ -48,6 +48,9 @@ public:
     //==============================================================================
     void initialise (const String& commandLine) override
     {
+        UnitTestRunner testRunner;
+        testRunner.runTestsInCategory ("pluginval");
+
         if (shouldPerformCommandLine (commandLine))
         {
             triggerAsyncUpdate();

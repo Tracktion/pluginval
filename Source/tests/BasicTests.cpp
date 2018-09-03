@@ -119,6 +119,7 @@ struct AudioProcessingTest  : public PluginTest
                 {
                     mb.clear();
                     fillNoise (ab);
+
                     instance.processBlock (ab, mb);
                 }
 

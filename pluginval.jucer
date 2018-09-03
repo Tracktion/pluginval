@@ -22,9 +22,13 @@
       <GROUP id="{5A268DBB-8AE4-A62D-4575-0AA6E5B66AE6}" name="tests">
         <FILE id="I2l3NS" name="BasicTests.cpp" compile="1" resource="0" file="Source/tests/BasicTests.cpp"/>
         <FILE id="hHnl2z" name="BusTests.cpp" compile="1" resource="0" file="Source/tests/BusTests.cpp"/>
+        <FILE id="s4xG58" name="ExtremeTests.cpp" compile="1" resource="0"
+              file="Source/tests/ExtremeTests.cpp"/>
         <FILE id="xWrMCm" name="ParameterFuzzTests.cpp" compile="1" resource="0"
               file="Source/tests/ParameterFuzzTests.cpp"/>
       </GROUP>
+      <FILE id="H72cKZ" name="TestUtilities.cpp" compile="1" resource="0"
+            file="Source/TestUtilities.cpp"/>
       <FILE id="Y22UZI" name="TestUtilities.h" compile="0" resource="0" file="Source/TestUtilities.h"/>
       <FILE id="zGLIBo" name="Validator.cpp" compile="1" resource="0" file="Source/Validator.cpp"/>
       <FILE id="GCam31" name="Validator.h" compile="0" resource="0" file="Source/Validator.h"/>

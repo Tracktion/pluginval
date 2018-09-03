@@ -26,13 +26,14 @@ struct FuzzParametersTest  : public PluginTest
     void runTest (PluginTests& ut, AudioPluginInstance& instance) override
     {
         for (auto parameter : instance.getParameters())
-            fuzzTestParameter (ut, *parameter);
+            if (parameter->isAutomatable())
+                fuzzTestParameter (ut, *parameter);
     }
 
 private:
-    void fuzzTestParameter (UnitTest& ut, AudioProcessorParameter& parameter)
+    void fuzzTestParameter (PluginTests& ut, AudioProcessorParameter& parameter)
     {
-        ut.logMessage (String ("Fuzz testing parameter: ") + String (parameter.getParameterIndex()) + " - " + parameter.getName (512));
+        ut.logVerboseMessage (String ("Fuzz testing parameter: ") + String (parameter.getParameterIndex()) + " - " + parameter.getName (512));
 
         for (int i = 0; i < 5; ++i)
         {

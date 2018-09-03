@@ -2,6 +2,7 @@
 
 ### 1.1.4
   - Added stack backtraces to crashed validation output
+  - Added tests for detecting memory allocations and deallocations in the audio thread
 
 ### 1.1.3
   - Reduced the amount of default logging

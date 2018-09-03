@@ -14,6 +14,8 @@
 
 #pragma once
 
+#include <JuceHeader.h>
+
 //==============================================================================
 struct StopwatchTimer
 {
@@ -131,4 +133,87 @@ struct ScopedBusesLayout
 
     AudioProcessor& processor;
     AudioProcessor::BusesLayout currentLayout;
+};
+
+
+//==============================================================================
+/**
+    Used to enable intercepting of allocations using new, new[], delete and
+    delete[] on the calling thread.
+*/
+struct AllocatorInterceptor
+{
+    AllocatorInterceptor() = default;
+
+    void disableAllocations()
+    {
+        allocationsAllowed.store (false);
+    }
+
+    void enableAllocations()
+    {
+        allocationsAllowed.store (true);
+    }
+
+    bool isAllowedToAllocate() const
+    {
+        return allocationsAllowed.load();
+    }
+
+    //==============================================================================
+    void logAllocationViolation()
+    {
+        violationOccured.store (true);
+        ++numAllocationViolations;
+    }
+
+    int getNumAllocationViolations() const noexcept
+    {
+        return numAllocationViolations;
+    }
+
+    bool getAndClearAllocationViolation() noexcept
+    {
+        return violationOccured.exchange (false);
+    }
+
+    int getAndClearNumAllocationViolations() noexcept
+    {
+        return numAllocationViolations.exchange (0);
+    }
+
+    //==============================================================================
+    enum class ViolationBehaviour
+    {
+        none,
+        logToCerr,
+        throwException
+    };
+
+    static void setViolationBehaviour (ViolationBehaviour) noexcept;
+    static ViolationBehaviour getViolationBehaviour() noexcept;
+
+private:
+    std::atomic<bool> allocationsAllowed { true };
+    std::atomic<int> numAllocationViolations { 0 };
+    std::atomic<bool> violationOccured { false };
+    static std::atomic<ViolationBehaviour> violationBehaviour;
+};
+
+//==============================================================================
+/** Returns an AllocatorInterceptor for the current thread. */
+AllocatorInterceptor& getAllocatorInterceptor();
+
+//==============================================================================
+/**
+    Helper class to log allocations on the current thread.
+    Put one on stack at the point for which you want to detect allocations.
+*/
+struct ScopedAllocationDisabler
+{
+    /** Disables allocations on the current thread. */
+    ScopedAllocationDisabler();
+
+    /** Re-enables allocations on the current thread. */
+    ~ScopedAllocationDisabler();
 };
