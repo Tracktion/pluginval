@@ -347,19 +347,19 @@ struct BackgroundThreadStateTest    : public PluginTest
     {
         WaitableEvent waiter;
         std::unique_ptr<AudioProcessorEditor> editor;
-        MessageManager::getInstance()->callAsync ([&]
-                                                  {
-                                                      editor.reset (instance.createEditor());
-                                                      ut.expect (editor != nullptr, "Unable to create editor");
+        MessageManager::callAsync ([&]
+                                   {
+                                       editor.reset (instance.createEditor());
+                                       ut.expect (editor != nullptr, "Unable to create editor");
 
-                                                      if (editor)
-                                                      {
-                                                          editor->addToDesktop (0);
-                                                          editor->setVisible (true);
-                                                      }
+                                       if (editor)
+                                       {
+                                           editor->addToDesktop (0);
+                                           editor->setVisible (true);
+                                       }
 
-                                                      waiter.signal();
-                                                  });
+                                       waiter.signal();
+                                   });
 
         auto& parameters = instance.getParameters();
         MemoryBlock originalState;
@@ -377,11 +377,11 @@ struct BackgroundThreadStateTest    : public PluginTest
         waiter.wait();
         Thread::sleep (2000);
 
-        MessageManager::getInstance()->callAsync ([&]
-                                                  {
-                                                      editor.reset();
-                                                      waiter.signal();
-                                                  });
+        MessageManager::callAsync ([&]
+                                   {
+                                       editor.reset();
+                                       waiter.signal();
+                                   });
         waiter.wait();
     }
 };

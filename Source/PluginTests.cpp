@@ -45,7 +45,7 @@ namespace
 }
 
 PluginTests::PluginTests (const String& fileOrIdentifier, Options opts)
-    : UnitTest ("PluginValidator"),
+    : UnitTest ("pluginval"),
       fileOrID (fileOrIdentifier),
       options (opts)
 {
@@ -74,11 +74,11 @@ void PluginTests::runTest()
         beginTest ("Scan for known types: " + fileOrID);
 
         WaitableEvent completionEvent;
-        MessageManager::getInstance()->callAsync ([&, this]() mutable
-                                                  {
-                                                      knownPluginList.scanAndAddDragAndDroppedFiles (formatManager, StringArray (fileOrID), typesFound);
-                                                      completionEvent.signal();
-                                                  });
+        MessageManager::callAsync ([&, this]() mutable
+                                   {
+                                       knownPluginList.scanAndAddDragAndDroppedFiles (formatManager, StringArray (fileOrID), typesFound);
+                                       completionEvent.signal();
+                                   });
         completionEvent.wait();
 
         logMessage ("Num types found: " + String (typesFound.size()));
@@ -130,11 +130,11 @@ void PluginTests::testType (const PluginDescription& pd)
                 if (t->needsToRunOnMessageThread())
                 {
                     WaitableEvent completionEvent;
-                    MessageManager::getInstance()->callAsync ([&, this]() mutable
-                                                              {
-                                                                  t->runTest (*this, *instance);
-                                                                  completionEvent.signal();
-                                                              });
+                    MessageManager::callAsync ([&, this]() mutable
+                                               {
+                                                   t->runTest (*this, *instance);
+                                                   completionEvent.signal();
+                                               });
                     completionEvent.wait();
                 }
                 else

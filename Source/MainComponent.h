@@ -74,7 +74,7 @@ private:
     void setStatus (Status newStatus)
     {
         status = newStatus;
-        MessageManager::getInstance()->callAsync ([sp = SafePointer<Component> (this)] () mutable { if (sp != nullptr) sp->repaint(); });
+        MessageManager::callAsync ([sp = SafePointer<Component> (this)] () mutable { if (sp != nullptr) sp->repaint(); });
     }
 
     void changeListenerCallback (ChangeBroadcaster*) override
