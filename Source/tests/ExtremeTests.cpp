@@ -66,3 +66,49 @@ struct AllocationsInRealTimeThreadTest  : public PluginTest
 
 static AllocationsInRealTimeThreadTest allocationsInRealTimeThreadTest;
 
+//==============================================================================
+struct LargerThanPreparedBlockSizeTest   : public PluginTest
+{
+    LargerThanPreparedBlockSizeTest()
+        : PluginTest ("Process called with a larger than prepared block size", 8)
+    {
+    }
+
+    void runTest (PluginTests& ut, AudioPluginInstance& instance) override
+    {
+        const double sampleRates[] = { 44100.0, 48000.0, 96000.0 };
+        const int blockSizes[] = { 64, 128, 256, 512, 1024 };
+
+        for (auto sr : sampleRates)
+        {
+            for (auto preparedBlockSize : blockSizes)
+            {
+                const auto processingBlockSize = preparedBlockSize * 2;
+                ut.logMessage (String ("Preparing with sample rate [SR] and block size [BS], processing with block size [BSP]")
+                               .replace ("SR", String (sr, 0), false)
+                               .replace ("BSP", String (processingBlockSize), false)
+                               .replace ("BS", String (preparedBlockSize), false));
+                instance.releaseResources();
+                instance.prepareToPlay (sr, preparedBlockSize);
+
+                const int numChannelsRequired = jmax (instance.getTotalNumInputChannels(), instance.getTotalNumOutputChannels());
+                AudioBuffer<float> ab (numChannelsRequired, processingBlockSize);
+                MidiBuffer mb;
+
+                for (int i = 0; i < 10; ++i)
+                {
+                    mb.clear();
+                    fillNoise (ab);
+                    instance.processBlock (ab, mb);
+                }
+
+                ut.expectEquals (countNaNs (ab), 0, "NaNs found in buffer");
+                ut.expectEquals (countInfs (ab), 0, "Infs found in buffer");
+                ut.expectEquals (countSubnormals (ab), 0, "Subnormals found in buffer");
+            }
+        }
+    }
+};
+
+static LargerThanPreparedBlockSizeTest largerThanPreparedBlockSizeTest;
+
