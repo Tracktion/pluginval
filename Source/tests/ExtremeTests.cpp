@@ -54,11 +54,11 @@ struct AllocationsInRealTimeThreadTest  : public PluginTest
 
                     auto& ai = getAllocatorInterceptor();
                     ut.expect (! ai.getAndClearAllocationViolation(), "Allocations occured in audio thread: " + String (ai.getAndClearNumAllocationViolations()));
-                }
 
-                ut.expectEquals (countNaNs (ab), 0, "NaNs found in buffer");
-                ut.expectEquals (countInfs (ab), 0, "Infs found in buffer");
-                ut.expectEquals (countSubnormals (ab), 0, "Subnormals found in buffer");
+                    ut.expectEquals (countNaNs (ab), 0, "NaNs found in buffer");
+                    ut.expectEquals (countInfs (ab), 0, "Infs found in buffer");
+                    ut.expectEquals (countSubnormals (ab), 0, "Subnormals found in buffer");
+                }
             }
         }
     }
@@ -100,11 +100,11 @@ struct LargerThanPreparedBlockSizeTest   : public PluginTest
                     mb.clear();
                     fillNoise (ab);
                     instance.processBlock (ab, mb);
-                }
 
-                ut.expectEquals (countNaNs (ab), 0, "NaNs found in buffer");
-                ut.expectEquals (countInfs (ab), 0, "Infs found in buffer");
-                ut.expectEquals (countSubnormals (ab), 0, "Subnormals found in buffer");
+                    ut.expectEquals (countNaNs (ab), 0, "NaNs found in buffer");
+                    ut.expectEquals (countInfs (ab), 0, "Infs found in buffer");
+                    ut.expectEquals (countSubnormals (ab), 0, "Subnormals found in buffer");
+                }
             }
         }
     }
