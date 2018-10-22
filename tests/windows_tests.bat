@@ -59,7 +59,7 @@ exit /B %ERRORLEVEL%
     call "%PROJUCER_EXE%" --resave "%TEMP_DIR%/%PLUGIN_NAME%/%PLUGIN_NAME%.jucer"
     cd "%TEMP_DIR%/%PLUGIN_NAME%/Builds/VisualStudio2017"
     set CL=/DJUCE_PLUGINHOST_VST#0
-    "C:\Program Files (x86)\Microsoft Visual Studio\2017\Community\MSBuild\15.0\Bin\MSBuild.exe" %PLUGIN_NAME%.sln /p:VisualStudioVersion=15.0 /m /t:Build /p:Configuration=Release /p:Platform=x64 /p:PreferredToolArchitecture=x64  /p:TreatWarningsAsErrors=true
+    "%MSBUILD_EXE%" %PLUGIN_NAME%.sln /p:VisualStudioVersion=15.0 /m /t:Build /p:Configuration=Release /p:Platform=x64 /p:PreferredToolArchitecture=x64  /p:TreatWarningsAsErrors=true
 
     :: Test out of process
     call "%PLUGINVAL_EXE%" --strictness-level 5 --validate %PLUGIN_VST3%
