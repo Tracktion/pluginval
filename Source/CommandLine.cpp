@@ -258,6 +258,56 @@ String parseCommandLineArgs (String commandLine)
                       .trim();
 }
 
+
+//==============================================================================
+struct Option
+{
+    const char* name;
+    bool requiresValue;
+};
+
+String getEnvironmentVariableName (Option opt)
+{
+    return String (opt.name).trimCharactersAtStart ("-").replace ("-", "_").toUpperCase();
+}
+
+static Option possibleOptions[] =
+{
+    { "--strictness-level",     true    },
+    { "--timeout-ms",           true    },
+    { "--verbose",              true    },
+    { "--validate-in-process",  false   },
+    { "--skip-gui-tests",       false   },
+    { "--data-file",            true    }
+};
+
+StringArray mergeEnvironmentVariables (StringArray args)
+{
+    for (auto arg : possibleOptions)
+    {
+        auto envVarName = getEnvironmentVariableName (arg);
+        auto envVarValue = SystemStats::getEnvironmentVariable (envVarName, {});
+
+        if (envVarValue.isNotEmpty())
+        {
+            const int index = indexOfArgument (args, arg.name);
+
+            if (index != -1)
+            {
+                std::cout << "Skipping environment variable " << envVarName << " due to " << arg.name << " set" << std::endl;
+                continue;
+            }
+
+            if (arg.requiresValue)
+                args.insert (0, envVarValue);
+
+            args.insert (0, arg.name);
+        }
+    }
+
+    return args;
+}
+
 //==============================================================================
 static void showHelp()
 {
@@ -285,7 +335,7 @@ static void showHelp()
               << "  --validate-in-process" << std::endl
               << "    If specified, validates the list in the calling process. This can be useful for debugging or when using the command line." << std::endl
               << "  --skip-gui-tests" << std::endl
-              << "    If specified, avoids tests that create GUI windows, which can cause problems on headless CI systems. Setting the environment variable PLUGINVAL_NO_GUI=1 will have the same effect." << std::endl
+              << "    If specified, avoids tests that create GUI windows, which can cause problems on headless CI systems." << std::endl
               << "  --data-file [pathToFile]" << std::endl
               << "    If specified, sets a path to a data file which can be used by tests to configure themselves. This can be useful for things like known audio output." << std::endl
               << "  --version" << std::endl
@@ -294,7 +344,12 @@ static void showHelp()
               << "Exit code: "
               << std::endl
               << "  0 if all tests complete successfully" << std::endl
-              << "  1 if there are any errors" << std::endl;
+              << "  1 if there are any errors" << std::endl
+              << std::endl
+              << "Additionally, you can specify any of the command line options as environment varibles by removing prefix dashes,"
+                 " converting internal dashes to underscores and captialising all letters e.g. \"--skip-gui-tests\" > \"SKIP_GUI_TESTS=1\","
+                 " \"--timeout-ms 30000\" > \"TIMEOUT_MS=30000\"" << std::endl
+              << "Specifying specific command-line options will override any environment variables set for that option." << std::endl;
 }
 
 static void showVersion()
@@ -319,7 +374,7 @@ void performCommandLine (CommandLineValidator& validator, const String& commandL
         if (matchArgument (command, "version"))                  { showVersion(); }
         if (matchArgument (command, "help"))                     { showHelp(); }
         if (matchArgument (command, "h"))                        { showHelp(); }
-        if (containsArgument (args, "validate"))                 { validate (validator, args); return; }
+        if (containsArgument (args, "validate"))                 { validate (validator, mergeEnvironmentVariables (args)); return; }
     }
     catch (const CommandLineError& error)
     {
@@ -346,4 +401,3 @@ bool shouldPerformCommandLine (const String& commandLine)
 
     return false;
 }
-
