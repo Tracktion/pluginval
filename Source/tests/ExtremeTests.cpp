@@ -25,8 +25,10 @@ struct AllocationsInRealTimeThreadTest  : public PluginTest
 
     void runTest (PluginTests& ut, AudioPluginInstance& instance) override
     {
+        const bool isPluginInstrument = instance.getPluginDescription().isInstrument;
         const double sampleRates[] = { 44100.0, 48000.0, 96000.0 };
         const int blockSizes[] = { 64, 128, 256, 512, 1024 };
+        const int numBlocks = 10;
 
         for (auto sr : sampleRates)
         {
@@ -42,15 +44,27 @@ struct AllocationsInRealTimeThreadTest  : public PluginTest
                 AudioBuffer<float> ab (numChannelsRequired, bs);
                 MidiBuffer mb;
 
-                for (int i = 0; i < 10; ++i)
+                // Add a random note on if the plugin is a synth
+                const int noteChannel = ut.getRandom().nextInt (15);
+                const int noteNumber = ut.getRandom().nextInt (127);
+
+                if (isPluginInstrument)
+                    addNoteOn (mb, noteChannel, noteNumber, jmin (10, bs - 1));
+
+                for (int i = 0; i < numBlocks; ++i)
                 {
-                    mb.clear();
+                    // Add note off in last block if plugin is a synth
+                    if (isPluginInstrument && i == (numBlocks - 1))
+                        addNoteOff (mb, noteChannel, noteNumber, 0);
+
                     fillNoise (ab);
 
                     {
                         ScopedAllocationDisabler sad;
                         instance.processBlock (ab, mb);
                     }
+
+                    mb.clear();
 
                     auto& ai = getAllocatorInterceptor();
                     ut.expect (! ai.getAndClearAllocationViolation(), "Allocations occured in audio thread: " + String (ai.getAndClearNumAllocationViolations()));

@@ -21,13 +21,9 @@
 struct EditorStressTest   : public PluginTest
 {
     EditorStressTest()
-        : PluginTest ("Editor stress", 6)
+        : PluginTest ("Editor stress", 6,
+                      { Requirements::Thread::messageThread, Requirements::GUI::requiresGUI })
     {
-    }
-
-    bool needsToRunOnMessageThread() override
-    {
-        return true;
     }
 
     void runTest (PluginTests& ut, AudioPluginInstance& instance) override

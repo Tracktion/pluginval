@@ -121,8 +121,9 @@ void PluginTests::testType (const PluginDescription& pd)
 
             for (auto t : PluginTest::getAllTests())
             {
-                if (options.strictnessLevel < t->strictnessLevel)
-                    continue;
+                if (options.strictnessLevel < t->strictnessLevel
+                    || (! options.withGUI && t->requiresGUI()))
+                   continue;
 
                 StopwatchTimer sw2;
                 beginTest (t->name);

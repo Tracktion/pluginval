@@ -142,6 +142,7 @@ namespace IDs
     DECLARE_ID(timeoutMs)
     DECLARE_ID(verbose)
     DECLARE_ID(dataFile)
+    DECLARE_ID(withGUI)
 
     DECLARE_ID(MESSAGE)
     DECLARE_ID(type)
@@ -362,6 +363,7 @@ private:
             options.timeoutMs = v.getProperty (IDs::timeoutMs, -1);
             options.verbose = v.getProperty (IDs::verbose, false);
             options.dataFile = File (v.getProperty (IDs::dataFile, String()));
+            options.withGUI = v.getProperty (IDs::withGUI, true);
 
             for (auto c : v)
             {
@@ -547,6 +549,7 @@ private:
         v.setProperty (IDs::timeoutMs, options.timeoutMs, nullptr);
         v.setProperty (IDs::verbose, options.verbose, nullptr);
         v.setProperty (IDs::dataFile, options.dataFile.getFullPathName(), nullptr);
+        v.setProperty (IDs::withGUI, options.withGUI, nullptr);
 
         return v;
     }
