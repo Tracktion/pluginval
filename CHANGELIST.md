@@ -1,5 +1,10 @@
 # pluginval Change List
 
+### 1.1.5
+  - Fixed a problem catching allocations in clang release builds
+  - Avoided accidently setting the bypass parameter for VST3 plugins
+  - Simplified some parameter iteration methods to avoid returning bypass or non-automatable parameters
+
 ### 1.1.4
   - Added stack backtraces to crashed validation output
   - Added tests for detecting memory allocations and deallocations in the audio thread

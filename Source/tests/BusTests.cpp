@@ -32,6 +32,9 @@ struct BasicBusTest   : public PluginTest
         {
             listBuses (ut, instance, true);
             listBuses (ut, instance, false);
+
+            ut.logMessage ("Main bus num input channels: " + String (instance.getMainBusNumInputChannels()));
+            ut.logMessage ("Main bus num output channels: " + String (instance.getMainBusNumOutputChannels()));
         }
 
         ut.beginTest ("Enabling all buses");
@@ -48,7 +51,9 @@ struct BasicBusTest   : public PluginTest
 
         ut.beginTest ("Restoring default layout");
         {
-            instance.setBusesLayout (currentLayout);
+            ut.expect (instance.setBusesLayout (currentLayout), "Unable to restore default layout");
+            ut.logMessage ("Main bus num input channels: " + String (instance.getMainBusNumInputChannels()));
+            ut.logMessage ("Main bus num output channels: " + String (instance.getMainBusNumOutputChannels()));
         }
     }
 
