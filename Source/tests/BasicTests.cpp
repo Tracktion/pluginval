@@ -144,14 +144,13 @@ struct PluginStateTest  : public PluginTest
 
     void runTest (PluginTests& ut, AudioPluginInstance& instance) override
     {
-        auto& parameters = instance.getParameters();
         MemoryBlock originalState;
 
         // Read state
         instance.getStateInformation (originalState);
 
         // Set random parameter values
-        for (auto parameter : parameters)
+        for (auto parameter : getNonBypassAutomatableParameters (instance))
             parameter->setValue (ut.getRandom().nextFloat());
 
         // Restore original state
@@ -198,7 +197,7 @@ struct AutomationTest  : public PluginTest
                 {
                     // Set random parameter values
                     {
-                        auto& parameters = instance.getParameters();
+                        auto parameters = getNonBypassAutomatableParameters (instance);
 
                         for (int i = 0; i < jmin (10, parameters.size()); ++i)
                         {
@@ -298,11 +297,8 @@ struct AutomatableParametersTest  : public PluginTest
 
     void runTest (PluginTests& ut, AudioPluginInstance& instance) override
     {
-        for (auto parameter : instance.getParameters())
+        for (auto parameter : getNonBypassAutomatableParameters (instance))
         {
-            if (! parameter->isAutomatable())
-                continue;
-
             ut.logVerboseMessage (String ("\nTesting parameter: ") + String (parameter->getParameterIndex()) + " - " + parameter->getName (512));
 
             ParameterHelpers::testParameterInfo (ut, *parameter);
@@ -323,7 +319,7 @@ struct AllParametersTest    : public PluginTest
 
     void runTest (PluginTests& ut, AudioPluginInstance& instance) override
     {
-        for (auto parameter : instance.getParameters())
+        for (auto parameter : getNonBypassAutomatableParameters (instance))
         {
             ut.logVerboseMessage (String ("\nTesting parameter: ") + String (parameter->getParameterIndex()) + " - " + parameter->getName (512));
 
@@ -361,7 +357,7 @@ struct BackgroundThreadStateTest    : public PluginTest
                                        waiter.signal();
                                    });
 
-        auto& parameters = instance.getParameters();
+        auto parameters = getNonBypassAutomatableParameters (instance);
         MemoryBlock originalState;
 
         // Read state

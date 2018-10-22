@@ -39,6 +39,20 @@ private:
     uint32 startTime;
 };
 
+
+//==============================================================================
+/** Returns the set of automatable parameters excluding the bypass parameter. */
+static inline Array<AudioProcessorParameter*> getNonBypassAutomatableParameters (AudioPluginInstance& instance)
+{
+    Array<AudioProcessorParameter*> parameters;
+
+    for (auto p : instance.getParameters())
+        if (p->isAutomatable() && p != instance.getBypassParameter())
+            parameters.add (p);
+
+    return parameters;
+}
+
 //==============================================================================
 template<typename UnaryFunction>
 void iterateAudioBuffer (AudioBuffer<float>& ab, UnaryFunction fn)

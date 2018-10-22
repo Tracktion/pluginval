@@ -25,9 +25,8 @@ struct FuzzParametersTest  : public PluginTest
 
     void runTest (PluginTests& ut, AudioPluginInstance& instance) override
     {
-        for (auto parameter : instance.getParameters())
-            if (parameter->isAutomatable())
-                fuzzTestParameter (ut, *parameter);
+        for (auto parameter : getNonBypassAutomatableParameters (instance))
+            fuzzTestParameter (ut, *parameter);
     }
 
 private:
