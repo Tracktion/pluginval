@@ -412,7 +412,6 @@ struct BackgroundThreadStateTest    : public PluginTest
         std::unique_ptr<AudioProcessorEditor> editor;
         MessageManager::callAsync ([&]
                                    {
-                                       std::cout << "Async message delivered! \n"; // Remove, debugging hangs on Jenkins
                                        editor.reset (instance.createEditor());
                                        ut.expect (editor != nullptr, "Unable to create editor");
 
@@ -474,8 +473,6 @@ struct ParameterThreadSafetyTest    : public PluginTest
 
         MessageManager::callAsync ([&, threadRandom = random]() mutable
                                    {
-                                       std::cout << "Async message delivered! \n"; // Remove, debugging hangs on Jenkins
-
                                        waiter.signal();
 
                                        for (int i = 0; i < numBlocks; ++i)
