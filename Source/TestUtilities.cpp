@@ -61,7 +61,13 @@ inline bool thowIfRequiredAndReturnShouldLog()
 }
 
 //==============================================================================
-void* operator new (std::size_t sz)
+#if JUCE_CLANG
+ #define ATTRIBUTE_USED __attribute__((used))
+#else
+ #define ATTRIBUTE_USED
+#endif
+
+ATTRIBUTE_USED void* operator new (std::size_t sz)
 {
     if (! logAllocationViolationIfNotAllowed())
         if (thowIfRequiredAndReturnShouldLog())
@@ -70,7 +76,7 @@ void* operator new (std::size_t sz)
     return std::malloc (sz);
 }
 
-void* operator new[] (std::size_t sz)
+ATTRIBUTE_USED void* operator new[] (std::size_t sz)
 {
     if (! logAllocationViolationIfNotAllowed())
         if (thowIfRequiredAndReturnShouldLog())
@@ -79,7 +85,7 @@ void* operator new[] (std::size_t sz)
     return std::malloc (sz);
 }
 
-void operator delete (void* ptr) noexcept
+ATTRIBUTE_USED void operator delete (void* ptr) noexcept
 {
     if (! logAllocationViolationIfNotAllowed())
         if (thowIfRequiredAndReturnShouldLog())
@@ -88,7 +94,7 @@ void operator delete (void* ptr) noexcept
     std::free (ptr);
 }
 
-void operator delete[] (void* ptr) noexcept
+ATTRIBUTE_USED void operator delete[] (void* ptr) noexcept
 {
     if (! logAllocationViolationIfNotAllowed())
         if (thowIfRequiredAndReturnShouldLog())
@@ -131,6 +137,7 @@ struct AllocatorInterceptorTests    : public UnitTest,
 
     void runTest() override
     {
+        AllocatorInterceptor::setViolationBehaviour (AllocatorInterceptor::ViolationBehaviour::none);
         auto& allocatorInterceptor = getAllocatorInterceptor();
 
         beginTest ("Ensure separate allocators are used for threads");
