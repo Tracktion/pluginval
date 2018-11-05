@@ -119,6 +119,15 @@ void PluginTests::testType (const PluginDescription& pd)
         {
             logMessage ("\nTime taken to open plugin (warm): " + sw.getDescription());
 
+            // This sleep is here to allow time for plugin async initialisation as in most cases
+            // plugins will be added to tracks and then be played a little time later. This sleep
+            // allows time for this initialisation for tests otherwise they might complete without
+            // actually having processed anything.
+            // The exception to this is if the plugin is being rendered there's likely to be no gap
+            // between construction, initialisation and processing. For this case, plugins should
+            // check AudioProcessor::isNonRealtime and force initialisation if rendering.
+            Thread::sleep (150);
+
             for (auto t : PluginTest::getAllTests())
             {
                 if (options.strictnessLevel < t->strictnessLevel
