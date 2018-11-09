@@ -300,6 +300,7 @@ String getEnvironmentVariableName (Option opt)
 static Option possibleOptions[] =
 {
     { "--strictness-level",     true    },
+    { "--random-seed",          true    },
     { "--timeout-ms",           true    },
     { "--verbose",              true    },
     { "--validate-in-process",  false   },
