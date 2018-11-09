@@ -27,6 +27,7 @@ struct PluginTests : public UnitTest
     struct Options
     {
         int strictnessLevel = 5;    /**< Max test level to run. */
+        int64 randomSeed = 0;       /**< The seed to use for the tests, 0 signifies a randomly generated seed. */
         int64 timeoutMs = 30000;    /**< Timeout after which to kill the test. */
         bool verbose = false;       /**< Whether or not to log additional information. */
         bool withGUI = true;        /**< Whether or not avoid tests that instantiate a gui. */

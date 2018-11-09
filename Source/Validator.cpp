@@ -103,7 +103,7 @@ inline Array<UnitTestRunner::TestResult> runTests (PluginTests& test, std::funct
 
     Array<UnitTest*> testsToRun;
     testsToRun.add (&test);
-    testRunner.runTests (testsToRun);
+    testRunner.runTests (testsToRun, options.randomSeed);
 
     for (int i = 0; i < testRunner.getNumResults(); ++i)
         results.add (*testRunner.getResult (i));
@@ -139,6 +139,7 @@ namespace IDs
     DECLARE_ID(fileOrID)
     DECLARE_ID(pluginDescription)
     DECLARE_ID(strictnessLevel)
+    DECLARE_ID(randomSeed)
     DECLARE_ID(timeoutMs)
     DECLARE_ID(verbose)
     DECLARE_ID(dataFile)
@@ -360,6 +361,7 @@ private:
         {
             PluginTests::Options options;
             options.strictnessLevel = v.getProperty (IDs::strictnessLevel, 5);
+            options.randomSeed = v[IDs::randomSeed];
             options.timeoutMs = v.getProperty (IDs::timeoutMs, -1);
             options.verbose = v.getProperty (IDs::verbose, false);
             options.dataFile = File (v.getProperty (IDs::dataFile, String()));
@@ -546,6 +548,7 @@ private:
     {
         ValueTree v (IDs::PLUGINS);
         v.setProperty (IDs::strictnessLevel, options.strictnessLevel, nullptr);
+        v.setProperty (IDs::randomSeed, options.randomSeed, nullptr);
         v.setProperty (IDs::timeoutMs, options.timeoutMs, nullptr);
         v.setProperty (IDs::verbose, options.verbose, nullptr);
         v.setProperty (IDs::dataFile, options.dataFile.getFullPathName(), nullptr);

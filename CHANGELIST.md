@@ -8,6 +8,7 @@
   - Added a Parameter thread safety test which attempts to call setValue on parameters from multiple threads concurrently mimicking automation and GUI interaction
   - Added a PluginStateTestRestoration test which calculates some checksums before randomising and restoring plugin state to check state restoration is correct
   - Added the ability to set command line arguments as environment variables e.g. "--skip-gui-tests" > "SKIP_GUI_TESTS=1", "--timeout-ms 30000" > "TIMEOUT_MS=30000"
+  - Added the ability to set a random seed to use for the tests
 
 ### 0.1.4
   - Added stack backtraces to crashed validation output

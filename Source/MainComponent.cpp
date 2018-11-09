@@ -26,6 +26,16 @@ int getStrictnessLevel()
     return jlimit (1, 10, getAppPreferences().getIntValue ("strictnessLevel", 5));
 }
 
+void setRandomSeed (int64 newSeed)
+{
+    getAppPreferences().setValue ("randomSeed", newSeed);
+}
+
+int64 getRandomSeed()
+{
+    return getAppPreferences().getIntValue ("randomSeed", 0);
+}
+
 void setValidateInProcess (bool shouldValidateInProcess)
 {
     getAppPreferences().setValue ("validateInProcess", shouldValidateInProcess);
@@ -60,6 +70,7 @@ PluginTests::Options getTestOptions()
 {
     PluginTests::Options options;
     options.strictnessLevel = getStrictnessLevel();
+    options.randomSeed = getRandomSeed();
     options.timeoutMs = getTimeoutMs();
     options.verbose = getVerboseLogging();
 
@@ -67,6 +78,27 @@ PluginTests::Options getTestOptions()
 }
 
 //==============================================================================
+void showRandomSeedDialog()
+{
+    const String message = TRANS("Set the random seed to use for the tests, useful for replicating issues");
+    std::shared_ptr<AlertWindow> aw (LookAndFeel::getDefaultLookAndFeel().createAlertWindow (TRANS("Set Random Seed"), message,
+                                                                                             TRANS("OK"), TRANS("Cancel"), String(),
+                                                                                             AlertWindow::QuestionIcon, 2, nullptr));
+    aw->addTextEditor ("randomSeed", String (getRandomSeed()));
+    aw->enterModalState (true, ModalCallbackFunction::create ([aw] (int res)
+                                                              {
+                                                                  if (res == 1)
+                                                                  {
+                                                                      if (auto te = aw->getTextEditor ("randomSeed"))
+                                                                      {
+                                                                          auto seedString = te->getText();
+                                                                          setRandomSeed (seedString.startsWith ("0x") ? seedString.getHexValue64()
+                                                                                                                      : seedString.getLargeIntValue());
+                                                                      }
+                                                                  }
+                                                              }));
+}
+
 void showTimeoutDialog()
 {
     const String message = TRANS("Set the duration in milliseconds after which to kill the validation if there has been no output from it");
@@ -159,6 +191,7 @@ MainComponent::MainComponent (Validator& v)
             enum MenuItem
             {
                 validateInProcess = 1,
+                showRandomSeed,
                 showTimeout,
                 verboseLogging,
                 showSettingsDir
@@ -166,6 +199,7 @@ MainComponent::MainComponent (Validator& v)
 
             PopupMenu m;
             m.addItem (validateInProcess, TRANS("Validate in process"), true, getValidateInProcess());
+            m.addItem (showRandomSeed, TRANS("Set random seed (123)").replace ("123", "0x" + String::toHexString (getRandomSeed()) + "/" + String (getRandomSeed())));
             m.addItem (showTimeout, TRANS("Set timeout (123ms)").replace ("123", String (getTimeoutMs())));
             m.addItem (verboseLogging, TRANS("Verbose logging"), true, getVerboseLogging());
             m.addSeparator();
@@ -177,6 +211,10 @@ MainComponent::MainComponent (Validator& v)
                                  {
                                      setValidateInProcess (! getValidateInProcess());
                                      sp->validator.setValidateInProcess (getValidateInProcess());
+                                 }
+                                 else if (res == showRandomSeed)
+                                 {
+                                     showRandomSeedDialog();
                                  }
                                  else if (res == showTimeout)
                                  {

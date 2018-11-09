@@ -172,6 +172,31 @@ static int getStrictnessLevel (const StringArray& args)
     return 5;
 }
 
+int64 getRandomSeed (const StringArray& args)
+{
+    const int seedIndex = indexOfArgument (args, "random-seed");
+
+    if (seedIndex != -1)
+    {
+        if (args.size() > seedIndex)
+        {
+            auto seedString = args[seedIndex + 1];
+
+            if (! seedString.containsOnly ("x-0123456789"))
+                throw CommandLineError ("Invalid random seed argument!");
+
+            if (seedString.startsWith ("0x"))
+                return seedString.getHexValue64();
+
+            return seedString.getLargeIntValue();
+        }
+
+        throw CommandLineError ("Missing random seed argument!");
+    }
+
+    return 0;
+}
+
 int64 getTimeout (const StringArray& args)
 {
     const int timeoutIndex = indexOfArgument (args, "timeout-ms");
@@ -232,6 +257,7 @@ static void validate (CommandLineValidator& validator, const StringArray& args)
             const bool validateInProcess = containsArgument (args, "validate-in-process");
             PluginTests::Options options;
             options.strictnessLevel = getStrictnessLevel (args);
+            options.randomSeed = getRandomSeed (args);
             options.timeoutMs = getTimeout (args);
             options.verbose = containsArgument (args, "verbose");
             options.dataFile = getDataFile (args);
@@ -327,6 +353,8 @@ static void showHelp()
               << "    Validates the files (or IDs for AUs)." << std::endl
               << "  --strictness-level [1-10]" << std::endl
               << "    Sets the strictness level to use. A minimum level of 5 (also the default) is recomended for compatibility. Higher levels include longer, more thorough tests such as fuzzing." << std::endl
+              << "  --random-seed [hex or int]" << std::endl
+              << "    Sets the random seed to use for the tests. Useful for replicating test environments." << std::endl
               << "  --timeout-ms [numMilliseconds]" << std::endl
               << "    Sets a timout which will stop validation with an error if no output from any test has happened for this number of ms." << std::endl
               << "    By default this is 30s but can be set to -1 to never timeout." << std::endl

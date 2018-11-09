@@ -103,7 +103,7 @@ std::unique_ptr<AudioPluginInstance> PluginTests::testOpenPlugin (const PluginDe
 void PluginTests::testType (const PluginDescription& pd)
 {
     logMessage ("\nTesting plugin: " + pd.createIdentifierString());
-    logMessage (pd.manufacturerName + "," + pd.name + ", " + pd.version);
+    logMessage (pd.manufacturerName + ": " + pd.name + " v" + pd.version);
 
     {
         beginTest ("Open plugin (cold)");
