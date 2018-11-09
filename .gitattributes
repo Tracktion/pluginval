@@ -1,6 +1,3 @@
-*.syx diff=syx
-
 * text=auto
 *.jucer text eol=crlf
 **/AppConfig.h text eol=crlf
-3rd_party/** -text

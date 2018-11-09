@@ -68,6 +68,7 @@ void PluginTests::logVerboseMessage (const String& message)
 void PluginTests::runTest()
 {
     logMessage ("Validation started: " + Time::getCurrentTime().toString (true, true) + "\n");
+    logMessage ("Strictness level: " + String (options.strictnessLevel));
 
     if (fileOrID.isNotEmpty())
     {
@@ -101,8 +102,8 @@ std::unique_ptr<AudioPluginInstance> PluginTests::testOpenPlugin (const PluginDe
 
 void PluginTests::testType (const PluginDescription& pd)
 {
-    const auto idString = pd.createIdentifierString();
-    logMessage ("\nTesting plugin: " + idString);
+    logMessage ("\nTesting plugin: " + pd.createIdentifierString());
+    logMessage (pd.manufacturerName + "," + pd.name + ", " + pd.version);
 
     {
         beginTest ("Open plugin (cold)");
