@@ -45,8 +45,8 @@ struct AllocationsInRealTimeThreadTest  : public PluginTest
                 MidiBuffer mb;
 
                 // Add a random note on if the plugin is a synth
-                const int noteChannel = ut.getRandom().nextInt (15);
-                const int noteNumber = ut.getRandom().nextInt (127);
+                const int noteChannel = ut.getRandom().nextInt ({ 1, 17 });
+                const int noteNumber = ut.getRandom().nextInt (128);
 
                 if (isPluginInstrument)
                     addNoteOn (mb, noteChannel, noteNumber, jmin (10, bs - 1));
