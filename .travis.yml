@@ -8,6 +8,9 @@ addons:
       - gcc-6
       - g++-6
 
+env:
+  - MSBUILD_EXE="C:\Program Files (x86)\Microsoft Visual Studio\2017\BuildTools\MSBuild\15.0\Bin\MSBuild.exe"
+
 matrix:
   include:
     - os: linux
@@ -16,6 +19,7 @@ matrix:
       compiler: gcc
     - os: osx
       osx_image: xcode9.4
+    - os: windows
 
 before_install:
   - if [[ "$TRAVIS_OS_NAME" == "linux" ]]; then sudo apt-get update --fix-missing ; fi
@@ -45,5 +49,6 @@ before_script:
   - if [[ "$TRAVIS_OS_NAME" == "linux" ]]; then sleep 3                       ; fi # give xvfb some time to start
 
 script:
-  - if [[ "$TRAVIS_OS_NAME" == "osx" ]];    then $TRAVIS_BUILD_DIR/tests/mac_tests      ; fi
-  - if [[ "$TRAVIS_OS_NAME" == "linux" ]];  then $TRAVIS_BUILD_DIR/install/linux_build  ; fi
+  - if [[ "$TRAVIS_OS_NAME" == "osx" ]];      then $TRAVIS_BUILD_DIR/tests/mac_tests          ; fi
+  - if [[ "$TRAVIS_OS_NAME" == "linux" ]];    then $TRAVIS_BUILD_DIR/install/linux_build      ; fi
+  - if [[ "$TRAVIS_OS_NAME" == "windows" ]];  then $TRAVIS_BUILD_DIR/tests/windows_tests.bat  ; fi

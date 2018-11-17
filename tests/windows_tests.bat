@@ -11,6 +11,7 @@ set DEPLOYMENT_DIR=%ROOT%/bin/windows
 set PLUGINVAL_EXE=%DEPLOYMENT_DIR%\%PROJECT_NAME%.exe
 
 if not defined MSBUILD_EXE set MSBUILD_EXE=C:\Program Files (x86)\Microsoft Visual Studio\2017\Community\MSBuild\15.0\Bin\MSBuild.exe
+echo "MSBUILD_EXE: %MSBUILD_EXE%"
 
 ::============================================================
 ::   First build pluginval
