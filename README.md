@@ -1,3 +1,7 @@
+master: [![Build Status](https://travis-ci.org/Tracktion/pluginval.svg?branch=master)](https://travis-ci.org/Tracktion/pluginval)
+
+develop: [![Build Status](https://travis-ci.org/Tracktion/pluginval.svg?branch=develop)](https://travis-ci.org/Tracktion/pluginval)
+
 # pluginval
 
 pluginval is a cross-platform plugin validator and tester application. It is designed to be used by both plugin and host developers to ensure stability and compatibility between plugins and hosts.
@@ -72,7 +76,7 @@ If you have a case you would like tests, please simply write the test in a fork 
  - Write more Tests
  - Possibly add more command line options
  -- Run only specific tests, either named or from a certain strictness level
- 
+
 License
 ----
 
