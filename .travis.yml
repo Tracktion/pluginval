@@ -52,3 +52,5 @@ script:
   - if [[ "$TRAVIS_OS_NAME" == "osx" ]];      then $TRAVIS_BUILD_DIR/tests/mac_tests          ; fi
   - if [[ "$TRAVIS_OS_NAME" == "linux" ]];    then $TRAVIS_BUILD_DIR/install/linux_build      ; fi
   - if [[ "$TRAVIS_OS_NAME" == "windows" ]];  then $TRAVIS_BUILD_DIR/tests/windows_tests.bat  ; fi
+
+secure: XAK63lsWh/2AICldilqWJvzcXsW4yprBsdCZFV7M2Y6bucisEtyypgdSZ3XLA41CWUJRCt4w/MAhWaABcEwcPt0gwuZuPztQHhpx4LByH6RUkxrAMG55MCDk37nyJLTS12526wVq6VLg4wp/7tk/v2rcZ6I+lVMXlde0zGnuGpIx9Es9wGZDvadDo4WwVpOnHXPyP8iz8qN+DesuC+7SLo2CNbz/Sb3wK1U78Ooa/Yg72/jK3rPvJTNwPyJm8/rhASyRsAj1SZnhCbVQBQdarFPB3SqM8/AFCtXi4bnXUCDmmW2/Y5xnIlUOAGJhIIa753pwoCkRFNh3sotYDX/dNyes4qhir/IoBoTWt6X5GqxCBJVx9fY/VrIm4lxjGyrKpp9JKyi3O70OxtDF6CdVUoI/lRcYOPpSZMBmisP7UOQUH+dS8W7JY0b2E/89abUYkebw7lEIoxksDcCfVaUnM0jm7OmoHFRTMjdrSJ/hw7WVWmzXqRepu1clVjHvZUnhtGyGbNgXaPNjRBcW6oIO/xkIz+QGkwAM3enIkPM84ljRK3pAjdZKL/Z0T5KDHEGEeXWpJuqlCRFnYIlUSH1oipEGg76dgTgLwJHGxxSRfXobO/xvo81Mc9o2tz+Bl3WyZlYw8s1PcKGfO5YqT1BkrrOAU7VjE+z/zrt+uZd9WN0=
