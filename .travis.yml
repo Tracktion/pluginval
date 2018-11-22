@@ -1,22 +1,18 @@
 language: cpp
 
-addons:
-  apt:
-    sources:
-      - ubuntu-toolchain-r-test
-    packages:
-      - gcc-6
-      - g++-6
-
-env:
-  - MSBUILD_EXE="C:\Program Files (x86)\Microsoft Visual Studio\2017\BuildTools\MSBuild\15.0\Bin\MSBuild.exe"
-
 matrix:
   include:
     - os: linux
       dist: xenial
       sudo: required
       compiler: gcc
+      addons:
+        apt:
+          sources:
+            - ubuntu-toolchain-r-test
+          packages:
+            - gcc-6
+            - g++-6
       before_install:
         - sudo apt-get update --fix-missing
         - sudo apt-get update -qq
@@ -51,5 +47,7 @@ matrix:
         - $TRAVIS_BUILD_DIR/tests/mac_tests
 
     - os: windows
+      env:
+        - MSBUILD_EXE="C:\Program Files (x86)\Microsoft Visual Studio\2017\BuildTools\MSBuild\15.0\Bin\MSBuild.exe"
       script:
         - $TRAVIS_BUILD_DIR/tests/windows_tests.bat
