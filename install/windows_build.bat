@@ -32,12 +32,28 @@ set CL=/DJUCER_ENABLE_GPL_MODE
 "%MSBUILD_EXE%" Projucer.sln /p:VisualStudioVersion=15.0 /m /p:Configuration=Release /p:Platform=x64 /p:PreferredToolArchitecture=x64
 if not exist "%PROJUCER_EXE%" exit 1
 
-:: Resave Waveform project
+:: Resave project
 "%PROJUCER_EXE%" --resave "%ROOT%/%PROJECT_NAME%.jucer"
 
 
 ::============================================================
-::   Build Xcode projects
+::   Add VST2 capabilities
+::============================================================
+if not exist "%VST2_SDK_DIR%" goto SKIP_VST2_SUPPORT
+
+	echo "Modifying jucer project for VST2 support"
+	powershell -Command "(Get-Content '%ROOT%/%PROJECT_NAME%.jucer') -replace '/format_types/VST3_SDK', '/format_types/VST3_SDK;%VST2_SDK_DIR%' -replace 'JUCEOPTIONS JUCE_PLUGINHOST_AU=\"1\"', 'JUCEOPTIONS JUCE_PLUGINHOST_VST=\"1\" JUCE_PLUGINHOST_AU=\"1\"' | Set-Content '%ROOT%/%PROJECT_NAME%.jucer'"
+	"%PROJUCER_EXE%" --resave "%ROOT%/%PROJECT_NAME%.jucer"
+	goto DONE_VST2_SUPPORT
+
+:SKIP_VST2_SUPPORT
+	echo "Not building with VST2 support. To enable VST2 support, set the VST2_SDK_DIR environment variable"
+
+:DONE_VST2_SUPPORT
+
+
+::============================================================
+::   Build projects
 ::============================================================
 echo "=========================================================="
 echo "Building products"
