@@ -471,6 +471,7 @@ struct ParameterThreadSafetyTest    : public PluginTest
         const bool isPluginInstrument = instance.getPluginDescription().isInstrument;
         const int numBlocks = 500;
 
+        // This emulates the plugin itself setting a value for example from a slider within its UI
         MessageManager::callAsync ([&, threadRandom = random]() mutable
                                    {
                                        waiter.signal();

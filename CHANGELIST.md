@@ -14,7 +14,7 @@
   - Added stack backtraces to crashed validation output
   - Added tests for detecting memory allocations and deallocations in the audio thread
   - Added a test for creating an editor with an uninitialised plugin and a 0 sample rate and block size prepared plugin
-  - Added a test calling processBlock with more samples than initalised with
+  - Added a test calling processBlock with more samples than initialised with
 
 ### 0.1.3
   - Reduced the amount of default logging
