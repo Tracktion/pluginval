@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 
-<JUCERPROJECT name="pluginval" projectType="guiapp" jucerVersion="5.3.2" id="IA2Ov0"
+<JUCERPROJECT name="pluginval" projectType="guiapp" jucerVersion="5.4.0" id="IA2Ov0"
               version="0.1.5" companyName="Tracktion" headerPath="../../modules/juce/modules/juce_audio_processors/format_types/VST3_SDK">
   <MAINGROUP id="zUhKLj" name="pluginval">
     <FILE id="gV5MZv" name="CHANGELIST.md" compile="0" resource="0" file="CHANGELIST.md"/>
@@ -113,6 +113,6 @@
     <MODULE id="juce_gui_basics" showAllCode="1" useLocalCopy="0" useGlobalPath="0"/>
     <MODULE id="juce_gui_extra" showAllCode="1" useLocalCopy="0" useGlobalPath="0"/>
   </MODULES>
-  <JUCEOPTIONS JUCE_PLUGINHOST_VST="1" JUCE_PLUGINHOST_AU="1" JUCE_PLUGINHOST_VST3="1"
-               JUCE_PLUGINHOST_LADSPA="1" JUCE_WEB_BROWSER="0"/>
+  <JUCEOPTIONS JUCE_PLUGINHOST_AU="1" JUCE_PLUGINHOST_VST3="1" JUCE_PLUGINHOST_LADSPA="1"
+               JUCE_WEB_BROWSER="0"/>
 </JUCERPROJECT>
