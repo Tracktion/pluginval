@@ -32,7 +32,23 @@ make CONFIG=Release -j4
 
 
 #============================================================
-#   Build Xcode projects
+#   Add VST2 capabilities
+#============================================================
+if [ -d "$VST2_SDK_DIR" ]; then
+	echo "Modifying jucer project for VST2 support"
+
+	sed -i.bak s/'headerPath="..\/..\/modules\/juce\/modules\/juce_audio_processors\/format_types\/VST3_SDK"/headerPath="..\/..\/modules\/juce\/modules\/juce_audio_processors\/format_types\/VST3_SDK;~\/SDKs\/vstsdk2.4"/' "$ROOT/$PROJECT_NAME.jucer"
+	sed -i.bak s/'<JUCEOPTIONS JUCE_PLUGINHOST_AU="1"/<JUCEOPTIONS JUCE_PLUGINHOST_VST="1" JUCE_PLUGINHOST_AU="1"/' "$ROOT/$PROJECT_NAME.jucer"
+
+	# Resave project
+	"$PROJUCER_EXE" --resave "$ROOT/$PROJECT_NAME.jucer"
+else
+	echo "Not building with VST2 support. To enable VST2 support, set the VST2_SDK_DIR environment variable"
+fi
+
+
+#============================================================
+#   Build projects
 #============================================================
 cd "$ROOT/Builds/LinuxMakefile"
 rm -rf $ROOT/Builds/LinuxMakefile/build/

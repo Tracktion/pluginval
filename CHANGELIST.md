@@ -1,5 +1,8 @@
 # pluginval Change List
 
+### 0.2.0
+  - Removed built-in support for VST2 testing, this can be built with by setting the VST2_SDK_DIR environment variable before running the `tests/` scripts
+
 ### 0.1.5
   - Fixed a problem catching allocations in clang release builds
   - Avoided accidently setting the bypass parameter for VST3 plugins
