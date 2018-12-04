@@ -142,6 +142,7 @@ namespace IDs
     DECLARE_ID(randomSeed)
     DECLARE_ID(timeoutMs)
     DECLARE_ID(verbose)
+    DECLARE_ID(numRepeats)
     DECLARE_ID(dataFile)
     DECLARE_ID(withGUI)
 
@@ -364,6 +365,7 @@ private:
             options.randomSeed = v[IDs::randomSeed];
             options.timeoutMs = v.getProperty (IDs::timeoutMs, -1);
             options.verbose = v.getProperty (IDs::verbose, false);
+            options.numRepeats = v.getProperty (IDs::numRepeats, false);
             options.dataFile = File (v.getProperty (IDs::dataFile, String()));
             options.withGUI = v.getProperty (IDs::withGUI, true);
 
@@ -551,6 +553,7 @@ private:
         v.setProperty (IDs::randomSeed, options.randomSeed, nullptr);
         v.setProperty (IDs::timeoutMs, options.timeoutMs, nullptr);
         v.setProperty (IDs::verbose, options.verbose, nullptr);
+        v.setProperty (IDs::numRepeats, options.numRepeats, nullptr);
         v.setProperty (IDs::dataFile, options.dataFile.getFullPathName(), nullptr);
         v.setProperty (IDs::withGUI, options.withGUI, nullptr);
 

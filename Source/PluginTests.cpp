@@ -120,6 +120,7 @@ void PluginTests::testType (const PluginDescription& pd)
         if (auto instance = testOpenPlugin (pd))
         {
             logMessage ("\nTime taken to open plugin (warm): " + sw.getDescription());
+            logMessage (String ("Running tests 123 times").replace ("123", String (options.numRepeats)));
 
             // This sleep is here to allow time for plugin async initialisation as in most cases
             // plugins will be added to tracks and then be played a little time later. This sleep
@@ -130,31 +131,37 @@ void PluginTests::testType (const PluginDescription& pd)
             // check AudioProcessor::isNonRealtime and force initialisation if rendering.
             Thread::sleep (150);
 
-            for (auto t : PluginTest::getAllTests())
+            for (int testRun = 0; testRun < options.numRepeats; ++testRun)
             {
-                if (options.strictnessLevel < t->strictnessLevel
-                    || (! options.withGUI && t->requiresGUI()))
-                   continue;
+                if (options.numRepeats > 1)
+                    logMessage ("\nTest run: " + String (testRun + 1));
 
-                StopwatchTimer sw2;
-                beginTest (t->name);
-
-                if (t->needsToRunOnMessageThread())
+                for (auto t : PluginTest::getAllTests())
                 {
-                    WaitableEvent completionEvent;
-                    MessageManager::callAsync ([&, this]() mutable
-                                               {
-                                                   t->runTest (*this, *instance);
-                                                   completionEvent.signal();
-                                               });
-                    completionEvent.wait();
-                }
-                else
-                {
-                    t->runTest (*this, *instance);
-                }
+                    if (options.strictnessLevel < t->strictnessLevel
+                        || (! options.withGUI && t->requiresGUI()))
+                       continue;
 
-                logMessage ("\nTime taken to run test: " + sw2.getDescription());
+                    StopwatchTimer sw2;
+                    beginTest (t->name);
+
+                    if (t->needsToRunOnMessageThread())
+                    {
+                        WaitableEvent completionEvent;
+                        MessageManager::callAsync ([&, this]() mutable
+                                                   {
+                                                       t->runTest (*this, *instance);
+                                                       completionEvent.signal();
+                                                   });
+                        completionEvent.wait();
+                    }
+                    else
+                    {
+                        t->runTest (*this, *instance);
+                    }
+
+                    logMessage ("\nTime taken to run test: " + sw2.getDescription());
+                }
             }
 
             deletePluginAsync (std::move (instance));

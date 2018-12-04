@@ -66,6 +66,17 @@ bool getVerboseLogging()
     return getAppPreferences().getBoolValue ("verbose", false);
 }
 
+void setNumRepeats (int numRepeats)
+{
+    if (numRepeats >= 1)
+        getAppPreferences().setValue ("numRepeats", numRepeats);
+}
+
+int getNumRepeats()
+{
+    return jmax (1, getAppPreferences().getIntValue ("numRepeats", 1));
+}
+
 PluginTests::Options getTestOptions()
 {
     PluginTests::Options options;
@@ -73,6 +84,7 @@ PluginTests::Options getTestOptions()
     options.randomSeed = getRandomSeed();
     options.timeoutMs = getTimeoutMs();
     options.verbose = getVerboseLogging();
+    options.numRepeats = getNumRepeats();
 
     return options;
 }
@@ -111,6 +123,21 @@ void showTimeoutDialog()
                                                                   if (res == 1)
                                                                       if (auto te = aw->getTextEditor ("timeoutMs"))
                                                                           setTimeoutMs (te->getText().getLargeIntValue());
+                                                              }));
+}
+
+void showNumRepeatsDialog()
+{
+    const String message = TRANS("Set the number of times the tests will be repeated");
+    std::shared_ptr<AlertWindow> aw (LookAndFeel::getDefaultLookAndFeel().createAlertWindow (TRANS("Set Number of Repeats"), message,
+                                                                                             TRANS("OK"), TRANS("Cancel"), String(),
+                                                                                             AlertWindow::QuestionIcon, 2, nullptr));
+    aw->addTextEditor ("repeats", String (getNumRepeats()));
+    aw->enterModalState (true, ModalCallbackFunction::create ([aw] (int res)
+                                                              {
+                                                                  if (res == 1)
+                                                                      if (auto te = aw->getTextEditor ("repeats"))
+                                                                          setNumRepeats (te->getText().getIntValue());
                                                               }));
 }
 
@@ -194,6 +221,7 @@ MainComponent::MainComponent (Validator& v)
                 showRandomSeed,
                 showTimeout,
                 verboseLogging,
+                numRepeats,
                 showSettingsDir
             };
 
@@ -202,6 +230,7 @@ MainComponent::MainComponent (Validator& v)
             m.addItem (showRandomSeed, TRANS("Set random seed (123)").replace ("123", "0x" + String::toHexString (getRandomSeed()) + "/" + String (getRandomSeed())));
             m.addItem (showTimeout, TRANS("Set timeout (123ms)").replace ("123", String (getTimeoutMs())));
             m.addItem (verboseLogging, TRANS("Verbose logging"), true, getVerboseLogging());
+            m.addItem (numRepeats, TRANS("Num repeats (123)").replace ("123", String (getNumRepeats())));
             m.addSeparator();
             m.addItem (showSettingsDir, TRANS("Show settings folder"));
             m.showMenuAsync (PopupMenu::Options().withTargetComponent (&optionsButton),
@@ -223,6 +252,10 @@ MainComponent::MainComponent (Validator& v)
                                  else if (res == verboseLogging)
                                  {
                                      setVerboseLogging (! getVerboseLogging());
+                                 }
+                                 else if (res == numRepeats)
+                                 {
+                                     showNumRepeatsDialog();
                                  }
                                  else if (res == showSettingsDir)
                                  {

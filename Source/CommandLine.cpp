@@ -149,6 +149,11 @@ static int64 getTimeout (const ArgumentList& args)
     return getOptionValue (args, "--timeout-ms", 30000, "Missing timeout-ms level argument!");
 }
 
+static int getNumRepeats (const ArgumentList& args)
+{
+    return jmax (1, (int) getOptionValue (args, "--repeat", 1, "Missing repeat argument! (Must be greater than 0)"));
+}
+
 File getDataFile (const ArgumentList& args)
 {
     return getOptionValue (args, "--data-file", {}, "Missing data-file path argument!").toString();
@@ -190,7 +195,8 @@ static Option possibleOptions[] =
     { "--verbose",              true    },
     { "--validate-in-process",  false   },
     { "--skip-gui-tests",       false   },
-    { "--data-file",            true    }
+    { "--data-file",            true    },
+    { "--repeat",               true    }
 };
 
 StringArray mergeEnvironmentVariables (StringArray args, std::function<String (const String& name, const String& defaultValue)> environmentVariableProvider = [] (const String& name, const String& defaultValue) { return SystemStats::getEnvironmentVariable (name, defaultValue); })
@@ -251,6 +257,8 @@ static String getHelpMessage()
          << "    If specified, validates the list in the calling process. This can be useful for debugging or when using the command line." << newLine
          << "  --skip-gui-tests" << newLine
          << "    If specified, avoids tests that create GUI windows, which can cause problems on headless CI systems." << newLine
+         << "  --repeat [num repeats]" << newLine
+         << "    If specified repeats the tests a given number of times. Note that this does not delete and re-instantiate the plugin for each repeat."
          << "  --data-file [pathToFile]" << newLine
          << "    If specified, sets a path to a data file which can be used by tests to configure themselves. This can be useful for things like known audio output." << newLine
          << "  --version" << newLine
@@ -304,6 +312,7 @@ static void validate (CommandLineValidator& validator, const ArgumentList& args)
         options.randomSeed = getRandomSeed (args);
         options.timeoutMs = getTimeout (args);
         options.verbose = args.containsOption ("--verbose");
+        options.numRepeats = getNumRepeats (args);
         options.dataFile = getDataFile (args);
         options.withGUI = ! args.containsOption ("--skip-gui-tests");
 

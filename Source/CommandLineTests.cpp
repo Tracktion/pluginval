@@ -30,6 +30,7 @@ struct CommandLineTests : public UnitTest
             envVars.set ("RANDOM_SEED", "1234");
             envVars.set ("TIMEOUT_MS", "30000");
             envVars.set ("VERBOSE", "1");
+            envVars.set ("REPEAT", "10");
             envVars.set ("VALIDATE_IN_PROCESS", "1");
             envVars.set ("SKIP_GUI_TESTS", "1");
             envVars.set ("DATA_FILE", "<path_to_file>");
@@ -39,6 +40,7 @@ struct CommandLineTests : public UnitTest
             expect (merged.contains ("--random-seed 1234"));
             expect (merged.contains ("--timeout-ms 30000"));
             expect (merged.contains ("--verbose"));
+            expect (merged.contains ("--repeat 10"));
             expect (merged.contains ("--validate-in-process"));
             expect (merged.contains ("--skip-gui-tests"));
             expect (merged.contains ("--data-file <path_to_file>"));
@@ -50,15 +52,17 @@ struct CommandLineTests : public UnitTest
             expectEquals (getStrictnessLevel (args), 5);
             expectEquals (getRandomSeed (args), (int64) 0);
             expectEquals (getTimeout (args), (int64) 30000);
+            expectEquals (getNumRepeats (args), 1);
             expectEquals (getOptionValue (args, "--data-file", {}, "Missing data-file path argument!").toString(), String());
         }
 
         beginTest ("Command line parser");
         {
-            ArgumentList args ({}, "--strictness-level 7 --random-seed 1234 --timeout-ms 20000 --data-file <path_to_file>");
+            ArgumentList args ({}, "--strictness-level 7 --random-seed 1234 --timeout-ms 20000 --repeat 11 --data-file <path_to_file>");
             expectEquals (getStrictnessLevel (args), 7);
             expectEquals (getRandomSeed (args), (int64) 1234);
             expectEquals (getTimeout (args), (int64) 20000);
+            expectEquals (getNumRepeats (args), 11);
             expectEquals (getOptionValue (args, "--data-file", {}, "Missing data-file path argument!").toString(), String ("<path_to_file>"));
         }
 

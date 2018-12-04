@@ -2,6 +2,7 @@
 
 ### 0.2.0
   - Removed built-in support for VST2 testing, this can be built with by setting the VST2_SDK_DIR environment variable before running the `tests/` scripts
+  - Added the option to repeat tests a specified number of times
 
 ### 0.1.5
   - Fixed a problem catching allocations in clang release builds
