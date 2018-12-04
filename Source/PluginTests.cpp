@@ -102,6 +102,7 @@ std::unique_ptr<AudioPluginInstance> PluginTests::testOpenPlugin (const PluginDe
 
 void PluginTests::testType (const PluginDescription& pd)
 {
+    StopwatchTimer totalTimer;
     logMessage ("\nTesting plugin: " + pd.createIdentifierString());
     logMessage (pd.manufacturerName + ": " + pd.name + " v" + pd.version);
 
@@ -159,4 +160,6 @@ void PluginTests::testType (const PluginDescription& pd)
             deletePluginAsync (std::move (instance));
         }
     }
+
+    logMessage ("\nTime taken to run all tests: " + totalTimer.getDescription());
 }
