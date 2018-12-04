@@ -98,6 +98,7 @@ struct AudioProcessingTest  : public PluginTest
         const double sampleRates[] = { 44100.0, 48000.0, 96000.0 };
         const int blockSizes[] = { 64, 128, 256, 512, 1024 };
         const int numBlocks = 10;
+        auto r = ut.getRandom();
 
         for (auto sr : sampleRates)
         {
@@ -114,8 +115,8 @@ struct AudioProcessingTest  : public PluginTest
                 MidiBuffer mb;
 
                 // Add a random note on if the plugin is a synth
-                const int noteChannel = ut.getRandom().nextInt ({ 1, 17 });
-                const int noteNumber = ut.getRandom().nextInt (128);
+                const int noteChannel = r.nextInt ({ 1, 17 });
+                const int noteNumber = r.nextInt (128);
 
                 if (isPluginInstrument)
                     addNoteOn (mb, noteChannel, noteNumber, jmin (10, bs));
@@ -152,13 +153,15 @@ struct PluginStateTest  : public PluginTest
 
     void runTest (PluginTests& ut, AudioPluginInstance& instance) override
     {
+        auto r = ut.getRandom();
+
         // Read state
         MemoryBlock originalState;
         instance.getStateInformation (originalState);
 
         // Set random parameter values
         for (auto parameter : getNonBypassAutomatableParameters (instance))
-            parameter->setValue (ut.getRandom().nextFloat());
+            parameter->setValue (r.nextFloat());
 
         // Restore original state
         instance.setStateInformation (originalState.getData(), (int) originalState.getSize());
@@ -178,6 +181,8 @@ struct PluginStateTestRestoration   : public PluginTest
 
     void runTest (PluginTests& ut, AudioPluginInstance& instance) override
     {
+        auto r = ut.getRandom();
+
         // Read state
         MemoryBlock originalState;
         instance.getStateInformation (originalState);
@@ -187,7 +192,7 @@ struct PluginStateTestRestoration   : public PluginTest
 
         // Set random parameter values
         for (auto parameter : getNonBypassAutomatableParameters (instance))
-            parameter->setValue (ut.getRandom().nextFloat());
+            parameter->setValue (r.nextFloat());
 
         // Restore original state
         instance.setStateInformation (originalState.getData(), (int) originalState.getSize());
@@ -224,6 +229,7 @@ struct AutomationTest  : public PluginTest
         const bool isPluginInstrument = instance.getPluginDescription().isInstrument;
         const double sampleRates[] = { 44100.0, 48000.0, 96000.0 };
         const int blockSizes[] = { 64, 128, 256, 512, 1024 };
+        auto r = ut.getRandom();
 
         for (auto sr : sampleRates)
         {
@@ -244,8 +250,8 @@ struct AutomationTest  : public PluginTest
                 MidiBuffer mb;
 
                 // Add a random note on if the plugin is a synth
-                const int noteChannel = ut.getRandom().nextInt ({ 1, 17 });
-                const int noteNumber = ut.getRandom().nextInt (128);
+                const int noteChannel = r.nextInt ({ 1, 17 });
+                const int noteNumber = r.nextInt (128);
 
                 if (isPluginInstrument)
                     addNoteOn (mb, noteChannel, noteNumber, jmin (10, subBlockSize));
@@ -258,8 +264,8 @@ struct AutomationTest  : public PluginTest
 
                         for (int i = 0; i < jmin (10, parameters.size()); ++i)
                         {
-                            const int paramIndex = ut.getRandom().nextInt (parameters.size());
-                            parameters[paramIndex]->setValue (ut.getRandom().nextFloat());
+                            const int paramIndex = r.nextInt (parameters.size());
+                            parameters[paramIndex]->setValue (r.nextFloat());
                         }
                     }
 
@@ -408,6 +414,7 @@ struct BackgroundThreadStateTest    : public PluginTest
 
     void runTest (PluginTests& ut, AudioPluginInstance& instance) override
     {
+        auto r = ut.getRandom();
         WaitableEvent waiter;
         std::unique_ptr<AudioProcessorEditor> editor;
         MessageManager::callAsync ([&]
@@ -432,7 +439,7 @@ struct BackgroundThreadStateTest    : public PluginTest
 
         // Set random parameter values
         for (auto parameter : parameters)
-            parameter->setValue (ut.getRandom().nextFloat());
+            parameter->setValue (r.nextFloat());
 
         // Restore original state
         instance.setStateInformation (originalState.getData(), (int) originalState.getSize());
@@ -466,13 +473,13 @@ struct ParameterThreadSafetyTest    : public PluginTest
     void runTest (PluginTests& ut, AudioPluginInstance& instance) override
     {
         WaitableEvent waiter;
-        auto random = ut.getRandom();
+        auto r = ut.getRandom();
         auto parameters = getNonBypassAutomatableParameters (instance);
         const bool isPluginInstrument = instance.getPluginDescription().isInstrument;
         const int numBlocks = 500;
 
         // This emulates the plugin itself setting a value for example from a slider within its UI
-        MessageManager::callAsync ([&, threadRandom = random]() mutable
+        MessageManager::callAsync ([&, threadRandom = r]() mutable
                                    {
                                        waiter.signal();
 
@@ -492,8 +499,8 @@ struct ParameterThreadSafetyTest    : public PluginTest
         MidiBuffer mb;
 
         // Add a random note on if the plugin is a synth
-        const int noteChannel = ut.getRandom().nextInt ({ 1, 17 });
-        const int noteNumber = ut.getRandom().nextInt (128);
+        const int noteChannel = r.nextInt ({ 1, 17 });
+        const int noteNumber = r.nextInt (128);
 
         if (isPluginInstrument)
             addNoteOn (mb, noteChannel, noteNumber, jmin (10, blockSize));
@@ -507,7 +514,7 @@ struct ParameterThreadSafetyTest    : public PluginTest
                 addNoteOff (mb, noteChannel, noteNumber, 0);
 
             for (auto param : parameters)
-                param->setValue (random.nextFloat());
+                param->setValue (r.nextFloat());
 
             fillNoise (ab);
             instance.processBlock (ab, mb);

@@ -29,6 +29,7 @@ struct AllocationsInRealTimeThreadTest  : public PluginTest
         const double sampleRates[] = { 44100.0, 48000.0, 96000.0 };
         const int blockSizes[] = { 64, 128, 256, 512, 1024 };
         const int numBlocks = 10;
+        auto r = ut.getRandom();
 
         for (auto sr : sampleRates)
         {
@@ -45,8 +46,8 @@ struct AllocationsInRealTimeThreadTest  : public PluginTest
                 MidiBuffer mb;
 
                 // Add a random note on if the plugin is a synth
-                const int noteChannel = ut.getRandom().nextInt ({ 1, 17 });
-                const int noteNumber = ut.getRandom().nextInt (128);
+                const int noteChannel = r.nextInt ({ 1, 17 });
+                const int noteNumber = r.nextInt (128);
 
                 if (isPluginInstrument)
                     addNoteOn (mb, noteChannel, noteNumber, jmin (10, bs - 1));

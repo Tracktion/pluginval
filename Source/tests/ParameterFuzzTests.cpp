@@ -32,11 +32,12 @@ struct FuzzParametersTest  : public PluginTest
 private:
     void fuzzTestParameter (PluginTests& ut, AudioProcessorParameter& parameter)
     {
+        auto r = ut.getRandom();
         ut.logVerboseMessage (String ("Fuzz testing parameter: ") + String (parameter.getParameterIndex()) + " - " + parameter.getName (512));
 
         for (int i = 0; i < 5; ++i)
         {
-            const float value = ut.getRandom().nextFloat();
+            const float value = r.nextFloat();
 
             parameter.setValue (value);
             const float v = parameter.getValue();

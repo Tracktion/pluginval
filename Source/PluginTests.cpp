@@ -131,6 +131,7 @@ void PluginTests::testType (const PluginDescription& pd)
             // between construction, initialisation and processing. For this case, plugins should
             // check AudioProcessor::isNonRealtime and force initialisation if rendering.
             Thread::sleep (150);
+            auto r = getRandom();
 
             for (int testRun = 0; testRun < options.numRepeats; ++testRun)
             {
@@ -141,7 +142,7 @@ void PluginTests::testType (const PluginDescription& pd)
 
                 if (options.randomiseTestOrder)
                 {
-                    std::mt19937 random (static_cast<unsigned int> (getRandom().nextInt()));
+                    std::mt19937 random (static_cast<unsigned int> (r.nextInt()));
                     std::shuffle (testsToRun.begin(), testsToRun.end(), random);
                 }
 
