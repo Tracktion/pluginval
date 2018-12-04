@@ -44,4 +44,3 @@ void performCommandLine (CommandLineValidator&, const String& commandLine);
 bool shouldPerformCommandLine (const String& commandLine);
 
 enum { commandLineNotPerformed = 0x72346231 };
-

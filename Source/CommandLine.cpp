@@ -18,52 +18,11 @@
 
 
 //==============================================================================
-struct CommandLineError
-{
-    CommandLineError (const String& s) : message (s) {}
-
-    const String message;
-};
-
 void exitWithError (const String& error)
 {
     std::cout << error << std::endl << std::endl;
     JUCEApplication::getInstance()->setApplicationReturnValue (1);
     JUCEApplication::getInstance()->quit();
-}
-
-
-//==============================================================================
-static bool matchArgument (const String& arg, const String& possible)
-{
-    return arg == possible
-        || arg == "-" + possible
-        || arg == "--" + possible;
-}
-
-
-static int indexOfArgument (const StringArray& args, const String& possible)
-{
-    for (auto& a : args)
-    {
-        if (a == possible
-            || a == "-" + possible
-            || a == "--" + possible)
-           return args.indexOf (a);
-    }
-
-    return -1;
-}
-
-static bool containsArgument (const StringArray& args, const String& possible)
-{
-    return indexOfArgument (args, possible) != -1;
-}
-
-static void checkArgumentCount (const StringArray& args, int minNumArgs)
-{
-    if (args.size() < minNumArgs)
-        throw CommandLineError ("Not enough arguments!");
 }
 
 static void hideDockIcon()
@@ -152,123 +111,49 @@ void CommandLineValidator::connectionLost()
 
 
 //==============================================================================
-static int getStrictnessLevel (const StringArray& args)
+static var getOptionValue (const ArgumentList& args, StringRef option, var defaultValue, StringRef errorMessage)
 {
-    const int strictnessIndex = indexOfArgument (args, "strictness-level");
-
-    if (strictnessIndex != -1)
+    if (args.containsOption (option))
     {
-        if (args.size() > strictnessIndex)
-        {
-            const int strictness = args[strictnessIndex + 1].getIntValue();
+        const auto nextArg = args.getArgumentAfterOption (option);
 
-            if (strictness >= 1 && strictness <= 10)
-                return strictness;
-        }
+        if (nextArg.isShortOption() || nextArg.isLongOption())
+            ConsoleApplication::fail (errorMessage, -1);
 
-        throw CommandLineError ("Missing strictness level argument! (Must be between 1 - 10)");
+        return nextArg.text;
     }
 
-    return 5;
+    return defaultValue;
 }
 
-int64 getRandomSeed (const StringArray& args)
+static int getStrictnessLevel (const ArgumentList& args)
 {
-    const int seedIndex = indexOfArgument (args, "random-seed");
-
-    if (seedIndex != -1)
-    {
-        if (args.size() > seedIndex)
-        {
-            auto seedString = args[seedIndex + 1];
-
-            if (! seedString.containsOnly ("x-0123456789"))
-                throw CommandLineError ("Invalid random seed argument!");
-
-            if (seedString.startsWith ("0x"))
-                return seedString.getHexValue64();
-
-            return seedString.getLargeIntValue();
-        }
-
-        throw CommandLineError ("Missing random seed argument!");
-    }
-
-    return 0;
+    return jlimit (1, 10, (int) getOptionValue (args, "--strictness-level", 5, "Missing strictness level argument! (Must be between 1 - 10)"));
 }
 
-int64 getTimeout (const StringArray& args)
+int64 getRandomSeed (const ArgumentList& args)
 {
-    const int timeoutIndex = indexOfArgument (args, "timeout-ms");
+    const String seedString = getOptionValue (args, "--random-seed", "0", "Missing random seed argument!").toString();
 
-    if (timeoutIndex != -1)
-    {
-        if (args.size() > timeoutIndex)
-        {
-            const int64 timeoutMs = args[timeoutIndex + 1].getLargeIntValue();
+    if (! seedString.containsOnly ("x-0123456789acbdef"))
+        ConsoleApplication::fail ("Invalid random seed argument!", -1);
 
-            if (timeoutMs >= -1)
-                return timeoutMs;
-        }
+    if (seedString.startsWith ("0x"))
+        return seedString.getHexValue64();
 
-        throw CommandLineError ("Missing timeout-ms level argument!");
-    }
-
-    return 30000;
+    return seedString.getLargeIntValue();
 }
 
-File getDataFile (const StringArray& args)
+static int64 getTimeout (const ArgumentList& args)
 {
-    const int fileIndex = indexOfArgument (args, "data-file");
-
-    if (fileIndex != -1)
-    {
-        if (args.size() > fileIndex)
-        {
-            const String path = args[fileIndex + 1];
-
-            if (path.isNotEmpty())
-                return path;
-        }
-
-        throw CommandLineError ("Missing data-file path argument!");
-    }
-
-    return {};
+    return getOptionValue (args, "--timeout-ms", 30000, "Missing timeout-ms level argument!");
 }
 
-static void validate (CommandLineValidator& validator, const StringArray& args)
+File getDataFile (const ArgumentList& args)
 {
-    hideDockIcon();
-    checkArgumentCount (args, 2);
-    const int startIndex = indexOfArgument (args, "validate");
-
-    if (startIndex != -1)
-    {
-        StringArray fileOrIDs;
-        fileOrIDs.addArray (args, startIndex + 1);
-
-        for (int i = fileOrIDs.size(); --i >= 0;)
-            if (fileOrIDs.getReference (i).startsWith ("--"))
-                fileOrIDs.remove (i);
-
-        if (! fileOrIDs.isEmpty())
-        {
-            const bool validateInProcess = containsArgument (args, "validate-in-process");
-            PluginTests::Options options;
-            options.strictnessLevel = getStrictnessLevel (args);
-            options.randomSeed = getRandomSeed (args);
-            options.timeoutMs = getTimeout (args);
-            options.verbose = containsArgument (args, "verbose");
-            options.dataFile = getDataFile (args);
-            options.withGUI = ! containsArgument (args, "skip-gui-tests");
-
-            validator.validate (fileOrIDs,
-                                options,
-                                validateInProcess);
-        }
-    }
+    return getOptionValue (args, "--data-file", {}, "Missing data-file path argument!").toString();
 }
+
 
 //==============================================================================
 String parseCommandLineArgs (String commandLine)
@@ -308,16 +193,16 @@ static Option possibleOptions[] =
     { "--data-file",            true    }
 };
 
-StringArray mergeEnvironmentVariables (StringArray args)
+StringArray mergeEnvironmentVariables (StringArray args, std::function<String (const String& name, const String& defaultValue)> environmentVariableProvider = [] (const String& name, const String& defaultValue) { return SystemStats::getEnvironmentVariable (name, defaultValue); })
 {
     for (auto arg : possibleOptions)
     {
         auto envVarName = getEnvironmentVariableName (arg);
-        auto envVarValue = SystemStats::getEnvironmentVariable (envVarName, {});
+        auto envVarValue = environmentVariableProvider (envVarName, {});
 
         if (envVarValue.isNotEmpty())
         {
-            const int index = indexOfArgument (args, arg.name);
+            const int index = args.indexOf (arg.name);
 
             if (index != -1)
             {
@@ -335,55 +220,124 @@ StringArray mergeEnvironmentVariables (StringArray args)
     return args;
 }
 
+
 //==============================================================================
-static void showHelp()
+//==============================================================================
+static String getHelpMessage()
+{
+    const String appName (JUCEApplication::getInstance()->getApplicationName());
+
+    String help;
+    help << "//==============================================================================" << newLine
+         << appName << newLine
+         << SystemStats::getJUCEVersion() << newLine
+         << newLine
+         << "Description: " << newLine
+         << "  Validate plugins to test compatibility with hosts and verify plugin API conformance" << newLine << newLine
+         << "Usage: "
+         << newLine
+         << "  --validate [list]" << newLine
+         << "    Validates the files (or IDs for AUs)." << newLine
+         << "  --strictness-level [1-10]" << newLine
+         << "    Sets the strictness level to use. A minimum level of 5 (also the default) is recomended for compatibility. Higher levels include longer, more thorough tests such as fuzzing." << newLine
+         << "  --random-seed [hex or int]" << newLine
+         << "    Sets the random seed to use for the tests. Useful for replicating test environments." << newLine
+         << "  --timeout-ms [numMilliseconds]" << newLine
+         << "    Sets a timout which will stop validation with an error if no output from any test has happened for this number of ms." << newLine
+         << "    By default this is 30s but can be set to -1 to never timeout." << newLine
+         << "  --verbose" << newLine
+         << "    If specified, outputs additional logging information. It can be useful to turn this off when building with CI to avoid huge log files." << newLine
+         << "  --validate-in-process" << newLine
+         << "    If specified, validates the list in the calling process. This can be useful for debugging or when using the command line." << newLine
+         << "  --skip-gui-tests" << newLine
+         << "    If specified, avoids tests that create GUI windows, which can cause problems on headless CI systems." << newLine
+         << "  --data-file [pathToFile]" << newLine
+         << "    If specified, sets a path to a data file which can be used by tests to configure themselves. This can be useful for things like known audio output." << newLine
+         << "  --version" << newLine
+         << "    Print pluginval version." << newLine
+         << newLine
+         << "Exit code: "
+         << newLine
+         << "  0 if all tests complete successfully" << newLine
+         << "  1 if there are any errors" << newLine
+         << newLine
+         << "Additionally, you can specify any of the command line options as environment varibles by removing prefix dashes,"
+            " converting internal dashes to underscores and captialising all letters e.g. \"--skip-gui-tests\" > \"SKIP_GUI_TESTS=1\","
+            " \"--timeout-ms 30000\" > \"TIMEOUT_MS=30000\"" << newLine
+         << "Specifying specific command-line options will override any environment variables set for that option." << newLine;
+
+    return help;
+}
+
+static String getVersionText()
+{
+    return String (ProjectInfo::projectName) + " - " + ProjectInfo::versionString;
+}
+
+static void validate (CommandLineValidator& validator, const ArgumentList& args)
+{
+    const int startIndex = args.indexOfOption ("--validate");
+
+    if (startIndex == -1)
+    {
+        jassertfalse;
+        return;
+    }
+
+    StringArray fileOrIDs;
+
+    for (int i = startIndex + 1; i < args.size(); ++i)
+    {
+        const auto& arg = args[i];
+
+        if (arg.isLongOption() || arg.isShortOption())
+            break;
+
+        fileOrIDs.add (arg.text);
+    }
+
+    if (! fileOrIDs.isEmpty())
+    {
+        const bool validateInProcess = args.containsOption ("--validate-in-process");
+        PluginTests::Options options;
+        options.strictnessLevel = getStrictnessLevel (args);
+        options.randomSeed = getRandomSeed (args);
+        options.timeoutMs = getTimeout (args);
+        options.verbose = args.containsOption ("--verbose");
+        options.dataFile = getDataFile (args);
+        options.withGUI = ! args.containsOption ("--skip-gui-tests");
+
+        validator.validate (fileOrIDs,
+                            options,
+                            validateInProcess);
+    }
+}
+
+//==============================================================================
+void performCommandLine (CommandLineValidator& validator, const ArgumentList& args)
 {
     hideDockIcon();
 
-    const String appName (JUCEApplication::getInstance()->getApplicationName());
+    ConsoleApplication cli;
+    cli.addVersionCommand ("--version", getVersionText());
+    cli.addHelpCommand ("--help|-h", getHelpMessage(), true);
+    cli.addCommand ({ "--validate",
+                      "--validate [list]",
+                      "Validates the files (or IDs for AUs).",
+                      [&validator] (const auto& args) { validate (validator, args); }});
 
-    std::cout << "//==============================================================================" << std::endl
-              << appName << std::endl
-              << SystemStats::getJUCEVersion() << std::endl
-              << std::endl
-              << "Description: " << std::endl
-              << "  Validate plugins to test compatibility with hosts and verify plugin API conformance" << std::endl << std::endl
-              << "Usage: "
-              << std::endl
-              << "  --validate [list]" << std::endl
-              << "    Validates the files (or IDs for AUs)." << std::endl
-              << "  --strictness-level [1-10]" << std::endl
-              << "    Sets the strictness level to use. A minimum level of 5 (also the default) is recomended for compatibility. Higher levels include longer, more thorough tests such as fuzzing." << std::endl
-              << "  --random-seed [hex or int]" << std::endl
-              << "    Sets the random seed to use for the tests. Useful for replicating test environments." << std::endl
-              << "  --timeout-ms [numMilliseconds]" << std::endl
-              << "    Sets a timout which will stop validation with an error if no output from any test has happened for this number of ms." << std::endl
-              << "    By default this is 30s but can be set to -1 to never timeout." << std::endl
-              << "  --verbose" << std::endl
-              << "    If specified, outputs additional logging information. It can be useful to turn this off when building with CI to avoid huge log files." << std::endl
-              << "  --validate-in-process" << std::endl
-              << "    If specified, validates the list in the calling process. This can be useful for debugging or when using the command line." << std::endl
-              << "  --skip-gui-tests" << std::endl
-              << "    If specified, avoids tests that create GUI windows, which can cause problems on headless CI systems." << std::endl
-              << "  --data-file [pathToFile]" << std::endl
-              << "    If specified, sets a path to a data file which can be used by tests to configure themselves. This can be useful for things like known audio output." << std::endl
-              << "  --version" << std::endl
-              << "    Print pluginval version." << std::endl
-              << std::endl
-              << "Exit code: "
-              << std::endl
-              << "  0 if all tests complete successfully" << std::endl
-              << "  1 if there are any errors" << std::endl
-              << std::endl
-              << "Additionally, you can specify any of the command line options as environment varibles by removing prefix dashes,"
-                 " converting internal dashes to underscores and captialising all letters e.g. \"--skip-gui-tests\" > \"SKIP_GUI_TESTS=1\","
-                 " \"--timeout-ms 30000\" > \"TIMEOUT_MS=30000\"" << std::endl
-              << "Specifying specific command-line options will override any environment variables set for that option." << std::endl;
+    JUCEApplication::getInstance()->setApplicationReturnValue (cli.findAndRunCommand (args));
+
+    // --validate runs async so will quit itself when done
+    if (! args.containsOption ("--validate"))
+        JUCEApplication::getInstance()->quit();
 }
 
-static void showVersion()
+bool shouldPerformCommandLine (const ArgumentList& args)
 {
-    std::cout << ProjectInfo::projectName << " - " << ProjectInfo::versionString << std::endl;
+    return args.containsOption ("--help|-h")
+        || args.containsOption ("--version")
+        || args.containsOption ("--validate");
 }
 
 //==============================================================================
@@ -391,42 +345,21 @@ void performCommandLine (CommandLineValidator& validator, const String& commandL
 {
     StringArray args;
     args.addTokens (parseCommandLineArgs (commandLine), true);
+    args = mergeEnvironmentVariables (args);
     args.trim();
 
     for (auto& s : args)
         s = s.unquoted();
 
-    String command (args[0]);
-
-    try
-    {
-        if (matchArgument (command, "version"))                  { showVersion(); }
-        if (matchArgument (command, "help"))                     { showHelp(); }
-        if (matchArgument (command, "h"))                        { showHelp(); }
-        if (containsArgument (args, "validate"))                 { validate (validator, mergeEnvironmentVariables (args)); return; }
-    }
-    catch (const CommandLineError& error)
-    {
-        std::cout << error.message << std::endl << std::endl;
-        JUCEApplication::getInstance()->setApplicationReturnValue (1);
-    }
-
-    // If we get here the command has completed so quit the app
-    JUCEApplication::getInstance()->quit();
+    performCommandLine (validator, ArgumentList (File::getSpecialLocation (File::currentExecutableFile).getFullPathName(), args));
 }
 
 bool shouldPerformCommandLine (const String& commandLine)
 {
-    StringArray args;
-    args.addTokens (commandLine, true);
-    args.trim();
-
-    String command (args[0]);
-
-    if (matchArgument (command, "version"))     return true;
-    if (matchArgument (command, "help"))        return true;
-    if (matchArgument (command, "h"))           return true;
-    if (containsArgument (args, "validate"))    return true;
-
-    return false;
+    return shouldPerformCommandLine (ArgumentList (File::getSpecialLocation (File::currentExecutableFile).getFullPathName(), commandLine));
 }
+
+
+//==============================================================================
+//==============================================================================
+#include "CommandLineTests.cpp"
