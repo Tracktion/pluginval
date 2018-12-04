@@ -196,7 +196,8 @@ static Option possibleOptions[] =
     { "--validate-in-process",  false   },
     { "--skip-gui-tests",       false   },
     { "--data-file",            true    },
-    { "--repeat",               true    }
+    { "--repeat",               true    },
+    { "--randomise",            false   }
 };
 
 StringArray mergeEnvironmentVariables (StringArray args, std::function<String (const String& name, const String& defaultValue)> environmentVariableProvider = [] (const String& name, const String& defaultValue) { return SystemStats::getEnvironmentVariable (name, defaultValue); })
@@ -259,6 +260,8 @@ static String getHelpMessage()
          << "    If specified, avoids tests that create GUI windows, which can cause problems on headless CI systems." << newLine
          << "  --repeat [num repeats]" << newLine
          << "    If specified repeats the tests a given number of times. Note that this does not delete and re-instantiate the plugin for each repeat."
+         << "  --randomise" << newLine
+         << "    If specified the tests are run in a random order per repeat."
          << "  --data-file [pathToFile]" << newLine
          << "    If specified, sets a path to a data file which can be used by tests to configure themselves. This can be useful for things like known audio output." << newLine
          << "  --version" << newLine
@@ -313,6 +316,7 @@ static void validate (CommandLineValidator& validator, const ArgumentList& args)
         options.timeoutMs = getTimeout (args);
         options.verbose = args.containsOption ("--verbose");
         options.numRepeats = getNumRepeats (args);
+        options.randomiseTestOrder = args.containsOption ("--randomise");
         options.dataFile = getDataFile (args);
         options.withGUI = ! args.containsOption ("--skip-gui-tests");
 

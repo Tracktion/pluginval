@@ -77,6 +77,17 @@ int getNumRepeats()
     return jmax (1, getAppPreferences().getIntValue ("numRepeats", 1));
 }
 
+void setRandomiseTests (bool shouldRandomiseTests)
+{
+    getAppPreferences().setValue ("randomiseTests", shouldRandomiseTests);
+}
+
+bool getRandomiseTests()
+{
+    return getAppPreferences().getBoolValue ("randomiseTests", false);
+}
+
+
 PluginTests::Options getTestOptions()
 {
     PluginTests::Options options;
@@ -85,6 +96,7 @@ PluginTests::Options getTestOptions()
     options.timeoutMs = getTimeoutMs();
     options.verbose = getVerboseLogging();
     options.numRepeats = getNumRepeats();
+    options.randomiseTestOrder = getRandomiseTests();
 
     return options;
 }
@@ -222,6 +234,7 @@ MainComponent::MainComponent (Validator& v)
                 showTimeout,
                 verboseLogging,
                 numRepeats,
+                randomise,
                 showSettingsDir
             };
 
@@ -231,6 +244,7 @@ MainComponent::MainComponent (Validator& v)
             m.addItem (showTimeout, TRANS("Set timeout (123ms)").replace ("123", String (getTimeoutMs())));
             m.addItem (verboseLogging, TRANS("Verbose logging"), true, getVerboseLogging());
             m.addItem (numRepeats, TRANS("Num repeats (123)").replace ("123", String (getNumRepeats())));
+            m.addItem (randomise, TRANS("Randomise tests"), true, getRandomiseTests());            
             m.addSeparator();
             m.addItem (showSettingsDir, TRANS("Show settings folder"));
             m.showMenuAsync (PopupMenu::Options().withTargetComponent (&optionsButton),
@@ -256,6 +270,10 @@ MainComponent::MainComponent (Validator& v)
                                  else if (res == numRepeats)
                                  {
                                      showNumRepeatsDialog();
+                                 }
+                                 else if (res == randomise)
+                                 {
+                                     setRandomiseTests (! getRandomiseTests());
                                  }
                                  else if (res == showSettingsDir)
                                  {

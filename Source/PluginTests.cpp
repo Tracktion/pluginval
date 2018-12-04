@@ -14,6 +14,7 @@
 
 #include "PluginTests.h"
 #include "TestUtilities.h"
+#include <random>
 
 namespace
 {
@@ -136,7 +137,15 @@ void PluginTests::testType (const PluginDescription& pd)
                 if (options.numRepeats > 1)
                     logMessage ("\nTest run: " + String (testRun + 1));
 
-                for (auto t : PluginTest::getAllTests())
+                Array<PluginTest*> testsToRun = PluginTest::getAllTests();
+
+                if (options.randomiseTestOrder)
+                {
+                    std::mt19937 random (static_cast<unsigned int> (getRandom().nextInt()));
+                    std::shuffle (testsToRun.begin(), testsToRun.end(), random);
+                }
+
+                for (auto t : testsToRun)
                 {
                     if (options.strictnessLevel < t->strictnessLevel
                         || (! options.withGUI && t->requiresGUI()))

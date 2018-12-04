@@ -31,6 +31,7 @@ struct CommandLineTests : public UnitTest
             envVars.set ("TIMEOUT_MS", "30000");
             envVars.set ("VERBOSE", "1");
             envVars.set ("REPEAT", "10");
+            envVars.set ("RANDOMISE", "1");
             envVars.set ("VALIDATE_IN_PROCESS", "1");
             envVars.set ("SKIP_GUI_TESTS", "1");
             envVars.set ("DATA_FILE", "<path_to_file>");
@@ -41,6 +42,7 @@ struct CommandLineTests : public UnitTest
             expect (merged.contains ("--timeout-ms 30000"));
             expect (merged.contains ("--verbose"));
             expect (merged.contains ("--repeat 10"));
+            expect (merged.contains ("--randomise"));
             expect (merged.contains ("--validate-in-process"));
             expect (merged.contains ("--skip-gui-tests"));
             expect (merged.contains ("--data-file <path_to_file>"));
