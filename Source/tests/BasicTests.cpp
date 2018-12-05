@@ -59,6 +59,9 @@ struct EditorTest   : public PluginTest
                 {
                     editor->addToDesktop (0);
                     editor->setVisible (true);
+
+                    // Pump the message loop for a couple of seconds for the window to initialise itself
+                    MessageManager::getInstance()->runDispatchLoopUntil (200);
                 }
 
                 ut.logMessage ("\nTime taken to open editor (cold): " + timer.getDescription());
@@ -73,6 +76,9 @@ struct EditorTest   : public PluginTest
                 {
                     editor->addToDesktop (0);
                     editor->setVisible (true);
+
+                    // Pump the message loop for a couple of seconds for the window to initialise itself
+                    MessageManager::getInstance()->runDispatchLoopUntil (200);
                 }
 
                 ut.logMessage ("Time taken to open editor (warm): " + timer.getDescription());
