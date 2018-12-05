@@ -14,6 +14,7 @@
 
 #include "../PluginTests.h"
 #include "../TestUtilities.h"
+#include <future>
 
 //==============================================================================
 struct PluginInfoTest   : public PluginTest
@@ -88,6 +89,67 @@ struct EditorTest   : public PluginTest
 };
 
 static EditorTest editorTest;
+
+
+//==============================================================================
+struct EditorWhilstProcessingTest   : public PluginTest
+{
+    EditorWhilstProcessingTest()
+        : PluginTest ("Open editor whilst processing", 4,
+                      { Requirements::Thread::messageThread, Requirements::GUI::requiresGUI })
+    {
+    }
+
+    void runTest (PluginTests& ut, AudioPluginInstance& instance) override
+    {
+        if (instance.hasEditor())
+        {
+            instance.releaseResources();
+            instance.prepareToPlay (44100.0, 512);
+
+            const int numChannelsRequired = jmax (instance.getTotalNumInputChannels(), instance.getTotalNumOutputChannels());
+            AudioBuffer<float> ab (numChannelsRequired, instance.getBlockSize());
+            MidiBuffer mb;
+
+
+            WaitableEvent threadStartedEvent;
+            std::atomic<bool> shouldProcess { true };
+
+            auto processThread = std::async (std::launch::async,
+                                             [&]
+                                             {
+                                                 while (shouldProcess)
+                                                 {
+                                                     fillNoise (ab);
+                                                     instance.processBlock (ab, mb);
+                                                     mb.clear();
+
+                                                     threadStartedEvent.signal();
+                                                 }
+                                             });
+
+            threadStartedEvent.wait();
+
+            {
+                std::unique_ptr<AudioProcessorEditor> editor (instance.createEditor());
+                ut.expect (editor != nullptr, "Unable to create editor");
+
+                if (editor)
+                {
+                    editor->addToDesktop (0);
+                    editor->setVisible (true);
+
+                    // Pump the message loop for a couple of seconds for the window to initialise itself
+					MessageManager::getInstance()->runDispatchLoopUntil (200);
+                }
+            }
+
+            shouldProcess = false;
+        }
+    }
+};
+
+static EditorWhilstProcessingTest editorWhilstProcessingTest;
 
 
 //==============================================================================

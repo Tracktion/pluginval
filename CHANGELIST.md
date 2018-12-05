@@ -5,6 +5,7 @@
   - Added the option to repeat tests a specified number of times
   - Added the option to randomise the test order each repeat
   - Added some message loop running to editor tests to ensure the UI is actually displayed
+  - Added a test for processing audio whilst showing the editor
 
 ### 0.1.5
   - Fixed a problem catching allocations in clang release builds
