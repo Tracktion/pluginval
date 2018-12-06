@@ -58,6 +58,9 @@ struct PluginsUnitTestRunner    : public UnitTestRunner,
 
     void logMessage (const String& message) override
     {
+        if (! canSendLogMessage)
+            return;
+
         resetTimeout();
 
         if (message.isNotEmpty())
@@ -67,7 +70,8 @@ struct PluginsUnitTestRunner    : public UnitTestRunner,
 private:
     std::function<void (const String&)> callback;
     const int64 timeoutMs = -1;
-    std::atomic<int64> timoutTime;
+    std::atomic<int64> timoutTime { -1 };
+    std::atomic<bool> canSendLogMessage { true };
 
     void resetTimeout()
     {
@@ -81,6 +85,7 @@ private:
             if (Time::getCurrentTime().toMilliseconds() > timoutTime)
             {
                 logMessage ("*** FAILED: Timeout after " + RelativeTime::milliseconds (timeoutMs).getDescription());
+                canSendLogMessage = false;
 
                 // Give the log a second to flush the message before terminating
                 Thread::sleep (1000);
