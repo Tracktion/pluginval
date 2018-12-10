@@ -54,14 +54,14 @@ Now you'll have to either have the VST2 SDK path in your Projucer Global Setting
 
 ### Running in GUI Mode
 Once the app has built for your platform it will be found in `/bin`. Simply open the app to start it in GUI mode. Once open, you'll be presented with an empty plugin list. Click "Options" to scan for plugins, making sure to add any directories required.
-Alterntively, you can drag a plugin file and drop it on the list to add only that plugin.
+Alternatively, you can drag a plugin file and drop it on the list to add only that plugin.
 
 Once the list has populated, simply select a plugin and press the "Test Selected" button to validate it. The plugin will be loaded and each of the tests run in turn. Any output from the tests will be shown on the "Console" tab.
 If you find problems with a plugin, this can be useful to send to the plugin developers.
 
 ### Running in Headless Mode
 As well as being a GUI app, `pluginval` can be run from the command line in a headless mode.
-This is great if you want to add validation as part of your CI process and be notified immidiately if tests start failing.
+This is great if you want to add validation as part of your CI process and be notified immediately if tests start failing.
 
 ###### Basic usage is as follows:
 ```
@@ -78,6 +78,9 @@ This means you can check the exit code on your various CI and mark builds a fail
 ```
 ./pluginval -h
 ```
+
+### Guides
+ - [Debugging a failed validation](<docs/Debugging a failed validation.md>)
 
 ### Contributing
 If you would like to contribute to the project please do! It's very simple to add tests, simply:
@@ -103,4 +106,4 @@ If you have a case you would like tests, please simply write the test in a fork 
 License
 ----
 
-Licencing is under the `GPLv3` as we want `pluginval` to be as transparent as possible. If this conflicts with your requirements though please let us know and we can accomodate these.
+Licensing is under the `GPLv3` as we want `pluginval` to be as transparent as possible. If this conflicts with your requirements though please let us know and we can accommodate these.
