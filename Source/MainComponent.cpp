@@ -87,6 +87,11 @@ bool getRandomiseTests()
     return getAppPreferences().getBoolValue ("randomiseTests", false);
 }
 
+File getOutputDir()
+{
+    return getAppPreferences().getValue ("outputDir", String());
+}
+
 
 PluginTests::Options getTestOptions()
 {
@@ -97,6 +102,7 @@ PluginTests::Options getTestOptions()
     options.verbose = getVerboseLogging();
     options.numRepeats = getNumRepeats();
     options.randomiseTestOrder = getRandomiseTests();
+    options.outputDir = getOutputDir();
 
     return options;
 }
@@ -150,6 +156,35 @@ void showNumRepeatsDialog()
                                                                   if (res == 1)
                                                                       if (auto te = aw->getTextEditor ("repeats"))
                                                                           setNumRepeats (te->getText().getIntValue());
+                                                              }));
+}
+
+void showOutputDirDialog()
+{
+    String message = TRANS("Set a desintation directory to place log files");
+    auto dir = getOutputDir();
+
+    if (dir.getFullPathName().isNotEmpty())
+        message << "\n\n" << dir.getFullPathName().quoted();
+    else
+        message << "\n\n" << "\"None set\"";
+
+    std::shared_ptr<AlertWindow> aw (LookAndFeel::getDefaultLookAndFeel().createAlertWindow (TRANS("Set Log File Directory"), message,
+                                                                                             TRANS("Choose dir"), TRANS("Cancel"), TRANS("Don't save logs"),
+                                                                                             AlertWindow::QuestionIcon, 3, nullptr));
+    aw->enterModalState (true, ModalCallbackFunction::create ([aw] (int res)
+                                                              {
+                                                                  if (res == 3)
+                                                                      getAppPreferences().setValue ("outputDir", String());
+
+                                                                  if (res == 1)
+                                                                  {
+                                                                      const auto defaultDir = File::getSpecialLocation (File::userDesktopDirectory).getChildFile ("pluginval logs").getFullPathName();
+                                                                      FileChooser fc (TRANS("Directory to save log files"), defaultDir);
+
+                                                                      if (fc.browseForDirectory())
+                                                                          getAppPreferences().setValue ("outputDir", fc.getResult().getFullPathName());
+                                                                  }
                                                               }));
 }
 
@@ -235,6 +270,7 @@ MainComponent::MainComponent (Validator& v)
                 verboseLogging,
                 numRepeats,
                 randomise,
+                chooseOutputDir,
                 showSettingsDir
             };
 
@@ -244,7 +280,8 @@ MainComponent::MainComponent (Validator& v)
             m.addItem (showTimeout, TRANS("Set timeout (123ms)").replace ("123", String (getTimeoutMs())));
             m.addItem (verboseLogging, TRANS("Verbose logging"), true, getVerboseLogging());
             m.addItem (numRepeats, TRANS("Num repeats (123)").replace ("123", String (getNumRepeats())));
-            m.addItem (randomise, TRANS("Randomise tests"), true, getRandomiseTests());            
+            m.addItem (randomise, TRANS("Randomise tests"), true, getRandomiseTests());
+            m.addItem (chooseOutputDir, TRANS("Choose a location for log files"));
             m.addSeparator();
             m.addItem (showSettingsDir, TRANS("Show settings folder"));
             m.showMenuAsync (PopupMenu::Options().withTargetComponent (&optionsButton),
@@ -274,6 +311,10 @@ MainComponent::MainComponent (Validator& v)
                                  else if (res == randomise)
                                  {
                                      setRandomiseTests (! getRandomiseTests());
+                                 }
+                                 else if (res == chooseOutputDir)
+                                 {
+                                     showOutputDirDialog();
                                  }
                                  else if (res == showSettingsDir)
                                  {

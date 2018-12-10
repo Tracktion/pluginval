@@ -159,6 +159,11 @@ File getDataFile (const ArgumentList& args)
     return getOptionValue (args, "--data-file", {}, "Missing data-file path argument!").toString();
 }
 
+File getOutputDir (const ArgumentList& args)
+{
+    return getOptionValue (args, "--output-dir", {}, "Missing output-dir path argument!").toString();
+}
+
 
 //==============================================================================
 String parseCommandLineArgs (String commandLine)
@@ -196,6 +201,7 @@ static Option possibleOptions[] =
     { "--validate-in-process",  false   },
     { "--skip-gui-tests",       false   },
     { "--data-file",            true    },
+    { "--output-dir",           true    },
     { "--repeat",               true    },
     { "--randomise",            false   }
 };
@@ -264,6 +270,8 @@ static String getHelpMessage()
          << "    If specified the tests are run in a random order per repeat."
          << "  --data-file [pathToFile]" << newLine
          << "    If specified, sets a path to a data file which can be used by tests to configure themselves. This can be useful for things like known audio output." << newLine
+         << "  --output-dir [pathToDir]" << newLine
+         << "    If specified, sets a directory to store the log files. This can be useful for continuous integration." << newLine
          << "  --version" << newLine
          << "    Print pluginval version." << newLine
          << newLine
@@ -318,6 +326,7 @@ static void validate (CommandLineValidator& validator, const ArgumentList& args)
         options.numRepeats = getNumRepeats (args);
         options.randomiseTestOrder = args.containsOption ("--randomise");
         options.dataFile = getDataFile (args);
+        options.outputDir = getOutputDir (args);
         options.withGUI = ! args.containsOption ("--skip-gui-tests");
 
         validator.validate (fileOrIDs,

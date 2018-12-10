@@ -34,6 +34,7 @@ struct PluginTests : public UnitTest
         bool randomiseTestOrder = false;    /**< Whether to randomise the order of the tests in each repeat. */
         bool withGUI = true;                /**< Whether or not avoid tests that instantiate a gui. */
         File dataFile;                      /**< File which tests can use to run user provided data. */
+        File outputDir;                     /**< Directory in which to write the log files for each test run. */
     };
 
     /** Creates a set of tests for a fileOrIdentifier. */
@@ -41,6 +42,12 @@ struct PluginTests : public UnitTest
 
     /** Creates a set of tests for a PluginDescription. */
     PluginTests (const PluginDescription&, Options);
+
+    /** Returns the file or ID used to create this. */
+    String getFileOrID() const;
+
+    /** Call this after you've run the test to return information about the PluginDescriptions found. */
+    const OwnedArray<PluginDescription>& getDescriptions() const    { return typesFound; }
 
     //==============================================================================
     /** Returns the set of options currently being used to run the tests. */

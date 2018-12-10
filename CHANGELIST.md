@@ -6,6 +6,7 @@
   - Added the option to randomise the test order each repeat
   - Added some message loop running to editor tests to ensure the UI is actually displayed
   - Added a test for processing audio whilst showing the editor
+  - Added an option to automatically save log files with a sensible name (see the "--output-dir" option)
 
 ### 0.1.5
   - Fixed a problem catching allocations in clang release builds

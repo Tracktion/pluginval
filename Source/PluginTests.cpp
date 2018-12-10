@@ -60,6 +60,17 @@ PluginTests::PluginTests (const PluginDescription& desc, Options opts)
     typesFound.add (new PluginDescription (desc));
 }
 
+String PluginTests::getFileOrID() const
+{
+    if (fileOrID.isNotEmpty())
+        return fileOrID;
+
+    if (auto first = typesFound.getFirst())
+        return first->createIdentifierString();
+
+    return {};
+}
+
 void PluginTests::logVerboseMessage (const String& message)
 {
     // We still need to send an empty message or the test may timeout
