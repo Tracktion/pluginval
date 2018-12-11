@@ -96,9 +96,13 @@ void CommandLineValidator::itemComplete (const String& id, int numItemFailures)
 void CommandLineValidator::allItemsComplete()
 {
     if (numFailures > 0)
+    {
         exitWithError ("*** FAILED: " + String (numFailures) + " TESTS");
-
-    JUCEApplication::getInstance()->quit();
+    }
+    else
+    {
+        JUCEApplication::getInstance()->quit();
+    }
 }
 
 void CommandLineValidator::connectionLost()
