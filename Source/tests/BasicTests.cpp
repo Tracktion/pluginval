@@ -376,6 +376,62 @@ static AutomationTest automationTest;
 
 
 //==============================================================================
+struct EditorAutomationTest : public PluginTest
+{
+    EditorAutomationTest()
+        : PluginTest ("Editor Automation", 6)
+    {
+    }
+
+    void runTest (PluginTests& ut, AudioPluginInstance& instance) override
+    {
+        WaitableEvent waiter;
+        std::unique_ptr<AudioProcessorEditor> editor;
+        MessageManager::callAsync ([&]
+                                   {
+                                       editor.reset (instance.createEditor());
+                                       ut.expect (editor != nullptr, "Unable to create editor");
+
+                                       if (editor)
+                                       {
+                                           editor->addToDesktop (0);
+                                           editor->setVisible (true);
+                                       }
+
+                                       waiter.signal();
+                                   });
+
+        waiter.wait();
+        Thread::sleep (200);
+
+        const auto& parameters = instance.getParameters();
+
+        auto r = ut.getRandom();
+
+        // Set random parameter values
+        for (auto index = 0; index < 100; ++index)
+        {
+            for (auto parameter : parameters)
+            {
+                parameter->setValue (r.nextFloat());
+            }
+
+            Thread::sleep (200);
+        }
+
+        MessageManager::callAsync ([&]
+                                   {
+                                       editor.reset();
+                                       waiter.signal();
+                                   });
+        waiter.wait();
+    }
+};
+
+static EditorAutomationTest editorAutomationTest;
+
+
+//==============================================================================
 namespace ParameterHelpers
 {
     static void testParameterInfo (PluginTests& ut, AudioProcessorParameter& parameter)
