@@ -35,10 +35,10 @@ make CONFIG=Release -j4
 #   Add VST2 capabilities
 #============================================================
 if [ -d "$VST2_SDK_DIR" ]; then
-	echo "Modifying jucer project for VST2 support"
+	echo "Modifying jucer project for VST2 support: $VST2_SDK_DIR"
 
-	sed -i.bak s/'headerPath="..\/..\/modules\/juce\/modules\/juce_audio_processors\/format_types\/VST3_SDK"/headerPath="..\/..\/modules\/juce\/modules\/juce_audio_processors\/format_types\/VST3_SDK;"$VST2_SDK_DIR""/' "$ROOT/$PROJECT_NAME.jucer"
-	sed -i.bak s/'<JUCEOPTIONS JUCE_PLUGINHOST_AU="1"/<JUCEOPTIONS JUCE_PLUGINHOST_VST="1" JUCE_PLUGINHOST_AU="1"/' "$ROOT/$PROJECT_NAME.jucer"
+	sed -i.bak "s+VST3_SDK+VST3_SDK;$VST2_SDK_DIR+" "$ROOT/$PROJECT_NAME.jucer"
+	sed -i.bak s+'<JUCEOPTIONS JUCE_PLUGINHOST_AU="1"+<JUCEOPTIONS JUCE_PLUGINHOST_VST="1" JUCE_PLUGINHOST_AU="1"+' "$ROOT/$PROJECT_NAME.jucer"
 
 	# Resave project
 	"$PROJUCER_EXE" --resave "$ROOT/$PROJECT_NAME.jucer"
