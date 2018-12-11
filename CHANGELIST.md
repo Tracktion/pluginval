@@ -8,6 +8,7 @@
   - Added a test for processing audio whilst showing the editor
   - Added an option to automatically save log files with a sensible name (see the "--output-dir" option)
   - Disabled the LargerThanPreparedBlockSizeTest for AU, VST & VST3 formats
+  - Added a "Test File" button to the UI for validating plugins that won't scan (this improves the stack trace information in the log file)
 
 ### 0.1.5
   - Fixed a problem catching allocations in clang release builds

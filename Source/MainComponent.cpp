@@ -205,6 +205,7 @@ MainComponent::MainComponent (Validator& v)
     addAndMakeVisible (optionsButton);
     addAndMakeVisible (testSelectedButton);
     addAndMakeVisible (testAllButton);
+    addAndMakeVisible (testFileButton);
     addAndMakeVisible (strictnessLabel);
     addAndMakeVisible (strictnessSlider);
 
@@ -231,6 +232,22 @@ MainComponent::MainComponent (Validator& v)
 
             validator.setValidateInProcess (getValidateInProcess());
             validator.validate (plugins, getTestOptions());
+        };
+
+    testFileButton.onClick = [this]
+        {
+            FileChooser fc (TRANS("Browse for Plug-in File"),
+                            getAppPreferences().getValue ("lastPluginLocation", File::getSpecialLocation (File::userApplicationDataDirectory).getFullPathName()),
+                            "*.vst;*.vst3;*.dll;*.component");
+
+            if (fc.browseForFileToOpen())
+            {
+                const auto path = fc.getResult().getFullPathName();
+                getAppPreferences().setValue ("lastPluginLocation", path);
+
+                validator.setValidateInProcess (getValidateInProcess());
+                validator.validate (path, getTestOptions());
+            }
         };
 
     clearButton.onClick = [this]
@@ -357,13 +374,14 @@ void MainComponent::resized()
     auto r = getLocalBounds();
 
     auto bottomR = r.removeFromBottom (28);
-    saveButton.setBounds (bottomR.removeFromRight (100).reduced (2));
-    clearButton.setBounds (bottomR.removeFromRight (100).reduced (2));
-    optionsButton.setBounds (bottomR.removeFromRight (80).reduced (2));
+    saveButton.setBounds (bottomR.removeFromRight (80).reduced (2));
+    clearButton.setBounds (bottomR.removeFromRight (80).reduced (2));
+    optionsButton.setBounds (bottomR.removeFromRight (70).reduced (2));
 
     connectionStatus.setBounds (bottomR.removeFromLeft (bottomR.getHeight()).reduced (2));
-    testSelectedButton.setBounds (bottomR.removeFromLeft (130).reduced (2));
-    testAllButton.setBounds (bottomR.removeFromLeft (130).reduced (2));
+    testSelectedButton.setBounds (bottomR.removeFromLeft (110).reduced (2));
+    testAllButton.setBounds (bottomR.removeFromLeft (110).reduced (2));
+    testFileButton.setBounds (bottomR.removeFromLeft (110).reduced (2));
 
     strictnessLabel.setBounds (bottomR.removeFromLeft (110).reduced (2));
     strictnessSlider.setBounds (bottomR.removeFromLeft (100).reduced (2));
