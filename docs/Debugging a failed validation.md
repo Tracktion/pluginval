@@ -1,4 +1,3 @@
-
 # Debugging a Failed Validation
 
 If your plugin fails validation with `pluginval` you'll want to debug it properly to find out why.

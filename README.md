@@ -81,6 +81,7 @@ This means you can check the exit code on your various CI and mark builds a fail
 
 ### Guides
  - [Debugging a failed validation](<docs/Debugging a failed validation.md>)
+ - [Adding pluginval to CI](<docs/Adding pluginval to CI.md>)
 
 ### Contributing
 If you would like to contribute to the project please do! It's very simple to add tests, simply:
