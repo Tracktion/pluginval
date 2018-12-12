@@ -130,19 +130,9 @@ struct EditorWhilstProcessingTest   : public PluginTest
 
             threadStartedEvent.wait();
 
-            {
-                std::unique_ptr<AudioProcessorEditor> editor (instance.createEditor());
-                ut.expect (editor != nullptr, "Unable to create editor");
-
-                if (editor)
-                {
-                    editor->addToDesktop (0);
-                    editor->setVisible (true);
-
-                    // Pump the message loop for a couple of seconds for the window to initialise itself
-					MessageManager::getInstance()->runDispatchLoopUntil (200);
-                }
-            }
+            // Show the editor
+            ScopedEditorShower editor (instance);
+            ut.expect (! instance.hasEditor() || editor.editor.get() != nullptr, "Unable to create editor");
 
             shouldProcess = false;
         }
@@ -373,6 +363,38 @@ struct AutomationTest  : public PluginTest
 };
 
 static AutomationTest automationTest;
+
+
+//==============================================================================
+struct EditorAutomationTest : public PluginTest
+{
+    EditorAutomationTest()
+        : PluginTest ("Editor Automation", 5,
+                      { Requirements::Thread::backgroundThread, Requirements::GUI::requiresGUI })
+    {
+    }
+
+    void runTest (PluginTests& ut, AudioPluginInstance& instance) override
+    {
+        const ScopedEditorShower editor (instance);
+        ut.expect (! instance.hasEditor() || editor.editor.get() != nullptr, "Unable to create editor");
+
+        auto r = ut.getRandom();
+        const auto& parameters = instance.getParameters();
+        int numBlocks = ut.getOptions().strictnessLevel > 5 ? 1000 : 100;
+
+        // Set random parameter values
+        while (--numBlocks >= 0)
+        {
+            for (auto parameter : parameters)
+                parameter->setValue (r.nextFloat());
+
+            Thread::sleep (10);
+        }
+    }
+};
+
+static EditorAutomationTest editorAutomationTest;
 
 
 //==============================================================================

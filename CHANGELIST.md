@@ -1,5 +1,8 @@
 # pluginval Change List
 
+### 0.2.1
+  - Added an EditorAutomationTest to adjust parameter values whilst showing the plugin editor
+
 ### 0.2.0
   - Removed built-in support for VST2 testing, this can be built with by setting the VST2_SDK_DIR environment variable before running the `tests/` scripts
   - Added the option to repeat tests a specified number of times
