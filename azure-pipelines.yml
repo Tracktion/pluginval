@@ -23,6 +23,8 @@ jobs:
 - job: macOS
   pool:
     vmImage: 'macOS-10.13'
+  - checkout: self
+    submodules: true
   steps:
   - script: tests/mac_tests
     displayName: 'macOS Build'
