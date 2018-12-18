@@ -3,6 +3,8 @@ jobs:
   pool:
     vmImage: 'Ubuntu-16.04'
   steps:
+  - checkout: self
+    submodules: true
   - script: |
       sudo add-apt-repository ppa:ubuntu-toolchain-r/test
       sudo apt-get update
