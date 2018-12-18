@@ -14,7 +14,7 @@ BINARY_NAME="$PROJECT_NAME"
 APP_NAME=$BINARY_NAME".app"
 APP_FILE=$ROOT/Builds/MacOSX/build/Release/$APP_NAME
 
-ZIP_FILE=$DEPLOYMENT_DIR/$PROJECT_NAME_macOS.zip
+ZIP_FILE="$DEPLOYMENT_DIR/$PROJECT_NAME_macOS.zip"
 
 echo "\n=========================================="
 echo "\nRoot dir: $ROOT"

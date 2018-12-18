@@ -14,7 +14,7 @@ BINARY_NAME="$PROJECT_NAME"
 APP_NAME=$BINARY_NAME
 APP_FILE=$ROOT/Builds/LinuxMakefile/build/$APP_NAME
 
-ZIP_FILE=$DEPLOYMENT_DIR/$PROJECT_NAME_Linux.zip
+ZIP_FILE="$DEPLOYMENT_DIR/$PROJECT_NAME_Linux.zip"
 
 echo "\n=========================================="
 echo "\nRoot dir: $ROOT"
