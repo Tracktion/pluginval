@@ -18,25 +18,25 @@ jobs:
     inputs:
       artifactName: 'pluginval Linux'
       targetPath: 'bin/linux'
-# - job: macOS
-#   pool:
-#     vmImage: 'macOS-10.13'
-#   steps:
-#   - script: tests/mac_tests
-#     displayName: 'macOS Build'
-#   - task: PublishPipelineArtifact@0
-#     inputs:
-#       artifactName: 'pluginval Mac'
-#       targetPath: 'bin/mac'
-# - job: windows
-#   pool:
-#     vmImage: 'vs2017-win2016'
-#   steps:
-#   - script: |
-#       set MSBUILD_EXE=C:\Program Files (x86)\Microsoft Visual Studio\2017\Enterprise\MSBuild\15.0\Bin\MSBuild.exe
-#       tests/windows_tests
-#     displayName: 'Windows Build'
-#   - task: PublishPipelineArtifact@0
-#     inputs:
-#       artifactName: 'pluginval Windows'
-#       targetPath: 'bin/windows'
+- job: macOS
+  pool:
+    vmImage: 'macOS-10.13'
+  steps:
+  - script: tests/mac_tests
+    displayName: 'macOS Build'
+  - task: PublishPipelineArtifact@0
+    inputs:
+      artifactName: 'pluginval Mac'
+      targetPath: 'bin/mac'
+- job: windows
+  pool:
+    vmImage: 'vs2017-win2016'
+  steps:
+  - script: |
+      set MSBUILD_EXE=C:\Program Files (x86)\Microsoft Visual Studio\2017\Enterprise\MSBuild\15.0\Bin\MSBuild.exe
+      tests/windows_tests
+    displayName: 'Windows Build'
+  - task: PublishPipelineArtifact@0
+    inputs:
+      artifactName: 'pluginval Windows'
+      targetPath: 'bin/windows'
