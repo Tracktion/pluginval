@@ -14,6 +14,8 @@ BINARY_NAME="$PROJECT_NAME"
 APP_NAME=$BINARY_NAME
 APP_FILE=$ROOT/Builds/LinuxMakefile/build/$APP_NAME
 
+ZIP_FILE=$DEPLOYMENT_DIR/$PROJECT_NAME_Linux.zip
+
 echo "\n=========================================="
 echo "\nRoot dir: $ROOT"
 
@@ -48,4 +50,4 @@ rm -rf "$DEPLOYMENT_DIR"
 mkdir -p "$DEPLOYMENT_DIR"
 
 echo "\nDeploying to: " $DEPLOYMENT_DIR
-mv -fv "$APP_FILE" "$DEPLOYMENT_DIR/$APP_NAME"
+zip -r "$ZIP_FILE" "$APP_FILE"

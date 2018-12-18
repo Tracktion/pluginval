@@ -1,7 +1,8 @@
 master: [![Build Status](https://travis-ci.org/Tracktion/pluginval.svg?branch=master)](https://travis-ci.org/Tracktion/pluginval)
+[![Build Status](https://dev.azure.com/TracktionDev/pluginval/_apis/build/status/Tracktion.pluginval?branchName=master)](https://dev.azure.com/TracktionDev/pluginval/_build/latest?definitionId=1?branchName=master)
 
 develop: [![Build Status](https://travis-ci.org/Tracktion/pluginval.svg?branch=develop)](https://travis-ci.org/Tracktion/pluginval)
-
+[![Build Status](https://dev.azure.com/TracktionDev/pluginval/_apis/build/status/Tracktion.pluginval?branchName=develop)](https://dev.azure.com/TracktionDev/pluginval/_build/latest?definitionId=1?branchName=develop)
 # pluginval
 
 pluginval is a cross-platform plugin validator and tester application. It is designed to be used by both plugin and host developers to ensure stability and compatibility between plugins and hosts.
