@@ -1,10 +1,8 @@
 jobs:
-- job: Linux
+- job: linux
   pool:
     vmImage: 'Ubuntu-16.04'
   steps:
-  - checkout: self
-    submodules: true
   - script: |
       sudo add-apt-repository ppa:ubuntu-toolchain-r/test
       sudo apt-get update
@@ -19,16 +17,26 @@ jobs:
   - task: PublishPipelineArtifact@0
     inputs:
       artifactName: 'pluginval Linux'
-      targetPath: 'bin'
+      targetPath: 'bin/linux'
 - job: macOS
   pool:
     vmImage: 'macOS-10.13'
   steps:
-  - checkout: self
-    submodules: true
   - script: tests/mac_tests
     displayName: 'macOS Build'
   - task: PublishPipelineArtifact@0
     inputs:
       artifactName: 'pluginval Mac'
-      targetPath: 'bin'
+      targetPath: 'bin/mac'
+- job: windows
+  pool:
+    vmImage: 'vs2017-win2016'
+  steps:
+  - script: |
+      set MSBUILD_EXE=C:\Program Files (x86)\Microsoft Visual Studio\2017\BuildTools\MSBuild\15.0\Bin\MSBuild.exe
+      tests/windows_tests
+    displayName: 'Windows Build'
+  - task: PublishPipelineArtifact@0
+    inputs:
+      artifactName: 'pluginval Windows'
+      targetPath: 'bin/windows'
