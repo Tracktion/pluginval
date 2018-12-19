@@ -12,7 +12,10 @@ DEPLOYMENT_DIR="$ROOT/bin/linux"
 
 BINARY_NAME="$PROJECT_NAME"
 APP_NAME=$BINARY_NAME
-APP_FILE=$ROOT/Builds/LinuxMakefile/build/$APP_NAME
+APP_DIR=$ROOT/Builds/LinuxMakefile/build
+APP_FILE=$APP_DIR/$APP_NAME
+
+ZIP_NAME="$PROJECT_NAME"_Linux.zip
 
 echo "\n=========================================="
 echo "\nRoot dir: $ROOT"
@@ -30,6 +33,18 @@ make CONFIG=Release -j4
 # Resave project
 "$PROJUCER_EXE" --resave "$ROOT/$PROJECT_NAME.jucer"
 
+
+#============================================================
+#   Prepare VST2 SDK
+#============================================================
+if [ -n "$VST2_SDK_URL" ]; then
+    rm -rf "$ROOT"/tmp
+    mkdir "$ROOT"/tmp
+    cd "$ROOT"/tmp
+    curl -O $VST2_SDK_URL
+	unzip vstsdk2.4.zip
+    if [ -d "vstsdk2.4" ]; then VST2_SDK_DIR="$ROOT"/tmp/vstsdk2.4; fi
+fi
 
 #============================================================
 #   Add VST2 capabilities
@@ -64,4 +79,5 @@ rm -rf "$DEPLOYMENT_DIR"
 mkdir -p "$DEPLOYMENT_DIR"
 
 echo "\nDeploying to: " $DEPLOYMENT_DIR
-mv -fv "$APP_FILE" "$DEPLOYMENT_DIR/$APP_NAME"
+cd "$APP_DIR"
+zip -r "$DEPLOYMENT_DIR/$ZIP_NAME" "$APP_NAME"

@@ -13,6 +13,8 @@ set BINARY_NAME=%PROJECT_NAME%.exe
 set APP_NAME=%BINARY_NAME%
 set APP_FILE=%ROOT%\Builds\VisualStudio2017\x64\Release\App\%APP_NAME%
 
+set ZIP_FILE=%DEPLOYMENT_DIR%\%PROJECT_NAME%_Windows.zip
+
 if not defined MSBUILD_EXE set MSBUILD_EXE=C:\Program Files (x86)\Microsoft Visual Studio\2017\Community\MSBuild\15.0\Bin\MSBuild.exe
 
 :: First clear the bin
@@ -34,6 +36,19 @@ if not exist "%PROJUCER_EXE%" exit 1
 
 :: Resave project
 "%PROJUCER_EXE%" --resave "%ROOT%/%PROJECT_NAME%.jucer"
+
+
+::============================================================
+::   Prepare VST2 SDK
+::============================================================
+if "%VST2_SDK_URL%" == "" goto SKIP_VST2_URL
+	rd /S /Q "%ROOT%/tmp"
+	mkdir "%ROOT%/tmp"
+	cd "%ROOT%/tmp"
+	powershell -Command "[Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12; Invoke-WebRequest %VST2_SDK_URL% -OutFile vstsdk2.4.zip"
+	powershell -Command "Expand-Archive vstsdk2.4.zip -DestinationPath ."
+    if exist "vstsdk2.4" set VST2_SDK_DIR=%ROOT%/tmp/vstsdk2.4
+:SKIP_VST2_URL
 
 
 ::============================================================
@@ -70,4 +85,4 @@ rd /S /Q "%DEPLOYMENT_DIR%"
 mkdir "%DEPLOYMENT_DIR%"
 
 echo "\nDeploying to: " %DEPLOYMENT_DIR%
-move "%APP_FILE%" "%DEPLOYMENT_DIR%"
+powershell -Command "Compress-Archive -Path %APP_FILE% -DestinationPath %ZIP_FILE%"

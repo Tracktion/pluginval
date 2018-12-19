@@ -12,7 +12,10 @@ DEPLOYMENT_DIR="$ROOT/bin/mac"
 
 BINARY_NAME="$PROJECT_NAME"
 APP_NAME=$BINARY_NAME".app"
-APP_FILE=$ROOT/Builds/MacOSX/build/Release/$APP_NAME
+APP_DIR=$ROOT/Builds/MacOSX/build/Release/
+APP_FILE=$APP_DIR/$APP_NAME
+
+ZIP_NAME="$PROJECT_NAME"_macOS.zip
 
 echo "\n=========================================="
 echo "\nRoot dir: $ROOT"
@@ -31,12 +34,24 @@ xcodebuild -configuration Release GCC_PREPROCESSOR_DEFINITIONS='$GCC_PREPROCESSO
 
 
 #============================================================
+#   Prepare VST2 SDK
+#============================================================
+if [ -n "$VST2_SDK_URL" ]; then
+    rm -rf "$ROOT"/tmp
+    mkdir "$ROOT"/tmp
+    cd "$ROOT"/tmp
+    curl -O $VST2_SDK_URL
+	unzip vstsdk2.4.zip
+    if [ -d "vstsdk2.4" ]; then VST2_SDK_DIR="$ROOT"/tmp/vstsdk2.4; fi
+fi
+
+#============================================================
 #   Add VST2 capabilities
 #============================================================
 if [ -d "$VST2_SDK_DIR" ]; then
 	echo "Modifying jucer project for VST2 support"
 
-	sed -i.bak s/'headerPath="..\/..\/modules\/juce\/modules\/juce_audio_processors\/format_types\/VST3_SDK"/headerPath="..\/..\/modules\/juce\/modules\/juce_audio_processors\/format_types\/VST3_SDK;$VST2_SDK_DIR"/' "$ROOT/$PROJECT_NAME.jucer"
+	sed -i.bak "s+VST3_SDK+VST3_SDK;$VST2_SDK_DIR+" "$ROOT/$PROJECT_NAME.jucer"
 	sed -i.bak s/'<JUCEOPTIONS JUCE_PLUGINHOST_AU="1"/<JUCEOPTIONS JUCE_PLUGINHOST_VST="1" JUCE_PLUGINHOST_AU="1"/' "$ROOT/$PROJECT_NAME.jucer"
 
 	# Resave project
@@ -63,4 +78,5 @@ rm -rf $DEPLOYMENT_DIR
 mkdir -p "$DEPLOYMENT_DIR"
 
 echo "\nDeploying to: " $DEPLOYMENT_DIR
-mv -fv "$APP_FILE" "$DEPLOYMENT_DIR/$APP_NAME"
+cd "$APP_DIR"
+zip -r "$DEPLOYMENT_DIR/$ZIP_NAME" "$APP_NAME"
