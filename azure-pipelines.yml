@@ -1,6 +1,6 @@
 variables:
-  VST2_SDK_URL: $(VST2_SDK_URL)
-  
+  - group: VST2_SDK
+
 jobs:
 - job: linux
   pool:
