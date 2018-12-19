@@ -41,7 +41,7 @@ if not exist "%PROJUCER_EXE%" exit 1
 ::============================================================
 ::   Prepare VST2 SDK
 ::============================================================
-if "%VST2_SDK_URL%" goto SKIP_VST2_URL
+if "%VST2_SDK_URL%" == "" goto SKIP_VST2_URL
 	rd /S /Q "%ROOT%"/tmp
 	mkdir "%ROOT%"/tmp
 	cd "%ROOT%"/tmp
