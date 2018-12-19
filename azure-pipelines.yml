@@ -18,6 +18,10 @@ jobs:
     inputs:
       artifactName: 'pluginval Linux'
       targetPath: 'bin/linux'
+  - task: PublishPipelineArtifact@0
+    inputs:
+      artifactName: 'Change List'
+      targetPath: 'CHANGELIST.md'
 - job: macOS
   pool:
     vmImage: 'macOS-10.13'
