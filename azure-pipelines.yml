@@ -22,7 +22,7 @@ jobs:
     displayName: 'Copy change list to bin'    
   - task: PublishPipelineArtifact@0
     inputs:
-      artifactName: 'pluginval'
+      artifactName: 'Linux'
       targetPath: 'bin/linux'
 - job: macOS
   pool:
@@ -32,7 +32,7 @@ jobs:
     displayName: 'macOS Build'
   - task: PublishPipelineArtifact@0
     inputs:
-      artifactName: 'pluginval'
+      artifactName: 'macOS'
       targetPath: 'bin/mac'
 - job: windows
   pool:
@@ -44,5 +44,5 @@ jobs:
     displayName: 'Windows Build'
   - task: PublishPipelineArtifact@0
     inputs:
-      artifactName: 'pluginval'
+      artifactName: 'Windows'
       targetPath: 'bin/windows'
