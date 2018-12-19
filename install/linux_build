@@ -35,6 +35,18 @@ make CONFIG=Release -j4
 
 
 #============================================================
+#   Prepare VST2 SDK
+#============================================================
+if [ -n "$VST2_SDK_URL" ]; then
+    rm -rf "$ROOT"/tmp
+    mkdir "$ROOT"/tmp
+    cd "$ROOT"/tmp
+    curl -O $VST2_SDK_URL
+	unzip vstsdk2.4.zip
+    if [ -d "vstsdk2.4" ]; then VST2_SDK_DIR="$ROOT"/tmp/vstsdk2.4; fi
+fi
+
+#============================================================
 #   Add VST2 capabilities
 #============================================================
 if [ -d "$VST2_SDK_DIR" ]; then
