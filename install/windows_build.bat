@@ -42,9 +42,9 @@ if not exist "%PROJUCER_EXE%" exit 1
 ::   Prepare VST2 SDK
 ::============================================================
 if "%VST2_SDK_URL%" == "" goto SKIP_VST2_URL
-	rd /S /Q "%ROOT%"/tmp
-	mkdir "%ROOT%"/tmp
-	cd "%ROOT%"/tmp
+	rd /S /Q "%ROOT%/tmp"
+	mkdir "%ROOT%/tmp"
+	cd "%ROOT%/tmp"
 	powershell -Command "[Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12; Invoke-WebRequest %VST2_SDK_URL% -OutFile vstsdk2.4.zip"
 	powershell -Command "Expand-Archive vstsdk2.4.zip -DestinationPath ."
     if exist "vstsdk2.4" set VST2_SDK_DIR=%ROOT%/tmp/vstsdk2.4
