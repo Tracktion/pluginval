@@ -11,9 +11,9 @@ set DEPLOYMENT_DIR=%ROOT%/bin/windows
 
 set BINARY_NAME=%PROJECT_NAME%.exe
 set APP_NAME=%BINARY_NAME%
-set APP_FILE=%ROOT%\Builds\VisualStudio2017\x64\Release\App\%APP_NAME%
+set APP_FILE="%ROOT%\Builds\VisualStudio2017\x64\Release\App\%APP_NAME%"
 
-set ZIP_FILE=%DEPLOYMENT_DIR%\%PROJECT_NAME%_Windows.zip
+set ZIP_FILE="%DEPLOYMENT_DIR%\%PROJECT_NAME%_Windows.zip"
 
 if not defined MSBUILD_EXE set MSBUILD_EXE=C:\Program Files (x86)\Microsoft Visual Studio\2017\Community\MSBuild\15.0\Bin\MSBuild.exe
 
