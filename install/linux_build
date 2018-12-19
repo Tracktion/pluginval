@@ -12,9 +12,10 @@ DEPLOYMENT_DIR="$ROOT/bin/linux"
 
 BINARY_NAME="$PROJECT_NAME"
 APP_NAME=$BINARY_NAME
-APP_FILE=$ROOT/Builds/LinuxMakefile/build/$APP_NAME
+APP_DIR=$ROOT/Builds/MacOSX/build/Release/
+APP_FILE=$APP_DIR/$APP_NAME
 
-ZIP_FILE=$DEPLOYMENT_DIR/"$PROJECT_NAME"_Linux.zip
+ZIP_NAME="$PROJECT_NAME"_Linux.zip
 
 echo "\n=========================================="
 echo "\nRoot dir: $ROOT"
@@ -50,4 +51,5 @@ rm -rf "$DEPLOYMENT_DIR"
 mkdir -p "$DEPLOYMENT_DIR"
 
 echo "\nDeploying to: " $DEPLOYMENT_DIR
-zip -r "$ZIP_FILE" "$APP_FILE"
+cd "$APP_DIR"
+zip -r "$DEPLOYMENT_DIR/$ZIP_NAME" "$APP_NAME"
