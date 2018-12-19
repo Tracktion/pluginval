@@ -26,12 +26,15 @@ struct PluginTests : public UnitTest
     /** A set of options to use when running tests. */
     struct Options
     {
-        int strictnessLevel = 5;    /**< Max test level to run. */
-        int64 randomSeed = 0;       /**< The seed to use for the tests, 0 signifies a randomly generated seed. */
-        int64 timeoutMs = 30000;    /**< Timeout after which to kill the test. */
-        bool verbose = false;       /**< Whether or not to log additional information. */
-        bool withGUI = true;        /**< Whether or not avoid tests that instantiate a gui. */
-        File dataFile;              /**< File which tests can use to run user provided data. */
+        int strictnessLevel = 5;            /**< Max test level to run. */
+        int64 randomSeed = 0;               /**< The seed to use for the tests, 0 signifies a randomly generated seed. */
+        int64 timeoutMs = 30000;            /**< Timeout after which to kill the test. */
+        bool verbose = false;               /**< Whether or not to log additional information. */
+        int numRepeats = 1;                 /**< The number of times to repeat the tests. */
+        bool randomiseTestOrder = false;    /**< Whether to randomise the order of the tests in each repeat. */
+        bool withGUI = true;                /**< Whether or not avoid tests that instantiate a gui. */
+        File dataFile;                      /**< File which tests can use to run user provided data. */
+        File outputDir;                     /**< Directory in which to write the log files for each test run. */
     };
 
     /** Creates a set of tests for a fileOrIdentifier. */
@@ -39,6 +42,12 @@ struct PluginTests : public UnitTest
 
     /** Creates a set of tests for a PluginDescription. */
     PluginTests (const PluginDescription&, Options);
+
+    /** Returns the file or ID used to create this. */
+    String getFileOrID() const;
+
+    /** Call this after you've run the test to return information about the PluginDescriptions found. */
+    const OwnedArray<PluginDescription>& getDescriptions() const    { return typesFound; }
 
     //==============================================================================
     /** Returns the set of options currently being used to run the tests. */

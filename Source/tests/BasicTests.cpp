@@ -14,6 +14,7 @@
 
 #include "../PluginTests.h"
 #include "../TestUtilities.h"
+#include <future>
 
 //==============================================================================
 struct PluginInfoTest   : public PluginTest
@@ -59,6 +60,9 @@ struct EditorTest   : public PluginTest
                 {
                     editor->addToDesktop (0);
                     editor->setVisible (true);
+
+                    // Pump the message loop for a couple of seconds for the window to initialise itself
+                    MessageManager::getInstance()->runDispatchLoopUntil (200);
                 }
 
                 ut.logMessage ("\nTime taken to open editor (cold): " + timer.getDescription());
@@ -73,6 +77,9 @@ struct EditorTest   : public PluginTest
                 {
                     editor->addToDesktop (0);
                     editor->setVisible (true);
+
+                    // Pump the message loop for a couple of seconds for the window to initialise itself
+                    MessageManager::getInstance()->runDispatchLoopUntil (200);
                 }
 
                 ut.logMessage ("Time taken to open editor (warm): " + timer.getDescription());
@@ -82,6 +89,57 @@ struct EditorTest   : public PluginTest
 };
 
 static EditorTest editorTest;
+
+
+//==============================================================================
+struct EditorWhilstProcessingTest   : public PluginTest
+{
+    EditorWhilstProcessingTest()
+        : PluginTest ("Open editor whilst processing", 4,
+                      { Requirements::Thread::messageThread, Requirements::GUI::requiresGUI })
+    {
+    }
+
+    void runTest (PluginTests& ut, AudioPluginInstance& instance) override
+    {
+        if (instance.hasEditor())
+        {
+            instance.releaseResources();
+            instance.prepareToPlay (44100.0, 512);
+
+            const int numChannelsRequired = jmax (instance.getTotalNumInputChannels(), instance.getTotalNumOutputChannels());
+            AudioBuffer<float> ab (numChannelsRequired, instance.getBlockSize());
+            MidiBuffer mb;
+
+
+            WaitableEvent threadStartedEvent;
+            std::atomic<bool> shouldProcess { true };
+
+            auto processThread = std::async (std::launch::async,
+                                             [&]
+                                             {
+                                                 while (shouldProcess)
+                                                 {
+                                                     fillNoise (ab);
+                                                     instance.processBlock (ab, mb);
+                                                     mb.clear();
+
+                                                     threadStartedEvent.signal();
+                                                 }
+                                             });
+
+            threadStartedEvent.wait();
+
+            // Show the editor
+            ScopedEditorShower editor (instance);
+            ut.expect (! instance.hasEditor() || editor.editor.get() != nullptr, "Unable to create editor");
+
+            shouldProcess = false;
+        }
+    }
+};
+
+static EditorWhilstProcessingTest editorWhilstProcessingTest;
 
 
 //==============================================================================
@@ -98,6 +156,7 @@ struct AudioProcessingTest  : public PluginTest
         const double sampleRates[] = { 44100.0, 48000.0, 96000.0 };
         const int blockSizes[] = { 64, 128, 256, 512, 1024 };
         const int numBlocks = 10;
+        auto r = ut.getRandom();
 
         for (auto sr : sampleRates)
         {
@@ -114,8 +173,8 @@ struct AudioProcessingTest  : public PluginTest
                 MidiBuffer mb;
 
                 // Add a random note on if the plugin is a synth
-                const int noteChannel = ut.getRandom().nextInt ({ 1, 17 });
-                const int noteNumber = ut.getRandom().nextInt (128);
+                const int noteChannel = r.nextInt ({ 1, 17 });
+                const int noteNumber = r.nextInt (128);
 
                 if (isPluginInstrument)
                     addNoteOn (mb, noteChannel, noteNumber, jmin (10, bs));
@@ -152,13 +211,15 @@ struct PluginStateTest  : public PluginTest
 
     void runTest (PluginTests& ut, AudioPluginInstance& instance) override
     {
+        auto r = ut.getRandom();
+
         // Read state
         MemoryBlock originalState;
         instance.getStateInformation (originalState);
 
         // Set random parameter values
         for (auto parameter : getNonBypassAutomatableParameters (instance))
-            parameter->setValue (ut.getRandom().nextFloat());
+            parameter->setValue (r.nextFloat());
 
         // Restore original state
         instance.setStateInformation (originalState.getData(), (int) originalState.getSize());
@@ -178,6 +239,8 @@ struct PluginStateTestRestoration   : public PluginTest
 
     void runTest (PluginTests& ut, AudioPluginInstance& instance) override
     {
+        auto r = ut.getRandom();
+
         // Read state
         MemoryBlock originalState;
         instance.getStateInformation (originalState);
@@ -187,7 +250,7 @@ struct PluginStateTestRestoration   : public PluginTest
 
         // Set random parameter values
         for (auto parameter : getNonBypassAutomatableParameters (instance))
-            parameter->setValue (ut.getRandom().nextFloat());
+            parameter->setValue (r.nextFloat());
 
         // Restore original state
         instance.setStateInformation (originalState.getData(), (int) originalState.getSize());
@@ -224,6 +287,7 @@ struct AutomationTest  : public PluginTest
         const bool isPluginInstrument = instance.getPluginDescription().isInstrument;
         const double sampleRates[] = { 44100.0, 48000.0, 96000.0 };
         const int blockSizes[] = { 64, 128, 256, 512, 1024 };
+        auto r = ut.getRandom();
 
         for (auto sr : sampleRates)
         {
@@ -244,8 +308,8 @@ struct AutomationTest  : public PluginTest
                 MidiBuffer mb;
 
                 // Add a random note on if the plugin is a synth
-                const int noteChannel = ut.getRandom().nextInt ({ 1, 17 });
-                const int noteNumber = ut.getRandom().nextInt (128);
+                const int noteChannel = r.nextInt ({ 1, 17 });
+                const int noteNumber = r.nextInt (128);
 
                 if (isPluginInstrument)
                     addNoteOn (mb, noteChannel, noteNumber, jmin (10, subBlockSize));
@@ -258,8 +322,8 @@ struct AutomationTest  : public PluginTest
 
                         for (int i = 0; i < jmin (10, parameters.size()); ++i)
                         {
-                            const int paramIndex = ut.getRandom().nextInt (parameters.size());
-                            parameters[paramIndex]->setValue (ut.getRandom().nextFloat());
+                            const int paramIndex = r.nextInt (parameters.size());
+                            parameters[paramIndex]->setValue (r.nextFloat());
                         }
                     }
 
@@ -299,6 +363,38 @@ struct AutomationTest  : public PluginTest
 };
 
 static AutomationTest automationTest;
+
+
+//==============================================================================
+struct EditorAutomationTest : public PluginTest
+{
+    EditorAutomationTest()
+        : PluginTest ("Editor Automation", 5,
+                      { Requirements::Thread::backgroundThread, Requirements::GUI::requiresGUI })
+    {
+    }
+
+    void runTest (PluginTests& ut, AudioPluginInstance& instance) override
+    {
+        const ScopedEditorShower editor (instance);
+        ut.expect (! instance.hasEditor() || editor.editor.get() != nullptr, "Unable to create editor");
+
+        auto r = ut.getRandom();
+        const auto& parameters = instance.getParameters();
+        int numBlocks = ut.getOptions().strictnessLevel > 5 ? 1000 : 100;
+
+        // Set random parameter values
+        while (--numBlocks >= 0)
+        {
+            for (auto parameter : parameters)
+                parameter->setValue (r.nextFloat());
+
+            Thread::sleep (10);
+        }
+    }
+};
+
+static EditorAutomationTest editorAutomationTest;
 
 
 //==============================================================================
@@ -408,6 +504,7 @@ struct BackgroundThreadStateTest    : public PluginTest
 
     void runTest (PluginTests& ut, AudioPluginInstance& instance) override
     {
+        auto r = ut.getRandom();
         WaitableEvent waiter;
         std::unique_ptr<AudioProcessorEditor> editor;
         MessageManager::callAsync ([&]
@@ -432,7 +529,7 @@ struct BackgroundThreadStateTest    : public PluginTest
 
         // Set random parameter values
         for (auto parameter : parameters)
-            parameter->setValue (ut.getRandom().nextFloat());
+            parameter->setValue (r.nextFloat());
 
         // Restore original state
         instance.setStateInformation (originalState.getData(), (int) originalState.getSize());
@@ -466,12 +563,13 @@ struct ParameterThreadSafetyTest    : public PluginTest
     void runTest (PluginTests& ut, AudioPluginInstance& instance) override
     {
         WaitableEvent waiter;
-        auto random = ut.getRandom();
+        auto r = ut.getRandom();
         auto parameters = getNonBypassAutomatableParameters (instance);
         const bool isPluginInstrument = instance.getPluginDescription().isInstrument;
         const int numBlocks = 500;
 
-        MessageManager::callAsync ([&, threadRandom = random]() mutable
+        // This emulates the plugin itself setting a value for example from a slider within its UI
+        MessageManager::callAsync ([&, threadRandom = r]() mutable
                                    {
                                        waiter.signal();
 
@@ -491,8 +589,8 @@ struct ParameterThreadSafetyTest    : public PluginTest
         MidiBuffer mb;
 
         // Add a random note on if the plugin is a synth
-        const int noteChannel = ut.getRandom().nextInt ({ 1, 17 });
-        const int noteNumber = ut.getRandom().nextInt (128);
+        const int noteChannel = r.nextInt ({ 1, 17 });
+        const int noteNumber = r.nextInt (128);
 
         if (isPluginInstrument)
             addNoteOn (mb, noteChannel, noteNumber, jmin (10, blockSize));
@@ -506,7 +604,7 @@ struct ParameterThreadSafetyTest    : public PluginTest
                 addNoteOff (mb, noteChannel, noteNumber, 0);
 
             for (auto param : parameters)
-                param->setValue (random.nextFloat());
+                param->setValue (r.nextFloat());
 
             fillNoise (ab);
             instance.processBlock (ab, mb);

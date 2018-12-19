@@ -132,6 +132,88 @@ static inline float getParametersSum (AudioPluginInstance& instance)
     return value;
 }
 
+
+//==============================================================================
+//==============================================================================
+static std::unique_ptr<AudioProcessorEditor> createAndShowEditorOnMessageThread (AudioPluginInstance& instance)
+{
+    if (! instance.hasEditor())
+        return {};
+
+    std::unique_ptr<AudioProcessorEditor> editor;
+
+    if (MessageManager::getInstance()->isThisTheMessageThread())
+    {
+        editor.reset (instance.createEditor());
+
+        if (editor)
+        {
+            editor->addToDesktop (0);
+            editor->setVisible (true);
+
+            // Pump the message loop for a couple of seconds for the window to initialise itself
+            MessageManager::getInstance()->runDispatchLoopUntil (200);
+        }
+    }
+    else
+    {
+        WaitableEvent waiter;
+        MessageManager::callAsync ([&]
+                                   {
+                                       editor.reset (instance.createEditor());
+
+                                       if (editor)
+                                       {
+                                           editor->addToDesktop (0);
+                                           editor->setVisible (true);
+                                       }
+
+                                       waiter.signal();
+                                   });
+        waiter.wait();
+
+        // Give the editor a chance to appear on the screen
+        Thread::sleep (200);
+    }
+
+    return editor;
+}
+
+static void deleteEditorOnMessageThread (std::unique_ptr<AudioProcessorEditor> editor)
+{
+    if (MessageManager::getInstance()->isThisTheMessageThread())
+        return;
+
+    WaitableEvent waiter;
+    MessageManager::callAsync ([&]
+                               {
+                                   editor.reset();
+                                   waiter.signal();
+                               });
+    waiter.wait();
+}
+
+//==============================================================================
+/** Creates an editor for the plugin on the message thread, shows it on screen and
+    deletes it on the message thread upon destruction.
+*/
+struct ScopedEditorShower
+{
+    ScopedEditorShower (AudioPluginInstance& instance)
+        : editor (createAndShowEditorOnMessageThread (instance))
+    {
+    }
+
+    ~ScopedEditorShower()
+    {
+        deleteEditorOnMessageThread (std::move (editor));
+    }
+
+    std::unique_ptr<AudioProcessorEditor> editor;
+};
+
+
+//==============================================================================
 //==============================================================================
 struct ScopedPluginDeinitialiser
 {
@@ -152,6 +234,8 @@ struct ScopedPluginDeinitialiser
     const int blockSize;
 };
 
+
+//==============================================================================
 //==============================================================================
 struct ScopedBusesLayout
 {

@@ -29,6 +29,7 @@ struct AllocationsInRealTimeThreadTest  : public PluginTest
         const double sampleRates[] = { 44100.0, 48000.0, 96000.0 };
         const int blockSizes[] = { 64, 128, 256, 512, 1024 };
         const int numBlocks = 10;
+        auto r = ut.getRandom();
 
         for (auto sr : sampleRates)
         {
@@ -45,8 +46,8 @@ struct AllocationsInRealTimeThreadTest  : public PluginTest
                 MidiBuffer mb;
 
                 // Add a random note on if the plugin is a synth
-                const int noteChannel = ut.getRandom().nextInt ({ 1, 17 });
-                const int noteNumber = ut.getRandom().nextInt (128);
+                const int noteChannel = r.nextInt ({ 1, 17 });
+                const int noteNumber = r.nextInt (128);
 
                 if (isPluginInstrument)
                     addNoteOn (mb, noteChannel, noteNumber, jmin (10, bs - 1));
@@ -90,6 +91,19 @@ struct LargerThanPreparedBlockSizeTest   : public PluginTest
 
     void runTest (PluginTests& ut, AudioPluginInstance& instance) override
     {
+        if (! canRunTest (instance))
+        {
+            // Technically, it is undefined to pass a larger block than was prepared to the major
+            // plugin formats (VST, VST3 AU) so we'll skip this test.
+            // However, juce::AudioProcessor specifically states that this could happen in the processBlock
+            // comment so be aware that if you write an AudioProcessor and attach it directly to an audio
+            // device callback, you may get a larger block size.
+            // Ideally, juce::AudioProcessor wouldn't support this use case and would split up larger blocks
+            // than are prepared internally. Until this happens though, we should be testing it.
+            ut.logMessage ("INFO: Skipping test for plugin format");
+            return;
+        }
+
         const double sampleRates[] = { 44100.0, 48000.0, 96000.0 };
         const int blockSizes[] = { 64, 128, 256, 512, 1024 };
 
@@ -121,6 +135,17 @@ struct LargerThanPreparedBlockSizeTest   : public PluginTest
                 }
             }
         }
+    }
+
+private:
+    static bool canRunTest (const AudioPluginInstance& instance)
+    {
+        const auto format = instance.getPluginDescription().pluginFormatName;
+
+        return ! (format.contains ("AudioUnit")
+                  || format.contains ("VST")
+                  || format.contains ("VST3"));
+
     }
 };
 

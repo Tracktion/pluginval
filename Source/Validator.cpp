@@ -34,9 +34,10 @@ extern void slaveInitialised();
 struct PluginsUnitTestRunner    : public UnitTestRunner,
                                   private Thread
 {
-    PluginsUnitTestRunner (std::function<void (const String&)> logCallback, int64 timeoutInMs)
+    PluginsUnitTestRunner (std::function<void (const String&)> logCallback, std::unique_ptr<FileOutputStream> logDestination, int64 timeoutInMs)
         : Thread ("TimoutThread"),
           callback (std::move (logCallback)),
+          outputStream (std::move (logDestination)),
           timeoutMs (timeoutInMs)
     {
         jassert (callback);
@@ -51,6 +52,11 @@ struct PluginsUnitTestRunner    : public UnitTestRunner,
         stopThread (5000);
     }
 
+    FileOutputStream* getOutputFileStream() const
+    {
+        return outputStream.get();
+    }
+
     void resultsUpdated() override
     {
         resetTimeout();
@@ -58,16 +64,26 @@ struct PluginsUnitTestRunner    : public UnitTestRunner,
 
     void logMessage (const String& message) override
     {
+        if (! canSendLogMessage)
+            return;
+
         resetTimeout();
 
         if (message.isNotEmpty())
+        {
+            if (outputStream)
+                *outputStream << message << "\n";
+
             callback (message);
+        }
     }
 
 private:
     std::function<void (const String&)> callback;
+    std::unique_ptr<FileOutputStream> outputStream;
     const int64 timeoutMs = -1;
-    std::atomic<int64> timoutTime;
+    std::atomic<int64> timoutTime { -1 };
+    std::atomic<bool> canSendLogMessage { true };
 
     void resetTimeout()
     {
@@ -81,6 +97,8 @@ private:
             if (Time::getCurrentTime().toMilliseconds() > timoutTime)
             {
                 logMessage ("*** FAILED: Timeout after " + RelativeTime::milliseconds (timeoutMs).getDescription());
+                canSendLogMessage = false;
+                outputStream.reset();
 
                 // Give the log a second to flush the message before terminating
                 Thread::sleep (1000);
@@ -92,13 +110,83 @@ private:
     }
 };
 
+//==============================================================================
+//==============================================================================
+String getFileNameFromDescription (PluginTests& test)
+{
+    auto getBaseName = [&]() -> String
+    {
+        if (auto pd = test.getDescriptions().getFirst())
+            return pd->manufacturerName + " - " + pd->name + " " + pd->version + " - " + SystemStats::getOperatingSystemName() + " " + pd->pluginFormatName;
 
+        const auto fileOrID = test.getFileOrID();
+
+        if (fileOrID.isNotEmpty())
+        {
+            if (File::isAbsolutePath (fileOrID))
+                return File (fileOrID).getFileName();
+        }
+
+        return "pluginval Log";
+    };
+
+    return getBaseName() + "_" + Time::getCurrentTime().toString (true, true).replace (":", ",") + ".txt";
+}
+
+File getDestinationFile (PluginTests& test)
+{
+    const auto dir = test.getOptions().outputDir;
+
+    if (dir == File())
+        return {};
+
+    if (dir.existsAsFile() || ! dir.createDirectory())
+    {
+        jassertfalse;
+        return {};
+    }
+
+    return dir.getChildFile (getFileNameFromDescription (test));
+}
+
+std::unique_ptr<FileOutputStream> createDestinationFileStream (PluginTests& test)
+{
+    std::unique_ptr<FileOutputStream> fos (getDestinationFile (test).createOutputStream());
+
+    if (fos && fos->openedOk())
+        return fos;
+
+    jassertfalse;
+    return {};
+}
+
+/** Renames a file based upon its description.
+    This is useful if a path or AU ID was passed in as the plugin info isn't known at that point.
+*/
+void updateFileNameIfPossible (PluginTests& test, PluginsUnitTestRunner& runner)
+{
+    if (auto os = runner.getOutputFileStream())
+    {
+        const auto sourceFile = os->getFile();
+        const auto destName = getFileNameFromDescription (test);
+
+        if (destName.isEmpty() || sourceFile.getFileName() == destName)
+            return;
+
+        const bool success = sourceFile.moveFileTo (sourceFile.getParentDirectory().getChildFile (destName));
+        ignoreUnused (success);
+        jassert (success);
+    }
+}
+
+
+//==============================================================================
 //==============================================================================
 inline Array<UnitTestRunner::TestResult> runTests (PluginTests& test, std::function<void (const String&)> callback)
 {
     const auto options = test.getOptions();
     Array<UnitTestRunner::TestResult> results;
-    PluginsUnitTestRunner testRunner (std::move (callback), options.timeoutMs);
+    PluginsUnitTestRunner testRunner (std::move (callback), createDestinationFileStream (test), options.timeoutMs);
     testRunner.setAssertOnFailure (false);
 
     Array<UnitTest*> testsToRun;
@@ -107,6 +195,8 @@ inline Array<UnitTestRunner::TestResult> runTests (PluginTests& test, std::funct
 
     for (int i = 0; i < testRunner.getNumResults(); ++i)
         results.add (*testRunner.getResult (i));
+
+    updateFileNameIfPossible (test, testRunner);
 
     return results;
 }
@@ -142,7 +232,10 @@ namespace IDs
     DECLARE_ID(randomSeed)
     DECLARE_ID(timeoutMs)
     DECLARE_ID(verbose)
+    DECLARE_ID(numRepeats)
+    DECLARE_ID(randomiseTestOrder)
     DECLARE_ID(dataFile)
+    DECLARE_ID(outputDir)
     DECLARE_ID(withGUI)
 
     DECLARE_ID(MESSAGE)
@@ -363,8 +456,11 @@ private:
             options.strictnessLevel = v.getProperty (IDs::strictnessLevel, 5);
             options.randomSeed = v[IDs::randomSeed];
             options.timeoutMs = v.getProperty (IDs::timeoutMs, -1);
-            options.verbose = v.getProperty (IDs::verbose, false);
-            options.dataFile = File (v.getProperty (IDs::dataFile, String()));
+            options.verbose = v[IDs::verbose];
+            options.numRepeats = v.getProperty (IDs::numRepeats, 1);
+            options.randomiseTestOrder = v[IDs::randomiseTestOrder];
+            options.dataFile = File (v[IDs::dataFile].toString());
+            options.outputDir = File (v[IDs::outputDir].toString());
             options.withGUI = v.getProperty (IDs::withGUI, true);
 
             for (auto c : v)
@@ -551,7 +647,10 @@ private:
         v.setProperty (IDs::randomSeed, options.randomSeed, nullptr);
         v.setProperty (IDs::timeoutMs, options.timeoutMs, nullptr);
         v.setProperty (IDs::verbose, options.verbose, nullptr);
+        v.setProperty (IDs::numRepeats, options.numRepeats, nullptr);
+        v.setProperty (IDs::randomiseTestOrder, options.randomiseTestOrder, nullptr);
         v.setProperty (IDs::dataFile, options.dataFile.getFullPathName(), nullptr);
+        v.setProperty (IDs::outputDir, options.outputDir.getFullPathName(), nullptr);
         v.setProperty (IDs::withGUI, options.withGUI, nullptr);
 
         return v;
