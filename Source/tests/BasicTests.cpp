@@ -562,7 +562,7 @@ struct ParameterThreadSafetyTest    : public PluginTest
 
     void runTest (PluginTests& ut, AudioPluginInstance& instance) override
     {
-        WaitableEvent waiter;
+        WaitableEvent startWaiter, endWaiter;
         auto r = ut.getRandom();
         auto parameters = getNonBypassAutomatableParameters (instance);
         const bool isPluginInstrument = instance.getPluginDescription().isInstrument;
@@ -571,13 +571,13 @@ struct ParameterThreadSafetyTest    : public PluginTest
         // This emulates the plugin itself setting a value for example from a slider within its UI
         MessageManager::callAsync ([&, threadRandom = r]() mutable
                                    {
-                                       waiter.signal();
+                                       startWaiter.signal();
 
                                        for (int i = 0; i < numBlocks; ++i)
                                            for (auto param : parameters)
                                                param->setValueNotifyingHost (threadRandom.nextFloat());
 
-                                       waiter.signal();
+                                       endWaiter.signal();
                                    });
 
         const int blockSize = 32;
@@ -595,7 +595,7 @@ struct ParameterThreadSafetyTest    : public PluginTest
         if (isPluginInstrument)
             addNoteOn (mb, noteChannel, noteNumber, jmin (10, blockSize));
 
-        waiter.wait();
+        startWaiter.wait();
 
         for (int i = 0; i < numBlocks; ++i)
         {
@@ -611,7 +611,7 @@ struct ParameterThreadSafetyTest    : public PluginTest
             mb.clear();
         }
 
-        waiter.wait();
+        endWaiter.wait();
     }
 };
 
