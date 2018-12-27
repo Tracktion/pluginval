@@ -51,10 +51,10 @@ jobs:
     name: Default
     demands:
     - agent.os -equals Linux
+  steps:
   - checkout: self
     fetchDepth: 1
     submodules: true
-  steps:
   - script: |
       install/linux_build
     displayName: 'Linux Build'
@@ -67,10 +67,10 @@ jobs:
     name: Default
     demands:
     - agent.os -equals Darwin
+  steps:
   - checkout: self
     fetchDepth: 1
     submodules: true
-  steps:
   - script: tests/mac_tests
     displayName: 'macOS Build'
   - task: PublishPipelineArtifact@0
@@ -82,10 +82,10 @@ jobs:
     name: Default
     demands:
     - agent.os -equals Windows_NT
+  steps:
   - checkout: self
     fetchDepth: 1
     submodules: true
-  steps:
   - script: |
       set MSBUILD_EXE=C:\Program Files (x86)\Microsoft Visual Studio\2017\BuildTools\MSBuild\15.0\Bin\MSBuild.exe
       tests/windows_tests
