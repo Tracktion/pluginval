@@ -24,6 +24,41 @@ jobs:
 #     inputs:
 #       artifactName: 'Linux'
 #       targetPath: 'bin/linux'
+# - job: macOS
+#   pool: 
+#     vmImage: 'macOS-10.13'
+#   steps:
+#   - script: tests/mac_tests
+#     displayName: 'macOS Build'
+#   - task: PublishPipelineArtifact@0
+#     inputs:
+#       artifactName: 'macOS'
+#       targetPath: 'bin/mac'
+# - job: windows
+#   pool:
+#     vmImage: 'vs2017-win2016'
+#   steps:
+#   - script: |
+#       set MSBUILD_EXE=C:\Program Files (x86)\Microsoft Visual Studio\2017\Enterprise\MSBuild\15.0\Bin\MSBuild.exe
+#       tests/windows_tests
+#     displayName: 'Windows Build'
+#   - task: PublishPipelineArtifact@0
+#     inputs:
+#       artifactName: 'Windows'
+#       targetPath: 'bin/windows'
+- job: linux
+  pool:
+    name: Default
+    demands:
+    - agent.os -equals Linux
+  steps:
+  - script: |
+      install/linux_build
+    displayName: 'Linux Build'
+  - task: PublishPipelineArtifact@0
+    inputs:
+      artifactName: 'Linux'
+      targetPath: 'bin/linux'
 - job: macOS
   pool: 
     name: Default
@@ -37,15 +72,16 @@ jobs:
     inputs:
       artifactName: 'macOS'
       targetPath: 'bin/mac'
-# - job: windows
-#   pool:
-#     vmImage: 'vs2017-win2016'
-#   steps:
-#   - script: |
-#       set MSBUILD_EXE=C:\Program Files (x86)\Microsoft Visual Studio\2017\Enterprise\MSBuild\15.0\Bin\MSBuild.exe
-#       tests/windows_tests
-#     displayName: 'Windows Build'
-#   - task: PublishPipelineArtifact@0
-#     inputs:
-#       artifactName: 'Windows'
-#       targetPath: 'bin/windows'
+- job: windows
+  pool:
+    name: Default
+    - agent.os -equals Windows_NT
+  steps:
+  - script: |
+      set MSBUILD_EXE=C:\Program Files (x86)\Microsoft Visual Studio\2017\Build Tools\MSBuild\15.0\Bin\MSBuild.exe
+      tests/windows_tests
+    displayName: 'Windows Build'
+  - task: PublishPipelineArtifact@0
+    inputs:
+      artifactName: 'Windows'
+      targetPath: 'bin/windows'
