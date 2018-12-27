@@ -64,7 +64,6 @@ jobs:
     name: Default
     demands:
     - agent.os -equals Darwin
-    # vmImage: 'macOS-10.13'
   steps:
   - script: tests/mac_tests
     displayName: 'macOS Build'
@@ -75,6 +74,7 @@ jobs:
 - job: windows
   pool:
     name: Default
+    demands:
     - agent.os -equals Windows_NT
   steps:
   - script: |
