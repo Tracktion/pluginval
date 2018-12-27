@@ -25,7 +25,9 @@ jobs:
 #       artifactName: 'Linux'
 #       targetPath: 'bin/linux'
 - job: macOS
-  # pool: Default
+  pool: Default
+  demands:
+  - agent.os -equals Darwin
     # vmImage: 'macOS-10.13'
   steps:
   - script: tests/mac_tests
