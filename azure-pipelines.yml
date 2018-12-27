@@ -46,6 +46,10 @@ jobs:
 #     inputs:
 #       artifactName: 'Windows'
 #       targetPath: 'bin/windows'
+- checkout: self
+  fetchDepth: 1
+  submodules: true
+
 - job: linux
   pool:
     name: Default
@@ -78,7 +82,7 @@ jobs:
     - agent.os -equals Windows_NT
   steps:
   - script: |
-      set MSBUILD_EXE=C:\Program Files (x86)\Microsoft Visual Studio\2017\Build Tools\MSBuild\15.0\Bin\MSBuild.exe
+      set MSBUILD_EXE=C:\Program Files (x86)\Microsoft Visual Studio\2017\BuildTools\MSBuild\15.0\Bin\MSBuild.exe
       tests/windows_tests
     displayName: 'Windows Build'
   - task: PublishPipelineArtifact@0
