@@ -46,15 +46,14 @@ jobs:
 #     inputs:
 #       artifactName: 'Windows'
 #       targetPath: 'bin/windows'
-- checkout: self
-  fetchDepth: 1
-  submodules: true
-
 - job: linux
   pool:
     name: Default
     demands:
     - agent.os -equals Linux
+  - checkout: self
+    fetchDepth: 1
+    submodules: true
   steps:
   - script: |
       install/linux_build
@@ -68,6 +67,9 @@ jobs:
     name: Default
     demands:
     - agent.os -equals Darwin
+  - checkout: self
+    fetchDepth: 1
+    submodules: true
   steps:
   - script: tests/mac_tests
     displayName: 'macOS Build'
@@ -80,6 +82,9 @@ jobs:
     name: Default
     demands:
     - agent.os -equals Windows_NT
+  - checkout: self
+    fetchDepth: 1
+    submodules: true
   steps:
   - script: |
       set MSBUILD_EXE=C:\Program Files (x86)\Microsoft Visual Studio\2017\BuildTools\MSBuild\15.0\Bin\MSBuild.exe
