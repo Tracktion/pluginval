@@ -25,7 +25,7 @@ jobs:
 #       artifactName: 'Linux'
 #       targetPath: 'bin/linux'
 - job: macOS
-  pool: agent_macOS
+  pool: Default
     # vmImage: 'macOS-10.13'
   steps:
   - script: tests/mac_tests
