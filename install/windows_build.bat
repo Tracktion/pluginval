@@ -7,7 +7,7 @@ echo ROOT: "%ROOT%"
 if not exist "%ROOT%" exit 1
 
 set PROJECT_NAME=pluginval
-set DEPLOYMENT_DIR=%ROOT%/bin/windows
+set DEPLOYMENT_DIR=%ROOT%\bin\windows
 
 set BINARY_NAME=%PROJECT_NAME%.exe
 set APP_NAME=%BINARY_NAME%
@@ -85,4 +85,4 @@ rd /S /Q "%DEPLOYMENT_DIR%"
 mkdir "%DEPLOYMENT_DIR%"
 
 echo "\nDeploying to: " %DEPLOYMENT_DIR%
-powershell -Command "Compress-Archive -Path %APP_FILE% -DestinationPath %ZIP_FILE%"
+powershell -Command "Compress-Archive -Path '%APP_FILE%' -DestinationPath '%ZIP_FILE%'"
