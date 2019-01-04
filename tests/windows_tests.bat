@@ -30,7 +30,7 @@ set TEMP_DIR=%ROOT%/tmp
 rd /S /Q "%TEMP_DIR%"
 
 cd "%PROJUCER_ROOT%"
-set CL=/DJUCER_ENABLE_GPL_MODE
+set CL=/DJUCER_ENABLE_GPL_MODE /GL
 "%MSBUILD_EXE%" Projucer.sln /p:VisualStudioVersion=15.0 /m /p:Configuration=Release /p:Platform=x64 /p:PreferredToolArchitecture=x64
 if not exist "%PROJUCER_EXE%" exit 1
 
@@ -59,7 +59,7 @@ exit /B %ERRORLEVEL%
     call "%PROJUCER_EXE%" --create-project-from-pip "%PLUGINS_PIP_DIR%\%PLUGIN_PIP_FILE%" "%TEMP_DIR%" "%ROOT%/modules/juce/modules"
     call "%PROJUCER_EXE%" --resave "%TEMP_DIR%/%PLUGIN_NAME%/%PLUGIN_NAME%.jucer"
     cd "%TEMP_DIR%/%PLUGIN_NAME%/Builds/VisualStudio2017"
-    set CL=/DJUCE_PLUGINHOST_VST#0
+    set CL=/DJUCE_PLUGINHOST_VST#0 /GL
     "%MSBUILD_EXE%" %PLUGIN_NAME%.sln /p:VisualStudioVersion=15.0 /m /t:Build /p:Configuration=Release /p:Platform=x64 /p:PreferredToolArchitecture=x64  /p:TreatWarningsAsErrors=true
 
     :: Test out of process
