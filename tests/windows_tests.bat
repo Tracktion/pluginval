@@ -40,14 +40,14 @@ if not exist "%PROJUCER_EXE%" exit 1
 ::============================================================
 :: Disabling these tests for now as they can't be built due to dependancies on the VST2 SDK which 
 :: can't be found without the use of Projucer's Global Settings
-rem call :TestPlugin "ArpeggiatorPlugin", "ArpeggiatorPluginDemo.h"
-rem call :TestPlugin "AudioPluginDemo", "AudioPluginDemo.h"
-rem call :TestPlugin "DSPModulePluginDemo", "DSPModulePluginDemo.h"
-rem call :TestPlugin "GainPlugin", "GainPluginDemo.h"
-rem call :TestPlugin "MultiOutSynthPlugin", "MultiOutSynthPluginDemo.h"
-rem call :TestPlugin "NoiseGatePlugin", "NoiseGatePluginDemo.h"
-rem call :TestPlugin "SamplerPlugin", "SamplerPluginDemo.h"
-rem call :TestPlugin "SurroundPlugin", "SurroundPluginDemo.h"
+call :TestPlugin "ArpeggiatorPlugin", "ArpeggiatorPluginDemo.h"
+call :TestPlugin "AudioPluginDemo", "AudioPluginDemo.h"
+call :TestPlugin "DSPModulePluginDemo", "DSPModulePluginDemo.h"
+call :TestPlugin "GainPlugin", "GainPluginDemo.h"
+call :TestPlugin "MultiOutSynthPlugin", "MultiOutSynthPluginDemo.h"
+call :TestPlugin "NoiseGatePlugin", "NoiseGatePluginDemo.h"
+call :TestPlugin "SamplerPlugin", "SamplerPluginDemo.h"
+call :TestPlugin "SurroundPlugin", "SurroundPluginDemo.h"
 exit /B %ERRORLEVEL%
 
 :TestPlugin
@@ -62,11 +62,12 @@ exit /B %ERRORLEVEL%
     set CL=/DJUCE_PLUGINHOST_VST#0 /GL
     "%MSBUILD_EXE%" %PLUGIN_NAME%.sln /p:VisualStudioVersion=15.0 /m /t:Build /p:Configuration=Release /p:Platform=x64 /p:PreferredToolArchitecture=x64  /p:TreatWarningsAsErrors=true
 
+    :: Test in process
+    call "%PLUGINVAL_EXE%" --validate-in-process --strictness-level 5 --validate %PLUGIN_VST3%
+    if %ERRORLEVEL% NEQ 0 exit 1
+
     :: Test out of process
     call "%PLUGINVAL_EXE%" --strictness-level 5 --validate %PLUGIN_VST3%
     if %ERRORLEVEL% NEQ 0 exit 1
 
-    :: Test in process
-    call "%PLUGINVAL_EXE%" --validate-in-process --strictness-level 5 --validate %PLUGIN_VST3%
-    if %ERRORLEVEL% NEQ 0 exit 1
 exit /B 0
