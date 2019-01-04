@@ -377,7 +377,6 @@ struct EditorAutomationTest : public PluginTest
     void runTest (PluginTests& ut, AudioPluginInstance& instance) override
     {
         const ScopedEditorShower editor (instance);
-        ut.expect (! instance.hasEditor() || editor.editor.get() != nullptr, "Unable to create editor");
 
         auto r = ut.getRandom();
         const auto& parameters = instance.getParameters();
