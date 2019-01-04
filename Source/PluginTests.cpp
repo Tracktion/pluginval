@@ -77,6 +77,11 @@ void PluginTests::logVerboseMessage (const String& message)
     logMessage (options.verbose ? message : String());
 }
 
+void PluginTests::resetTimeout()
+{
+    logMessage (String());
+}
+
 void PluginTests::runTest()
 {
     logMessage ("Validation started: " + Time::getCurrentTime().toString (true, true) + "\n");

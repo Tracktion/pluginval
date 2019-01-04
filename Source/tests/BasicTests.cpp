@@ -368,6 +368,7 @@ struct EditorAutomationTest : public PluginTest
             for (auto parameter : parameters)
                 parameter->setValue (r.nextFloat());
 
+            ut.resetTimeout();
             Thread::sleep (10);
         }
     }

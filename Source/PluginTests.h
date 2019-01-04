@@ -56,6 +56,9 @@ struct PluginTests : public UnitTest
     /** Logs a verbose message which may be ommited from logs if the verbose option is not specified. */
     void logVerboseMessage (const String& message);
 
+    /** Resets the timeout. Call this from long tests that don't log messages. */
+    void resetTimeout();
+
     //==============================================================================
     /** @internal. */
     void runTest() override;
