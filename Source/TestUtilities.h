@@ -137,13 +137,13 @@ static inline float getParametersSum (AudioPluginInstance& instance)
 //==============================================================================
 static std::unique_ptr<AudioProcessorEditor> createAndShowEditorOnMessageThread (AudioPluginInstance& instance)
 {
-    if (! instance.hasEditor())
-        return {};
-
     std::unique_ptr<AudioProcessorEditor> editor;
 
     if (MessageManager::getInstance()->isThisTheMessageThread())
     {
+        if (! instance.hasEditor())
+            return {};
+
         editor.reset (instance.createEditor());
 
         if (editor)
@@ -160,12 +160,15 @@ static std::unique_ptr<AudioProcessorEditor> createAndShowEditorOnMessageThread 
         WaitableEvent waiter;
         MessageManager::callAsync ([&]
                                    {
-                                       editor.reset (instance.createEditor());
-
-                                       if (editor)
+                                       if (instance.hasEditor())
                                        {
-                                           editor->addToDesktop (0);
-                                           editor->setVisible (true);
+                                           editor.reset (instance.createEditor());
+
+                                           if (editor)
+                                           {
+                                               editor->addToDesktop (0);
+                                               editor->setVisible (true);
+                                           }
                                        }
 
                                        waiter.signal();
