@@ -34,25 +34,13 @@ struct EditorStressTest   : public PluginTest
 
             {
                 ut.logMessage ("Testing opening Editor with released processing");
-                std::unique_ptr<AudioProcessorEditor> editor (instance.createEditor());
-
-                if (editor)
-                {
-                    editor->addToDesktop (0);
-                    editor->setVisible (true);
-                }
+                ScopedEditorShower editor (instance);
             }
 
             {
                 ut.logMessage ("Testing opening Editor with 0 sample rate and block size");
                 instance.setPlayConfigDetails (instance.getTotalNumInputChannels(), instance.getTotalNumOutputChannels(), 0.0, 0);
-                std::unique_ptr<AudioProcessorEditor> editor (instance.createEditor());
-
-                if (editor)
-                {
-                    editor->addToDesktop (0);
-                    editor->setVisible (true);
-                }
+                ScopedEditorShower editor (instance);
             }
         }
     }

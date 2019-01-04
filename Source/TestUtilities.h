@@ -144,6 +144,7 @@ static std::unique_ptr<AudioProcessorEditor> createAndShowEditorOnMessageThread 
         if (! instance.hasEditor())
             return {};
 
+        jassert (instance.getActiveEditor() == nullptr);
         editor.reset (instance.createEditor());
 
         if (editor)
@@ -160,23 +161,10 @@ static std::unique_ptr<AudioProcessorEditor> createAndShowEditorOnMessageThread 
         WaitableEvent waiter;
         MessageManager::callAsync ([&]
                                    {
-                                       if (instance.hasEditor())
-                                       {
-                                           editor.reset (instance.createEditor());
-
-                                           if (editor)
-                                           {
-                                               editor->addToDesktop (0);
-                                               editor->setVisible (true);
-                                           }
-                                       }
-
+                                       editor = createAndShowEditorOnMessageThread (instance);
                                        waiter.signal();
                                    });
         waiter.wait();
-
-        // Give the editor a chance to appear on the screen
-        Thread::sleep (200);
     }
 
     return editor;
@@ -185,7 +173,10 @@ static std::unique_ptr<AudioProcessorEditor> createAndShowEditorOnMessageThread 
 static void deleteEditorOnMessageThread (std::unique_ptr<AudioProcessorEditor> editor)
 {
     if (MessageManager::getInstance()->isThisTheMessageThread())
+    {
+        editor.reset();
         return;
+    }
 
     WaitableEvent waiter;
     MessageManager::callAsync ([&]

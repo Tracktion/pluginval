@@ -53,35 +53,15 @@ struct EditorTest   : public PluginTest
             StopwatchTimer timer;
 
             {
-                std::unique_ptr<AudioProcessorEditor> editor (instance.createEditor());
-                ut.expect (editor != nullptr, "Unable to create editor");
-
-                if (editor)
-                {
-                    editor->addToDesktop (0);
-                    editor->setVisible (true);
-
-                    // Pump the message loop for a couple of seconds for the window to initialise itself
-                    MessageManager::getInstance()->runDispatchLoopUntil (200);
-                }
-
+                ScopedEditorShower editorShower (instance);
+                ut.expect (editorShower.editor != nullptr, "Unable to create editor");
                 ut.logMessage ("\nTime taken to open editor (cold): " + timer.getDescription());
             }
 
             {
                 timer.reset();
-                std::unique_ptr<AudioProcessorEditor> editor (instance.createEditor());
-                ut.expect (editor != nullptr, "Unable to create editor on second attempt");
-
-                if (editor)
-                {
-                    editor->addToDesktop (0);
-                    editor->setVisible (true);
-
-                    // Pump the message loop for a couple of seconds for the window to initialise itself
-                    MessageManager::getInstance()->runDispatchLoopUntil (200);
-                }
-
+                ScopedEditorShower editorShower (instance);
+                ut.expect (editorShower.editor != nullptr, "Unable to create editor on second attempt");
                 ut.logMessage ("Time taken to open editor (warm): " + timer.getDescription());
             }
         }
@@ -132,7 +112,7 @@ struct EditorWhilstProcessingTest   : public PluginTest
 
             // Show the editor
             ScopedEditorShower editor (instance);
-            ut.expect (! instance.hasEditor() || editor.editor.get() != nullptr, "Unable to create editor");
+            ut.expect (editor.editor.get() != nullptr || ! instance.hasEditor(), "Unable to create editor");
 
             shouldProcess = false;
         }
@@ -504,21 +484,7 @@ struct BackgroundThreadStateTest    : public PluginTest
     void runTest (PluginTests& ut, AudioPluginInstance& instance) override
     {
         auto r = ut.getRandom();
-        WaitableEvent waiter;
-        std::unique_ptr<AudioProcessorEditor> editor;
-        MessageManager::callAsync ([&]
-                                   {
-                                       editor.reset (instance.createEditor());
-                                       ut.expect (editor != nullptr, "Unable to create editor");
-
-                                       if (editor)
-                                       {
-                                           editor->addToDesktop (0);
-                                           editor->setVisible (true);
-                                       }
-
-                                       waiter.signal();
-                                   });
+        ScopedEditorShower editor (instance);
 
         auto parameters = getNonBypassAutomatableParameters (instance);
         MemoryBlock originalState;
@@ -533,15 +499,8 @@ struct BackgroundThreadStateTest    : public PluginTest
         // Restore original state
         instance.setStateInformation (originalState.getData(), (int) originalState.getSize());
 
-        waiter.wait();
+        // Allow for async reaction to state changes
         Thread::sleep (2000);
-
-        MessageManager::callAsync ([&]
-                                   {
-                                       editor.reset();
-                                       waiter.signal();
-                                   });
-        waiter.wait();
     }
 };
 
