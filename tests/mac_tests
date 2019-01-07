@@ -57,11 +57,11 @@ function testPlugin()
 
 	# Test in process
 	"$PLUGINVAL_EXE" --validate-in-process --strictness-level 5 --validate "$PLUGIN_VST3"
-	"$PLUGINVAL_EXE" --validate-in-process --strictness-level 5 --validate "$PLUGIN_AU"
+	# "$PLUGINVAL_EXE" --validate-in-process --strictness-level 5 --validate "$PLUGIN_AU"
 
 	# Test out of process
 	"$PLUGINVAL_EXE" --strictness-level 5 --validate "$PLUGIN_VST3"
-	"$PLUGINVAL_EXE" --strictness-level 5 --validate "$PLUGIN_AU"
+	# "$PLUGINVAL_EXE" --strictness-level 5 --validate "$PLUGIN_AU"
 
 	rm -rf "$TEMP_DIR/$PLUGIN_NAME"
 }
