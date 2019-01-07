@@ -43,7 +43,7 @@ if not exist "%PROJUCER_EXE%" exit 1
 :: can't be found without the use of Projucer's Global Settings
 call :TestPlugin "ArpeggiatorPlugin", "ArpeggiatorPluginDemo.h"
 call :TestPlugin "AudioPluginDemo", "AudioPluginDemo.h"
-call :TestPlugin "DSPModulePluginDemo", "DSPModulePluginDemo.h"
+:: call :TestPlugin "DSPModulePluginDemo", "DSPModulePluginDemo.h"
 call :TestPlugin "GainPlugin", "GainPluginDemo.h"
 call :TestPlugin "MultiOutSynthPlugin", "MultiOutSynthPluginDemo.h"
 call :TestPlugin "NoiseGatePlugin", "NoiseGatePluginDemo.h"
