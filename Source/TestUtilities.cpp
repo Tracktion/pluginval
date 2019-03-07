@@ -142,16 +142,14 @@ struct AllocatorInterceptorTests    : public UnitTest,
 
         beginTest ("Ensure separate allocators are used for threads");
         {
-            AllocatorInterceptor* ai1 = nullptr, *ai2 = nullptr;
-            WaitableEvent w1, w2;
+            AllocatorInterceptor* ai1 = &getAllocatorInterceptor();
+            AllocatorInterceptor *ai2 = nullptr;
 
-            auto task1 = std::async (std::launch::async, [&ai1, &w1] { ai1 = &getAllocatorInterceptor(); w1.wait(); });
-            auto task2 = std::async (std::launch::async, [&ai2, &w2] { ai2 = &getAllocatorInterceptor(); w2.wait(); });
-			Thread::sleep (200);
+            auto task = std::async (std::launch::async, [&ai2] { ai2 = &getAllocatorInterceptor(); });
+
+            task.get();
+
             expect (ai1 != ai2);
-
-            w1.signal();
-            w2.signal();
         }
 
         beginTest ("Ensure all allocations pass");
