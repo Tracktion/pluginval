@@ -151,7 +151,12 @@ File getDestinationFile (PluginTests& test)
 
 std::unique_ptr<FileOutputStream> createDestinationFileStream (PluginTests& test)
 {
-    std::unique_ptr<FileOutputStream> fos (getDestinationFile (test).createOutputStream());
+    auto file = getDestinationFile (test);
+
+    if (file == File())
+        return {};
+
+    std::unique_ptr<FileOutputStream> fos (file.createOutputStream());
 
     if (fos && fos->openedOk())
         return fos;
