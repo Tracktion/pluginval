@@ -2,6 +2,7 @@
 
 ### 0.2.2
  - Added a test for disabled HiDPI awareness on Windows
+ - Updated JUCE to v5.4.3
 
 ### 0.2.1
   - Added an EditorAutomationTest to adjust parameter values whilst showing the plugin editor

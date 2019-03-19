@@ -115,12 +115,12 @@ static var getOptionValue (const ArgumentList& args, StringRef option, var defau
 {
     if (args.containsOption (option))
     {
-        const auto nextArg = args.getArgumentAfterOption (option);
+        const auto nextArg = args.getValueForOption (option);
 
-        if (nextArg.isShortOption() || nextArg.isLongOption())
+        if (nextArg.isEmpty())
             ConsoleApplication::fail (errorMessage, -1);
 
-        return nextArg.text;
+        return nextArg;
     }
 
     return defaultValue;
@@ -345,7 +345,7 @@ void performCommandLine (CommandLineValidator& validator, const ArgumentList& ar
     cli.addHelpCommand ("--help|-h", getHelpMessage(), true);
     cli.addCommand ({ "--validate",
                       "--validate [list]",
-                      "Validates the files (or IDs for AUs).",
+                      "Validates the files (or IDs for AUs).", String(),
                       [&validator] (const auto& args) { validate (validator, args); }});
 
     JUCEApplication::getInstance()->setApplicationReturnValue (cli.findAndRunCommand (args));
