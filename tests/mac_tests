@@ -13,7 +13,7 @@ cd $ROOT
 
 PROJECT_NAME=pluginval
 DEPLOYMENT_DIR="$ROOT/bin/mac"
-PLUGINVAL_EXE="$DEPLOYMENT_DIR/$PROJECT_NAME.app/Contents/MacOS/$PROJECT_NAME"
+PLUGINVAL_EXE="$ROOT/Builds/MacOSX/build/Release/$PROJECT_NAME.app/Contents/MacOS/$PROJECT_NAME"
 
 #============================================================
 #   First build pluginval
@@ -26,14 +26,17 @@ PLUGINVAL_EXE="$DEPLOYMENT_DIR/$PROJECT_NAME.app/Contents/MacOS/$PROJECT_NAME"
 #============================================================
 echo "Building Projucer and creating projects"
 
+JUCE_MODULES_DIR="$ROOT/modules/juce/modules"
 PROJUCER_ROOT="$ROOT/modules/juce/extras/Projucer/Builds/MacOSX"
 PROJUCER_EXE="$PROJUCER_ROOT/build/Release/Projucer.app/Contents/MacOS/Projucer"
 PLUGINS_PIP_DIR="$ROOT/modules/juce/examples/Plugins"
 TEMP_DIR="$ROOT/tmp"
 rm -rf "$TEMP_DIR"
 
+echo JUCE_MODULES_DIR: "$JUCE_MODULES_DIR"
+
 cd "$PROJUCER_ROOT"
-xcodebuild -configuration Release GCC_PREPROCESSOR_DEFINITIONS='$GCC_PREPROCESSOR_DEFINITIONS JUCER_ENABLE_GPL_MODE=1'
+xcodebuild -configuration Release GCC_PREPROCESSOR_DEFINITIONS='$GCC_PREPROCESSOR_DEFINITIONS JUCER_ENABLE_GPL_MODE=1' LLVM_LTO=NO
 
 
 #============================================================
@@ -47,24 +50,26 @@ function testPlugin()
 	PLUGIN_PIP_FILE=$2
 	PLUGIN_VST3="$TEMP_DIR/$PLUGIN_NAME/Builds/MacOSX/build/Release/$PLUGIN_NAME.vst3"
 	PLUGIN_AU="$TEMP_DIR/$PLUGIN_NAME/Builds/MacOSX/build/Release/$PLUGIN_NAME.component"
-    "$PROJUCER_EXE" --create-project-from-pip "$PLUGINS_PIP_DIR/$PLUGIN_PIP_FILE" "$TEMP_DIR" "$ROOT/modules/juce/modules"
+    "$PROJUCER_EXE" --create-project-from-pip "$PLUGINS_PIP_DIR/$PLUGIN_PIP_FILE" "$TEMP_DIR" "$JUCE_MODULES_DIR"
     "$PROJUCER_EXE" --resave "$TEMP_DIR/$PLUGIN_NAME/$PLUGIN_NAME.jucer"
 	cd "$TEMP_DIR/$PLUGIN_NAME/Builds/MacOSX"
-	xcodebuild -configuration Release GCC_PREPROCESSOR_DEFINITIONS='$GCC_PREPROCESSOR_DEFINITIONS JUCE_PLUGINHOST_VST=0'
-
-	# Test out of process
-	"$PLUGINVAL_EXE" --strictness-level 5 --validate "$PLUGIN_VST3"
-	"$PLUGINVAL_EXE" --strictness-level 5 --validate "$PLUGIN_AU"
+	xcodebuild -configuration Release GCC_PREPROCESSOR_DEFINITIONS='$GCC_PREPROCESSOR_DEFINITIONS JUCE_PLUGINHOST_VST=0' LLVM_LTO=NO
 
 	# Test in process
 	"$PLUGINVAL_EXE" --validate-in-process --strictness-level 5 --validate "$PLUGIN_VST3"
-	"$PLUGINVAL_EXE" --validate-in-process --strictness-level 5 --validate "$PLUGIN_AU"
+	# "$PLUGINVAL_EXE" --validate-in-process --strictness-level 5 --validate "$PLUGIN_AU"
+
+	# Test out of process
+	"$PLUGINVAL_EXE" --strictness-level 5 --validate "$PLUGIN_VST3"
+	# "$PLUGINVAL_EXE" --strictness-level 5 --validate "$PLUGIN_AU"
+
+	rm -rf "$TEMP_DIR/$PLUGIN_NAME"
 }
 
 # Disabling these tests for now as they can't be built due to dependancies on the VST2 SDK which 
 # can't be found without the use of Projucer's Global Settings
 # testPlugin "ArpeggiatorPlugin" "ArpeggiatorPluginDemo.h"
-# testPlugin "AudioPluginDemo" "AudioPluginDemo.h"
+testPlugin "AudioPluginDemo" "AudioPluginDemo.h"
 # testPlugin "DSPModulePluginDemo" "DSPModulePluginDemo.h"
 # testPlugin "GainPlugin" "GainPluginDemo.h"
 # testPlugin "MultiOutSynthPlugin" "MultiOutSynthPluginDemo.h"
