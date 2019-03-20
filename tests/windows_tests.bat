@@ -41,14 +41,14 @@ if not exist "%PROJUCER_EXE%" exit 1
 ::============================================================
 :: Disabling these tests for now as they can't be built due to dependancies on the VST2 SDK which 
 :: can't be found without the use of Projucer's Global Settings
-call :TestPlugin "ArpeggiatorPlugin", "ArpeggiatorPluginDemo.h"
+:: call :TestPlugin "ArpeggiatorPlugin", "ArpeggiatorPluginDemo.h"
 call :TestPlugin "AudioPluginDemo", "AudioPluginDemo.h"
 :: call :TestPlugin "DSPModulePluginDemo", "DSPModulePluginDemo.h"
-call :TestPlugin "GainPlugin", "GainPluginDemo.h"
-call :TestPlugin "MultiOutSynthPlugin", "MultiOutSynthPluginDemo.h"
-call :TestPlugin "NoiseGatePlugin", "NoiseGatePluginDemo.h"
-call :TestPlugin "SamplerPlugin", "SamplerPluginDemo.h"
-call :TestPlugin "SurroundPlugin", "SurroundPluginDemo.h"
+:: call :TestPlugin "GainPlugin", "GainPluginDemo.h"
+:: call :TestPlugin "MultiOutSynthPlugin", "MultiOutSynthPluginDemo.h"
+:: call :TestPlugin "NoiseGatePlugin", "NoiseGatePluginDemo.h"
+:: call :TestPlugin "SamplerPlugin", "SamplerPluginDemo.h"
+:: call :TestPlugin "SurroundPlugin", "SurroundPluginDemo.h"
 exit /B %ERRORLEVEL%
 
 :TestPlugin
