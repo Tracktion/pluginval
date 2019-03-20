@@ -10,7 +10,7 @@ echo "Building Projucer and creating projects"
 PROJUCER_ROOT=$ROOT/modules/juce/extras/Projucer/Builds/MacOSX
 PROJUCER_APP=$PROJUCER_ROOT/build/Release/Projucer.app/Contents/MacOS/Projucer
 cd "$PROJUCER_ROOT"
-xcodebuild -configuration Release
+xcodebuild -configuration Release LLVM_LTO=NO
 
 
 #============================================================

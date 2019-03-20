@@ -47,3 +47,31 @@ struct EditorStressTest   : public PluginTest
 };
 
 static EditorStressTest editorStressTest;
+
+#if (JUCE_WINDOWS && JUCE_WIN_PER_MONITOR_DPI_AWARE) || DOXYGEN
+//==============================================================================
+/** Opens the plugin editor in various situations. */
+struct EditorDPITest   : public PluginTest
+{
+    EditorDPITest()
+        : PluginTest ("Editor DPI Awareness", 3,
+                      { Requirements::Thread::messageThread, Requirements::GUI::requiresGUI })
+    {
+    }
+
+    void runTest (PluginTests& ut, AudioPluginInstance& instance) override
+    {
+        if (instance.hasEditor())
+        {
+            ScopedDPIAwarenessDisabler scopedDPIAwarenessDisabler;
+
+            {
+                ut.logMessage ("Testing opening Editor with DPI Awareness disabled");
+                ScopedEditorShower editor (instance);
+            }
+        }
+    }
+};
+
+static EditorDPITest editorDPITest;
+#endif

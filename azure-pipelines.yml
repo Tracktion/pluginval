@@ -17,12 +17,17 @@ jobs:
       sleep 3 # give xvfb some time to start
       install/linux_build
     displayName: 'Linux Build'
+  - task: PublishPipelineArtifact@0
+    inputs:
+      artifactName: 'Linux'
+      targetPath: 'bin/linux'
   - script: |
+      rm bin/linux/*
       cp CHANGELIST.md bin/linux
     displayName: 'Copy change list to bin'    
   - task: PublishPipelineArtifact@0
     inputs:
-      artifactName: 'Linux'
+      artifactName: 'Change List'
       targetPath: 'bin/linux'
 - job: macOS
   pool:

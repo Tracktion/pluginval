@@ -97,8 +97,8 @@ void CommandLineValidator::allItemsComplete()
 {
     if (numFailures > 0)
         exitWithError ("*** FAILED: " + String (numFailures) + " TESTS");
-
-    JUCEApplication::getInstance()->quit();
+    else
+        JUCEApplication::getInstance()->quit();
 }
 
 void CommandLineValidator::connectionLost()
@@ -111,11 +111,20 @@ void CommandLineValidator::connectionLost()
 
 
 //==============================================================================
+static inline ArgumentList::Argument getArgumentAfterOption (const ArgumentList& args, StringRef option)
+{
+    for (int i = 0; i < args.size() - 1; ++i)
+        if (args[i] == option)
+            return args[i + 1];
+
+    return {};
+}
+
 static var getOptionValue (const ArgumentList& args, StringRef option, var defaultValue, StringRef errorMessage)
 {
     if (args.containsOption (option))
     {
-        const auto nextArg = args.getArgumentAfterOption (option);
+        const auto nextArg = getArgumentAfterOption (args, option);
 
         if (nextArg.isShortOption() || nextArg.isLongOption())
             ConsoleApplication::fail (errorMessage, -1);
@@ -345,7 +354,7 @@ void performCommandLine (CommandLineValidator& validator, const ArgumentList& ar
     cli.addHelpCommand ("--help|-h", getHelpMessage(), true);
     cli.addCommand ({ "--validate",
                       "--validate [list]",
-                      "Validates the files (or IDs for AUs).",
+                      "Validates the files (or IDs for AUs).", String(),
                       [&validator] (const auto& args) { validate (validator, args); }});
 
     JUCEApplication::getInstance()->setApplicationReturnValue (cli.findAndRunCommand (args));
