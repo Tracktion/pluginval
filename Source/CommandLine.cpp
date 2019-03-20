@@ -111,16 +111,25 @@ void CommandLineValidator::connectionLost()
 
 
 //==============================================================================
+static inline ArgumentList::Argument getArgumentAfterOption (const ArgumentList& args, StringRef option)
+{
+    for (int i = 0; i < args.size() - 1; ++i)
+        if (args[i] == option)
+            return args[i + 1];
+
+    return {};
+}
+
 static var getOptionValue (const ArgumentList& args, StringRef option, var defaultValue, StringRef errorMessage)
 {
     if (args.containsOption (option))
     {
-        const auto nextArg = args.getValueForOption (option);
+        const auto nextArg = getArgumentAfterOption (args, option);
 
-        if (nextArg.isEmpty())
+        if (nextArg.isShortOption() || nextArg.isLongOption())
             ConsoleApplication::fail (errorMessage, -1);
 
-        return nextArg;
+        return nextArg.text;
     }
 
     return defaultValue;

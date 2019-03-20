@@ -1,5 +1,8 @@
 # pluginval Change List
 
+### 0.2.3
+ - Fixed some failing tests on startup
+
 ### 0.2.2
  - Added a test for disabled HiDPI awareness on Windows
  - Updated JUCE to v5.4.3
