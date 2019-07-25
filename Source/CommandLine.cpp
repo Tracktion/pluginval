@@ -312,16 +312,25 @@ static void validate (CommandLineValidator& validator, const ArgumentList& args)
         return;
     }
 
+    auto rstripSlashes  = [](juce::String inputString)
+    {
+        std::string s{inputString.toStdString()};
+        s.erase(std::find_if(s.rbegin(), s.rend(),
+                             [](char ch) {return !(ch == '\\' || ch == '/');
+                             }).base(), s.end());
+        
+        return juce::String(s);
+    };
+    
     StringArray fileOrIDs;
-
     for (int i = startIndex + 1; i < args.size(); ++i)
     {
         const auto& arg = args[i];
 
         if (arg.isLongOption() || arg.isShortOption())
             break;
-
-        fileOrIDs.add (arg.text);
+        
+        fileOrIDs.add (rstripSlashes(arg.text));
     }
 
     if (! fileOrIDs.isEmpty())
