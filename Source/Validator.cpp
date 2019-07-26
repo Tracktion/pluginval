@@ -623,7 +623,7 @@ public:
         for (auto fileOrID : fileOrIDsToValidate)
         {
             jassert (fileOrID.isNotEmpty());
-            v.appendChild ({ IDs::PLUGIN, {{ IDs::fileOrID, fileOrID }} }, nullptr);
+            v.appendChild ({ IDs::PLUGIN, {{ IDs::fileOrID, fileOrID.trimCharactersAtEnd ("\\/") }} }, nullptr);
         }
 
         sendValueTreeToSlave (v);
