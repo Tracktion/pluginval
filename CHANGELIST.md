@@ -1,5 +1,8 @@
 # pluginval Change List
 
+### 0.2.4
+- Added tests for plugin programs
+
 ### 0.2.3
  - Fixed some failing tests on startup
 

@@ -38,6 +38,48 @@ static PluginInfoTest pluginInfoTest;
 
 
 //==============================================================================
+struct PluginPrgramsTest    : public PluginTest
+{
+    PluginPrgramsTest()
+        : PluginTest ("Plugin programs", 2)
+    {
+    }
+
+    void runTest (PluginTests& ut, AudioPluginInstance& instance) override
+    {
+        const int numPrograms = instance.getNumPrograms();
+        ut.logMessage ("Num programs: " + String (numPrograms));
+
+        for (int i = 0; i < numPrograms; ++i)
+            ut.logVerboseMessage (String ("Program 123 name: XYZ")
+                                  .replace ("123", String (i))
+                                  .replace ("XYZ", instance.getProgramName (i)));
+
+        ut.logMessage ("All program names checked");
+
+        if (numPrograms > 0)
+        {
+            ut.logMessage ("\nChanging program");
+            const int currentProgram = instance.getCurrentProgram();
+            auto r = ut.getRandom();
+
+            for (int i = 0; i < 5; ++i)
+            {
+                const int programNum = r.nextInt (numPrograms);
+                ut.logVerboseMessage ("Changing program to: " + String (programNum));
+                instance.setCurrentProgram (programNum);
+            }
+
+            ut.logVerboseMessage ("Resetting program to: " + String (currentProgram));
+            instance.setCurrentProgram (currentProgram);
+        }
+    }
+};
+
+static PluginPrgramsTest pluginPrgramsTest;
+
+
+//==============================================================================
 struct EditorTest   : public PluginTest
 {
     EditorTest()
