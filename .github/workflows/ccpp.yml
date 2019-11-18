@@ -1,0 +1,13 @@
+name: Build and test pluginval
+
+on: [push]
+
+jobs:
+  build:
+
+    runs-on: ubuntu-16.04
+    
+    steps:
+    - uses: actions/checkout@v1
+    - name: build
+      run: install/linux_build
