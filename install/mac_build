@@ -69,6 +69,17 @@ rm -rf $ROOT/Builds/MacOSX/build/$PROJECT_NAME.build
 xcodebuild -configuration Release clean
 xcodebuild -configuration Release GCC_TREAT_WARNINGS_AS_ERRORS=YES
 
+#============================================================
+#   Sign with hardened runtime
+#============================================================
+if [ -n "$SIGN_ID" ]; then
+	codesign --entitlements "$ROOT"/Builds/MacOSX/pluginval.entitlements --force -s "$SIGN_ID" -v "$APP_FILE" --deep --strict --options=runtime
+
+	echo "\nVerifying ..."
+	spctl -vvv --assess --type exec "$APP_FILE"
+	codesign -dvv "$APP_FILE"
+	codesign -vvv --deep --strict "$APP_FILE"
+fi
 
 #============================================================
 #   Copy to deployment directory

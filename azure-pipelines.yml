@@ -44,12 +44,14 @@ jobs:
       certSecureFile: 'Installer.p12'
       certPwd: '$(CERT_PASSWORD)'
       keychain: 'temp'
-  # - script: tests/mac_tests
-  #   displayName: 'macOS Build'
-  # - task: PublishPipelineArtifact@0
-  #   inputs:
-  #     artifactName: 'macOS'
-  #     targetPath: 'bin/mac'
+  - script: tests/mac_tests
+    displayName: 'macOS Build'
+  - script: install/notarise pluginval_macOS.zip com.tracktion.pluginval $(AC_USERNAME) $(AC_PASSWORD)
+    displayName: 'notarise'
+  - task: PublishPipelineArtifact@0
+    inputs:
+      artifactName: 'macOS'
+      targetPath: 'bin/mac'
 
 # - job: windows
 #   pool:
