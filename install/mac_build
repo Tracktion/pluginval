@@ -43,6 +43,8 @@ if [ -n "$VST2_SDK_URL" ]; then
     curl -O $VST2_SDK_URL
 	unzip vstsdk2.4.zip
     if [ -d "vstsdk2.4" ]; then VST2_SDK_DIR="$ROOT"/tmp/vstsdk2.4; fi
+else
+	echo "Not building with VST2 support. To enable VST2 support, set the VST2_SDK_URL environment variable"
 fi
 
 #============================================================
@@ -79,6 +81,8 @@ if [ -n "$SIGN_ID" ]; then
 	spctl -vvv --assess --type exec "$APP_FILE"
 	codesign -dvv "$APP_FILE"
 	codesign -vvv --deep --strict "$APP_FILE"
+else
+	echo "Not notarising. To enable, set the SIGN_ID environment variable"
 fi
 
 #============================================================
