@@ -1,13 +1,6 @@
 variables:
   - group: pluginval  
 
-env:
-  AC_USERNAME: $(AC_USERNAME)
-  AC_PASSWORD: $(AC_PASSWORD)
-  CERT_PASSWORD: $(CERT_PASSWORD)
-  SIGN_ID: $(SIGN_ID)
-  VST2_SDK_URL: $(VST2_SDK_URL)
-
 jobs:
 # - job: linux
 #   pool:
