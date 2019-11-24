@@ -46,7 +46,7 @@ jobs:
       keychain: 'temp'
   - script: tests/mac_tests
     displayName: 'macOS Build'
-  - script: install/notarise pluginval_macOS.zip com.tracktion.pluginval $env:MAPPED_AC_USERNAME $env:AC_PASSWORD
+  - script: install/notarise pluginval_macOS.zip com.tracktion.pluginval $env:MAPPED_AC_USERNAME $env:MAPPED_AC_PASSWORD
     displayName: 'notarise'
     env:
       MAPPED_AC_USERNAME: $(AC_USERNAME)
