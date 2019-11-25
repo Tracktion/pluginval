@@ -48,9 +48,7 @@ jobs:
     displayName: 'macOS Build'
   - script: install/notarise pluginval_macOS.zip com.tracktion.pluginval $env:MAPPED_AC_USERNAME $env:MAPPED_AC_PASSWORD
     displayName: 'notarise'
-    env: |
-      MAPPED_AC_USERNAME: $(AC_USERNAME)
-      MAPPED_AC_PASSWORD: $(AC_PASSWORD)
+    env:  { MAPPED_AC_USERNAME: $(AC_USERNAME), MAPPED_AC_PASSWORD: $(AC_PASSWORD) }
   - task: PublishPipelineArtifact@0
     inputs:
       artifactName: 'macOS'
