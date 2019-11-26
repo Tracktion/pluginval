@@ -69,7 +69,7 @@ function testPlugin()
 # Disabling these tests for now as they can't be built due to dependancies on the VST2 SDK which 
 # can't be found without the use of Projucer's Global Settings
 # testPlugin "ArpeggiatorPlugin" "ArpeggiatorPluginDemo.h"
-testPlugin "AudioPluginDemo" "AudioPluginDemo.h"
+# testPlugin "AudioPluginDemo" "AudioPluginDemo.h"
 # testPlugin "DSPModulePluginDemo" "DSPModulePluginDemo.h"
 # testPlugin "GainPlugin" "GainPluginDemo.h"
 # testPlugin "MultiOutSynthPlugin" "MultiOutSynthPluginDemo.h"
