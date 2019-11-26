@@ -157,7 +157,9 @@ done
 #============================================================
 # Staple to binary
 #============================================================
-echo "============================================================"
-echo "Stapling certificate:"
-xcrun stapler staple "$APP_PATH"
-xcrun stapler staple -v "$APP_PATH"
+if [ "$EXTENSION" != "zip" ]; then
+	echo "============================================================"
+	echo "Stapling certificate:"
+	xcrun stapler staple "$APP_PATH"
+	xcrun stapler staple -v "$APP_PATH"
+fi
