@@ -50,7 +50,7 @@ public:
     bool validate (const StringArray& fileOrIDsToValidate, PluginTests::Options);
 
     /** Validates an array of PluginDescriptions. */
-    bool validate (const Array<PluginDescription*>& pluginsToValidate, PluginTests::Options);
+    bool validate (const Array<PluginDescription>& pluginsToValidate, PluginTests::Options);
 
     /** Call this to make validation happen in the same process.
         This can be useful for debugging but should not generally be used as a crashing
