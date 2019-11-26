@@ -46,7 +46,7 @@ jobs:
       keychain: 'temp'
   - script: tests/mac_tests
     displayName: 'macOS Build'
-  - script: install/notarise bin/mac/pluginval_macOS.zip com.tracktion.pluginval $(AC_USERNAME) $(AC_PASSWORD)
+  - script: install/notarise ../bin/mac/pluginval_macOS.zip com.tracktion.pluginval $(AC_USERNAME) $(AC_PASSWORD)
     displayName: 'notarise'
   - task: PublishPipelineArtifact@0
     inputs:
