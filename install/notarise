@@ -25,11 +25,6 @@
 
 ROOT=$(cd "$(dirname "$0")"; pwd)
 cd $ROOT
-echo "ROOT: $ROOT"
-ls -la
-cd "$ROOT/../bin/mac"
-ls -la
-cd $ROOT
 
 APP_PATH="$1"
 BUNDLE_ID="$2"
@@ -51,6 +46,7 @@ fi
 if [ -z "$AC_PASSWORD" ]; then
 	echo "ERROR: Fourth arg needs to be set the the app specific Apple password" && exit 1
 fi
+
 
 #============================================================
 # Setup variables
@@ -91,13 +87,14 @@ if [ ! -f "$PATH_TO_NOTARISE" ] && [ ! -d "$PATH_TO_NOTARISE" ]; then
 	echo "ERROR: No file to notarise at: $PATH_TO_NOTARISE" && exit 1
 fi
 
+
 #============================================================
 # Upload to notarization service
 #============================================================
 echo "============================================================"
 echo "Uploading to notarization service:"
 
-OUTPUT=$(xcrun altool --notarize-app --verbose --primary-bundle-id "$BUNDLE_ID" --username "$AC_USERNAME" --password "$AC_PASSWORD" --file "$PATH_TO_NOTARISE" --output-format xml)
+OUTPUT=$(xcrun altool --notarize-app --primary-bundle-id "$BUNDLE_ID" --username "$AC_USERNAME" --password "$AC_PASSWORD" --file "$PATH_TO_NOTARISE" --output-format xml)
 OUTPUT_FILE="$TMP/result.plist"
 rm -f "$OUTPUT_FILE"
 echo "$OUTPUT" > "$OUTPUT_FILE"
