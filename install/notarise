@@ -27,7 +27,7 @@ ROOT=$(cd "$(dirname "$0")"; pwd)
 cd $ROOT
 echo "ROOT: $ROOT"
 ls -la
-cd "$ROOT/bin/mac"
+cd "$ROOT/../bin/mac"
 ls -la
 cd $ROOT
 
