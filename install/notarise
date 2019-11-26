@@ -82,6 +82,10 @@ if [ "$EXTENSION" = "app" ]; then
 	/usr/bin/ditto -c -k --keepParent "$APP_PATH" "$ZIP_PATH"
 fi
 
+if [ ! -f "$PATH_TO_NOTARISE" ] && [ ! -d "$PATH_TO_NOTARISE" ]; then
+	echo "ERROR: No file to notarise at: $PATH_TO_NOTARISE" && exit 1
+fi
+
 #============================================================
 # Upload to notarization service
 #============================================================
