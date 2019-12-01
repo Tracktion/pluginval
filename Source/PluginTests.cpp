@@ -160,8 +160,14 @@ void PluginTests::testType (const PluginDescription& pd)
                 for (auto t : testsToRun)
                 {
                     if (options.strictnessLevel < t->strictnessLevel
-                        || (! options.withGUI && t->requiresGUI()))
+                        || (! options.withGUI && t->requiresGUI())
+                      )
                        continue;
+                    if(options.disabledTests.contains(t->name))
+                    {
+                      logMessage("\n\"" + t->name + "\" is disabled.");
+                      continue;
+                    }
 
                     StopwatchTimer sw2;
                     beginTest (t->name);
