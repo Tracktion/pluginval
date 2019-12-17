@@ -65,6 +65,26 @@
         <MODULEPATH id="juce_audio_processors" path="modules/juce/modules"/>
       </MODULEPATHS>
     </XCODE_MAC>
+    <VS2019 targetFolder="Builds/VisualStudio2019" smallIcon="k3tDOE" bigIcon="k3tDOE"
+            vst3Folder="modules/vst3">
+      <CONFIGURATIONS>
+        <CONFIGURATION isDebug="1" name="Debug" targetName="pluginval" useRuntimeLibDLL="0"/>
+        <CONFIGURATION isDebug="0" name="Release" warningsAreErrors="1" targetName="pluginval"
+                       alwaysGenerateDebugSymbols="1" useRuntimeLibDLL="0"/>
+      </CONFIGURATIONS>
+      <MODULEPATHS>
+        <MODULEPATH id="juce_gui_extra" path="modules/juce/modules"/>
+        <MODULEPATH id="juce_gui_basics" path="modules/juce/modules"/>
+        <MODULEPATH id="juce_graphics" path="modules/juce/modules"/>
+        <MODULEPATH id="juce_events" path="modules/juce/modules"/>
+        <MODULEPATH id="juce_data_structures" path="modules/juce/modules"/>
+        <MODULEPATH id="juce_core" path="modules/juce/modules"/>
+        <MODULEPATH id="juce_audio_processors" path="modules/juce/modules"/>
+        <MODULEPATH id="juce_audio_formats" path="modules/juce/modules"/>
+        <MODULEPATH id="juce_audio_devices" path="modules/juce/modules"/>
+        <MODULEPATH id="juce_audio_basics" path="modules/juce/modules"/>
+      </MODULEPATHS>
+    </VS2019>
     <VS2017 targetFolder="Builds/VisualStudio2017" smallIcon="k3tDOE" bigIcon="k3tDOE"
             vst3Folder="modules/vst3">
       <CONFIGURATIONS>
