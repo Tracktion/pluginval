@@ -16,6 +16,8 @@
 #include "PluginTests.h"
 #include "CrashHandler.h"
 #include <numeric>
+#include <signal.h>
+
 
 // Defined in Main.cpp, used to create the file logger as early as possible
 extern void slaveInitialised();
