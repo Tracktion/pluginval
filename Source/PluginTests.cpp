@@ -168,6 +168,12 @@ void PluginTests::testType (const PluginDescription& pd)
                         || (! options.withGUI && t->requiresGUI()))
                        continue;
 
+                    if (options.disabledTests.contains (t->name))
+                    {
+                        logMessage ("\nINFO: \"" + t->name + "\" is disabled.");
+                        continue;
+                    }
+
                     StopwatchTimer sw2;
                     beginTest (t->name);
 

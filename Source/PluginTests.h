@@ -35,6 +35,7 @@ struct PluginTests : public UnitTest
         bool withGUI = true;                /**< Whether or not avoid tests that instantiate a gui. */
         File dataFile;                      /**< File which tests can use to run user provided data. */
         File outputDir;                     /**< Directory in which to write the log files for each test run. */
+        StringArray disabledTests;          /**< List of disabled tests. */
     };
 
     /** Creates a set of tests for a fileOrIdentifier. */

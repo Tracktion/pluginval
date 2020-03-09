@@ -173,6 +173,15 @@ File getOutputDir (const ArgumentList& args)
     return getOptionValue (args, "--output-dir", {}, "Missing output-dir path argument!").toString();
 }
 
+StringArray getDisabledTest (const ArgumentList& args)
+{
+    const File disabledTestsFile (getOptionValue (args, "--disabled-tests", {}, "Missing disabled-tests path argument!").toString());
+    
+    StringArray disabledTests;
+    disabledTestsFile.readLines (disabledTests);
+  
+    return disabledTests;
+}
 
 //==============================================================================
 String parseCommandLineArgs (String commandLine)
@@ -281,6 +290,8 @@ static String getHelpMessage()
          << "    If specified, sets a path to a data file which can be used by tests to configure themselves. This can be useful for things like known audio output." << newLine
          << "  --output-dir [pathToDir]" << newLine
          << "    If specified, sets a directory to store the log files. This can be useful for continuous integration." << newLine
+         << "  --disabled-tests [pathToFile]" << newLine
+         << "    If specified, sets a path to a file that should have the names of disabled tests on each row." << newLine
          << "  --version" << newLine
          << "    Print pluginval version." << newLine
          << newLine
@@ -337,6 +348,7 @@ static void validate (CommandLineValidator& validator, const ArgumentList& args)
         options.dataFile = getDataFile (args);
         options.outputDir = getOutputDir (args);
         options.withGUI = ! args.containsOption ("--skip-gui-tests");
+        options.disabledTests = getDisabledTest (args);
 
         validator.validate (fileOrIDs,
                             options,

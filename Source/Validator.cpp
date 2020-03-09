@@ -246,6 +246,7 @@ namespace IDs
     DECLARE_ID(dataFile)
     DECLARE_ID(outputDir)
     DECLARE_ID(withGUI)
+    DECLARE_ID(disabledTests)
 
     DECLARE_ID(MESSAGE)
     DECLARE_ID(type)
@@ -472,6 +473,10 @@ private:
             options.outputDir = File (v[IDs::outputDir].toString());
             options.withGUI = v.getProperty (IDs::withGUI, true);
 
+            if (auto varArray = v.getProperty (IDs::disabledTests, true).getArray())
+                for (auto disabledTest : *varArray)
+                    options.disabledTests.add (disabledTest);
+
             for (auto c : v)
             {
                 String fileOrID;
@@ -661,6 +666,7 @@ private:
         v.setProperty (IDs::dataFile, options.dataFile.getFullPathName(), nullptr);
         v.setProperty (IDs::outputDir, options.outputDir.getFullPathName(), nullptr);
         v.setProperty (IDs::withGUI, options.withGUI, nullptr);
+        v.setProperty (IDs::disabledTests, options.disabledTests, nullptr);
 
         return v;
     }
