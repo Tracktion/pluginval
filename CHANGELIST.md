@@ -2,6 +2,8 @@
 
 ### 0.2.4
 - Added tests for plugin programs
+- Added a new CLI option to pass a file with a list of tests to disable
+- Added notarisation to macOS builds for Catalina compatibility
 
 ### 0.2.3
  - Fixed some failing tests on startup
