@@ -68,7 +68,7 @@ exit /B %ERRORLEVEL%
     if %ERRORLEVEL% NEQ 0 exit 1
 
     :: Test out of process
-    call "%PLUGINVAL_EXE%" --strictness-level 5 --validate %PLUGIN_VST3%
-    if %ERRORLEVEL% NEQ 0 exit 1
+    :: call "%PLUGINVAL_EXE%" --strictness-level 5 --validate %PLUGIN_VST3%
+    :: if %ERRORLEVEL% NEQ 0 exit 1
 
 exit /B 0
