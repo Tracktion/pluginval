@@ -472,10 +472,7 @@ private:
             options.dataFile = File (v[IDs::dataFile].toString());
             options.outputDir = File (v[IDs::outputDir].toString());
             options.withGUI = v.getProperty (IDs::withGUI, true);
-
-            if (auto varArray = v.getProperty (IDs::disabledTests, true).getArray())
-                for (auto disabledTest : *varArray)
-                    options.disabledTests.add (disabledTest);
+            options.disabledTests = StringArray::fromTokens (v.getProperty (IDs::disabledTests).toString(), false);
 
             for (auto c : v)
             {
@@ -666,7 +663,7 @@ private:
         v.setProperty (IDs::dataFile, options.dataFile.getFullPathName(), nullptr);
         v.setProperty (IDs::outputDir, options.outputDir.getFullPathName(), nullptr);
         v.setProperty (IDs::withGUI, options.withGUI, nullptr);
-        v.setProperty (IDs::disabledTests, options.disabledTests, nullptr);
+        v.setProperty (IDs::disabledTests, options.disabledTests.joinIntoString ("\n"), nullptr);
 
         return v;
     }
