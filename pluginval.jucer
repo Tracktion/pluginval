@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 
-<JUCERPROJECT name="pluginval" projectType="guiapp" jucerVersion="5.4.5" id="IA2Ov0"
+<JUCERPROJECT name="pluginval" projectType="guiapp" jucerVersion="5.4.7" id="IA2Ov0"
               version="0.2.4" companyName="Tracktion" headerPath="../../modules/juce/modules/juce_audio_processors/format_types/VST3_SDK">
   <MAINGROUP id="zUhKLj" name="pluginval">
     <FILE id="gV5MZv" name="CHANGELIST.md" compile="0" resource="0" file="CHANGELIST.md"/>
@@ -87,8 +87,8 @@
     </VS2017>
     <LINUX_MAKE targetFolder="Builds/LinuxMakefile" smallIcon="k3tDOE" bigIcon="k3tDOE">
       <CONFIGURATIONS>
-        <CONFIGURATION isDebug="1" name="Debug" targetName="pluginval"/>
-        <CONFIGURATION isDebug="0" name="Release" targetName="pluginval"/>
+        <CONFIGURATION isDebug="1" name="Debug" targetName="pluginval" linuxArchitecture="-m64"/>
+        <CONFIGURATION isDebug="0" name="Release" targetName="pluginval" linuxArchitecture="-m64"/>
       </CONFIGURATIONS>
       <MODULEPATHS>
         <MODULEPATH id="juce_gui_extra" path="modules/juce/modules"/>
