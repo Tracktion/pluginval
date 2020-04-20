@@ -1,5 +1,8 @@
 # pluginval Change List
 
+### 0.2.5
+- Fixed Linux architecture for pre-built binaries
+
 ### 0.2.4
 - Added tests for plugin programs
 - Added a new CLI option to pass a file with a list of tests to disable
