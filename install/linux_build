@@ -2,6 +2,8 @@
 
 ROOT=$(cd "$(dirname "$0")/.."; pwd)
 
+echo "" | gcc -v -E - 2>&1 | grep GCC_OPTIONS
+
 if [ -z "$ROOT" ]; then
 	echo "ERROR: Unknown workspase"
 	exit 1
