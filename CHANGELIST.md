@@ -1,5 +1,8 @@
 # pluginval Change List
 
+### 0.2.6
+- Avoided a deadlock when opening plugin windows for the second time on Linux
+
 ### 0.2.5
 - Fixed Linux architecture for pre-built binaries
 
