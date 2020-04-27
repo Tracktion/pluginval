@@ -153,7 +153,10 @@ static std::unique_ptr<AudioProcessorEditor> createAndShowEditorOnMessageThread 
             editor->setVisible (true);
 
             // Pump the message loop for a couple of seconds for the window to initialise itself
+            // For some reason this blocks on Linux though so we'll avoid doing it
+           #if ! JUCE_LINUX
             MessageManager::getInstance()->runDispatchLoopUntil (200);
+           #endif
         }
     }
     else
