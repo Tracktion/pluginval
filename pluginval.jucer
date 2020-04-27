@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 
 <JUCERPROJECT name="pluginval" projectType="guiapp" jucerVersion="5.4.7" id="IA2Ov0"
-              version="0.2.5" companyName="Tracktion" headerPath="../../modules/juce/modules/juce_audio_processors/format_types/VST3_SDK">
+              version="0.2.6" companyName="Tracktion" headerPath="../../modules/juce/modules/juce_audio_processors/format_types/VST3_SDK&#10;../../VST3_SDK">
   <MAINGROUP id="zUhKLj" name="pluginval">
     <FILE id="gV5MZv" name="CHANGELIST.md" compile="0" resource="0" file="CHANGELIST.md"/>
     <GROUP id="{DF1CFAD6-E73F-2DAB-3957-D1F25BDD2E13}" name="Source">
