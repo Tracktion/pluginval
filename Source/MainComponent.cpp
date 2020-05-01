@@ -212,11 +212,10 @@ MainComponent::MainComponent (Validator& v)
     testSelectedButton.onClick = [this]
         {
             auto rows = pluginListComponent.getTableListBox().getSelectedRows();
-            Array<PluginDescription*> plugins;
+            Array<PluginDescription> plugins;
 
             for (int i = 0; i < rows.size(); ++i)
-                if (auto pd = knownPluginList.getType (rows[i]))
-                    plugins.add (pd);
+                plugins.add (knownPluginList.getTypes()[rows[i]]);
 
             validator.setValidateInProcess (getValidateInProcess());
             validator.validate (plugins, getTestOptions());
@@ -224,14 +223,8 @@ MainComponent::MainComponent (Validator& v)
 
     testAllButton.onClick = [this]
         {
-            Array<PluginDescription*> plugins;
-
-            for (int i = 0; i < knownPluginList.getNumTypes(); ++i)
-                if (auto pd = knownPluginList.getType (i))
-                    plugins.add (pd);
-
             validator.setValidateInProcess (getValidateInProcess());
-            validator.validate (plugins, getTestOptions());
+            validator.validate (knownPluginList.getTypes(), getTestOptions());
         };
 
     testFileButton.onClick = [this]

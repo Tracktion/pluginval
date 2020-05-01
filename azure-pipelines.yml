@@ -1,5 +1,5 @@
 variables:
-  - group: VST2_SDK
+  - group: pluginval  
 
 jobs:
 - job: linux
@@ -29,16 +29,30 @@ jobs:
     inputs:
       artifactName: 'Change List'
       targetPath: 'bin/linux'
+
 - job: macOS
   pool:
-    vmImage: 'macOS-10.13'
+    vmImage: 'macOS-10.14'
   steps:
+  - task: InstallAppleCertificate@2
+    inputs:
+      certSecureFile: 'Application.p12'
+      certPwd: '$(CERT_PASSWORD)'
+      keychain: 'temp'
+  - task: InstallAppleCertificate@2
+    inputs:
+      certSecureFile: 'Installer.p12'
+      certPwd: '$(CERT_PASSWORD)'
+      keychain: 'temp'
   - script: tests/mac_tests
     displayName: 'macOS Build'
+  - script: install/notarise ../bin/mac/pluginval_macOS.zip com.tracktion.pluginval $(AC_USERNAME) $(AC_PASSWORD)
+    displayName: 'notarise'
   - task: PublishPipelineArtifact@0
     inputs:
       artifactName: 'macOS'
       targetPath: 'bin/mac'
+
 - job: windows
   pool:
     vmImage: 'vs2017-win2016'

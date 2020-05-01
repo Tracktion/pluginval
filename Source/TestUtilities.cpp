@@ -203,6 +203,7 @@ struct AllocatorInterceptorTests    : public UnitTest,
             {
                 ScopedAllocationDisabler sad;
                 std::vector<int> ints (42);
+                ints.resize (100);
             }
 
             expect (allocatorInterceptor.getAndClearAllocationViolation());

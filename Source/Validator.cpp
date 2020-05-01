@@ -17,6 +17,12 @@
 #include "CrashHandler.h"
 #include <numeric>
 
+#if JUCE_MAC
+ #include <signal.h>
+ #include <sys/types.h>
+ #include <unistd.h>
+#endif
+
 // Defined in Main.cpp, used to create the file logger as early as possible
 extern void slaveInitialised();
 
@@ -242,6 +248,7 @@ namespace IDs
     DECLARE_ID(dataFile)
     DECLARE_ID(outputDir)
     DECLARE_ID(withGUI)
+    DECLARE_ID(disabledTests)
 
     DECLARE_ID(MESSAGE)
     DECLARE_ID(type)
@@ -274,7 +281,7 @@ static MemoryBlock valueTreeToMemoryBlock (const ValueTree& v)
 static String toXmlString (const ValueTree& v)
 {
     if (auto xml = std::unique_ptr<XmlElement> (v.createXml()))
-        return xml->createDocument ({}, false, false);
+        return xml->toString (XmlElement::TextFormat().withoutHeader());
 
     return {};
 }
@@ -467,6 +474,7 @@ private:
             options.dataFile = File (v[IDs::dataFile].toString());
             options.outputDir = File (v[IDs::outputDir].toString());
             options.withGUI = v.getProperty (IDs::withGUI, true);
+            options.disabledTests = StringArray::fromTokens (v.getProperty (IDs::disabledTests).toString(), false);
 
             for (auto c : v)
             {
@@ -623,20 +631,20 @@ public:
         for (auto fileOrID : fileOrIDsToValidate)
         {
             jassert (fileOrID.isNotEmpty());
-            v.appendChild ({ IDs::PLUGIN, {{ IDs::fileOrID, fileOrID }} }, nullptr);
+            v.appendChild ({ IDs::PLUGIN, {{ IDs::fileOrID, fileOrID.trimCharactersAtEnd ("\\/") }} }, nullptr);
         }
 
         sendValueTreeToSlave (v);
     }
 
     /** Triggers validation of a set of PluginDescriptions. */
-    void validate (const Array<PluginDescription*>& pluginsToValidate, PluginTests::Options options)
+    void validate (const Array<PluginDescription>& pluginsToValidate, PluginTests::Options options)
     {
         auto v = createPluginsTree (options);
 
         for (auto pd : pluginsToValidate)
-            if (auto xml = std::unique_ptr<XmlElement> (pd->createXml()))
-                v.appendChild ({ IDs::PLUGIN, {{ IDs::pluginDescription, Base64::toBase64 (xml->createDocument ("")) }} }, nullptr);
+            if (auto xml = std::unique_ptr<XmlElement> (pd.createXml()))
+                v.appendChild ({ IDs::PLUGIN, {{ IDs::pluginDescription, Base64::toBase64 (xml->toString()) }} }, nullptr);
 
         sendValueTreeToSlave (v);
     }
@@ -657,6 +665,7 @@ private:
         v.setProperty (IDs::dataFile, options.dataFile.getFullPathName(), nullptr);
         v.setProperty (IDs::outputDir, options.outputDir.getFullPathName(), nullptr);
         v.setProperty (IDs::withGUI, options.withGUI, nullptr);
+        v.setProperty (IDs::disabledTests, options.disabledTests.joinIntoString ("\n"), nullptr);
 
         return v;
     }
@@ -700,7 +709,7 @@ bool Validator::validate (const StringArray& fileOrIDsToValidate, PluginTests::O
     return true;
 }
 
-bool Validator::validate (const Array<PluginDescription*>& pluginsToValidate, PluginTests::Options options)
+bool Validator::validate (const Array<PluginDescription>& pluginsToValidate, PluginTests::Options options)
 {
     if (! ensureConnection())
         return false;
