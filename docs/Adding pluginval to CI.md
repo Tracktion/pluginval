@@ -36,3 +36,8 @@ $ ./pluginval --validate-in-process --output-dir "./bin" --validate "<path_to_pl
 > pluginval.exe --validate-in-process --output-dir "./bin" --validate "<path_to_plugin>"
 > if %ERRORLEVEL% neq 0 exit /b 1
 ```
+
+##### Chocolatey (Windows)
+```sh
+> choco install pluginval
+```
