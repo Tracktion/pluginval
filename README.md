@@ -35,6 +35,13 @@ $ ./mac_build
 > ./windows_build.bat
 ```
 
+### Third-party Installation
+###### _Chocolatey (Windows):_
+```shell
+> choco install pluginval
+```
+
+You can find the chocolatey package of pluginval [here](https://chocolatey.org/packages/pluginval), and the source of the chocolatey package [here](https://github.com/Xav83/chocolatey-packages/tree/develop/automatic/pluginval), currently maintained by [Xav83](https://github.com/Xav83).
 
 ##### N.B. Enabling VST2 Testing:
 The VST2 SDK is no longer included in JUCE so VST2 support isn't available out from a fresh clone. To enable VST2 testing do one of the following:

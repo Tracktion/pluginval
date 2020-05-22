@@ -43,3 +43,8 @@ https://github.com/Tracktion/pluginval/releases/latest/download/pluginval_macOS.
 https://github.com/Tracktion/pluginval/releases/latest/download/pluginval_Linux.zip
 https://github.com/Tracktion/pluginval/releases/latest/download/pluginval_Windows.zip
 ```
+
+*Or install via Chocolatey on Windows*
+```sh
+> choco install pluginval
+```
