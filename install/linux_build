@@ -71,6 +71,7 @@ cd "$ROOT/Builds/LinuxMakefile"
 rm -rf $ROOT/Builds/LinuxMakefile/build/
 #make clean
 make CONFIG=Release -j4
+"$APP_FILE" --run-tests || exit 1
 
 
 #============================================================
