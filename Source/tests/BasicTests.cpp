@@ -70,8 +70,15 @@ struct PluginPrgramsTest    : public PluginTest
                 instance.setCurrentProgram (programNum);
             }
 
-            ut.logVerboseMessage ("Resetting program to: " + String (currentProgram));
-            instance.setCurrentProgram (currentProgram);
+            if (currentProgram >= 0)
+            {
+                ut.logVerboseMessage ("Resetting program to: " + String (currentProgram));
+                instance.setCurrentProgram (currentProgram);
+            }
+            else
+            {
+                ut.logMessage ("!!! WARNING: Current program is -1... Is this correct?");
+            }
         }
     }
 };

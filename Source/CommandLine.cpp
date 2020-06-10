@@ -356,6 +356,27 @@ static void validate (CommandLineValidator& validator, const ArgumentList& args)
     }
 }
 
+int getNumTestFailures (UnitTestRunner& testRunner)
+{
+    int numFailures = 0;
+    
+    for (int i = 0; i < testRunner.getNumResults(); ++i)
+        if (auto result = testRunner.getResult (i))
+            numFailures += result->failures;
+
+    return numFailures;
+}
+
+void runUnitTests()
+{
+    UnitTestRunner testRunner;
+    testRunner.runTestsInCategory ("pluginval");
+    const int numFailures = getNumTestFailures (testRunner);
+    
+    if (numFailures > 0)
+        ConsoleApplication::fail (String (numFailures) + " tests failed!!!");
+}
+
 //==============================================================================
 void performCommandLine (CommandLineValidator& validator, const ArgumentList& args)
 {
@@ -368,6 +389,10 @@ void performCommandLine (CommandLineValidator& validator, const ArgumentList& ar
                       "--validate [list]",
                       "Validates the files (or IDs for AUs).", String(),
                       [&validator] (const auto& args) { validate (validator, args); }});
+    cli.addCommand ({ "--run-tests",
+                      "--run-tests",
+                      "Runs the internal unit tests.", String(),
+                      [] (const auto&) { runUnitTests(); }});
 
     JUCEApplication::getInstance()->setApplicationReturnValue (cli.findAndRunCommand (args));
 
@@ -380,7 +405,8 @@ bool shouldPerformCommandLine (const ArgumentList& args)
 {
     return args.containsOption ("--help|-h")
         || args.containsOption ("--version")
-        || args.containsOption ("--validate");
+        || args.containsOption ("--validate")
+        || args.containsOption ("--run-tests");
 }
 
 //==============================================================================

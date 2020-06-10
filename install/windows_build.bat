@@ -75,7 +75,7 @@ echo "Building products"
 cd "%ROOT%/Builds/VisualStudio2017"
 rd /S /Q "x64/Release"
 "%MSBUILD_EXE%" %PROJECT_NAME%.sln /p:VisualStudioVersion=15.0 /m /t:Build /p:Configuration=Release /p:Platform=x64 /p:PreferredToolArchitecture=x64  /p:TreatWarningsAsErrors=true
-
+call "%APP_FILE%" --run-tests || exit 1
 
 ::============================================================
 ::   Copy to deployment directory
