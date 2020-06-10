@@ -71,6 +71,8 @@ rm -rf $ROOT/Builds/MacOSX/build/$PROJECT_NAME.build
 xcodebuild -configuration Release clean
 xcodebuild -configuration Release GCC_TREAT_WARNINGS_AS_ERRORS=YES
 
+"$APP_FILE/Contents/MacOS/$PROJECT_NAME" --run-tests || exit 1
+
 #============================================================
 #   Sign with hardened runtime
 #============================================================

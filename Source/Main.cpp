@@ -48,8 +48,10 @@ public:
     //==============================================================================
     void initialise (const String& commandLine) override
     {
+       #if JUCE_DEBUG
         UnitTestRunner testRunner;
         testRunner.runTestsInCategory ("pluginval");
+       #endif
 
         if (shouldPerformCommandLine (commandLine))
         {
