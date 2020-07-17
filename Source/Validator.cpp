@@ -474,7 +474,7 @@ private:
             options.dataFile = File (v[IDs::dataFile].toString());
             options.outputDir = File (v[IDs::outputDir].toString());
             options.withGUI = v.getProperty (IDs::withGUI, true);
-            options.disabledTests = StringArray::fromTokens (v.getProperty (IDs::disabledTests).toString(), false);
+            options.disabledTests = StringArray::fromLines (v.getProperty (IDs::disabledTests).toString());
 
             for (auto c : v)
             {
