@@ -27,15 +27,15 @@ echo "\nRoot dir: $ROOT"
 
 
 PROJECT_NAME=pluginval
-DEPLOYMENT_DIR="$ROOT/bin/${PLATFORM}"
+DEPLOYMENT_DIR="${ROOT}/bin/${PLATFORM}"
 
 if [[ "$PLATFORM" == "linux" ]]; then
     BINARY_NAME="$PROJECT_NAME"
     APP_NAME=$BINARY_NAME
-    APP_DIR=$ROOT/Builds/LinuxMakefile/build
+    APP_DIR="${CMAKE_BUILD_DIR}/${PROJECT_NAME}_artefacts"
     APP_FILE=$APP_DIR/$APP_NAME
     APP_BINARY="$APP_FILE"
-    ZIP_FILE="$DEPLOYMENT_DIR/$PROJECT_NAME"_Linux.zip
+    ZIP_FILE="${DEPLOYMENT_DIR}/${PROJECT_NAME}_Linux.zip"
 
     CMAKE_GENERATOR="Unix Makefiles"
 elif [[ "$PLATFORM" == "mac" ]]; then
@@ -67,7 +67,7 @@ echo BINARY_NAME: "$BINARY_NAME"
 echo APP_NAME: "$APP_NAME"
 echo APP_DIR: "$APP_DIR"
 echo APP_FILE: "$APP_FILE"
-echo ZIP_NAME: "$ZIP_NAME"
+echo ZIP_FILE: "$ZIP_FILE"
 echo CMAKE_GENERATOR: "$CMAKE_GENERATOR"
 
 
@@ -79,7 +79,7 @@ if [ -n "$VST2_SDK_URL" ]; then
     mkdir "$ROOT"/tmp
     cd "$ROOT"/tmp
 
-    if [[ "$PLATFORM" == "linux" ]] | [[ "$PLATFORM" == "mac" ]]; then
+    if [[ "$PLATFORM" == "linux" ]] || [[ "$PLATFORM" == "mac" ]]; then
         curl -O $VST2_SDK_URL
         unzip vstsdk2.4.zip
     elif [[ "$PLATFORM" == "windows" ]]; then
@@ -98,7 +98,7 @@ fi
 #============================================================
 #   Build
 #============================================================
-rm -rf "$CMAKE_BUILD_DIR"
+# rm -rf "$CMAKE_BUILD_DIR"
 mkdir -p "$CMAKE_BUILD_DIR"
 cd "$CMAKE_ROOT"
 pwd
@@ -150,7 +150,7 @@ mkdir -p "$DEPLOYMENT_DIR"
 echo "\nDeploying to: " "$DEPLOYMENT_DIR"
 cd "$APP_DIR"
 
-if [[ "$PLATFORM" == "linux" ]] | [[ "$PLATFORM" == "mac" ]]; then
+if [[ "$PLATFORM" == "linux" ]] || [[ "$PLATFORM" == "mac" ]]; then
     zip -r "$ZIP_FILE" "$APP_NAME"
 elif [[ "$PLATFORM" == "windows" ]]; then
     powershell -Command "Compress-Archive -Path '$APP_FILE' -DestinationPath '$ZIP_FILE'"
