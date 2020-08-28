@@ -3,6 +3,8 @@
 #========================================================
 # Configure build environment
 #========================================================
+cmake --version
+
 if [[ "$OSTYPE" == "linux-gnu" ]]; then PLATFORM=linux
 elif [[ "$OSTYPE" == "darwin"* ]]; then PLATFORM=mac
 elif [[ "$OSTYPE" == "msys" ]];    then PLATFORM=windows
