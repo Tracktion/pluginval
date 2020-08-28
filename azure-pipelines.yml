@@ -58,7 +58,7 @@ jobs:
     vmImage: 'vs2017-win2016'
   steps:
   - bash: |
-      set MSBUILD_EXE=C:\Program Files (x86)\Microsoft Visual Studio\2017\Enterprise\MSBuild\15.0\Bin\MSBuild.exe
+      MSBUILD_EXE="C:\Program Files (x86)\Microsoft Visual Studio\2017\Enterprise\MSBuild\15.0\Bin\MSBuild.exe"
       install/build
     displayName: 'Windows Build'
   - task: PublishPipelineArtifact@0

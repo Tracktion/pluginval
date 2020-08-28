@@ -24,6 +24,11 @@ if [ -z "$ROOT" ]; then
     exit 1
 fi
 
+if [ ! -d "$ROOT/modules/juce/modules" ]; then
+    echo "ERROR: juce library module not preset!"
+    exit 1
+fi
+
 echo "\n=========================================="
 echo ROOT: "$ROOT"
 echo CMAKE_BUILD_DIR: "$CMAKE_BUILD_DIR"
