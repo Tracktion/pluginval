@@ -15,7 +15,7 @@ fi
 
 ROOT=$(cd "$(dirname "$0")/.."; pwd)
 CMAKE_ROOT="$ROOT/cmake_build"
-CMAKE_BUILD_DIR="$CMAKE_ROOT/$PLATFORM"
+CMAKE_BUILD_DIR="$CMAKE_ROOT/${PLATFORM}"
 
 if [ -z "$ROOT" ]; then
     echo "ERROR: Unknown workspace"
@@ -27,7 +27,7 @@ echo "\nRoot dir: $ROOT"
 
 
 PROJECT_NAME=pluginval
-DEPLOYMENT_DIR="$ROOT/bin/""$PLATFORM"
+DEPLOYMENT_DIR="$ROOT/bin/${PLATFORM}"
 
 if [[ "$PLATFORM" == "linux" ]]; then
     BINARY_NAME="$PROJECT_NAME"
@@ -98,11 +98,12 @@ fi
 #============================================================
 #   Build
 #============================================================
-#ddd rm -rf "$CMAKE_BUILD_DIR"
-mkdir -p "$CMAKE_ROOT"
+rm -rf "$CMAKE_BUILD_DIR"
+mkdir -p "$CMAKE_BUILD_DIR"
 cd "$CMAKE_ROOT"
+pwd
 
-cmake -S .. -B "$CMAKE_BUILD_DIR" -G "$CMAKE_GENERATOR"
+cmake -S "$ROOT" -B "$CMAKE_BUILD_DIR" -G "$CMAKE_GENERATOR"
 cd "$CMAKE_BUILD_DIR"
 
 if [[ "$PLATFORM" == "linux" ]]; then
@@ -125,9 +126,9 @@ fi
 #============================================================
 if [[ "$PLATFORM" == "mac" ]]; then
     if [ -n "$SIGN_ID" ]; then
-        ENTITLEMENTS_FILE=$CMAKE_BUILD_DIR/$PROJECT_NAME_artefacts/JuceLibraryCode/$PROJECT_NAME.entitlements
+        ENTITLEMENTS_FILE="${CMAKE_BUILD_DIR}/${PROJECT_NAME}_artefacts/JuceLibraryCode/${PROJECT_NAME}.entitlements"
 
-        codesign --entitlements "$ENTITLEMENTS_FILE" --force -s "$SIGN_ID" -v "$APP_FILE" --deep --strict --options=runtime
+        codesign --entitlements "${ENTITLEMENTS_FILE}" --force -s "$SIGN_ID" -v "$APP_FILE" --deep --strict --options=runtime
 
         echo "\nVerifying ..."
         spctl -vvv --assess --type exec "$APP_FILE"
