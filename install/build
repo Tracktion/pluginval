@@ -23,8 +23,8 @@ if [ -z "$ROOT" ]; then
 fi
 
 echo "\n=========================================="
-echo "\nRoot dir: $ROOT"
-
+echo ROOT: "$ROOT"
+echo CMAKE_BUILD_DIR: "$CMAKE_BUILD_DIR"
 
 PROJECT_NAME=pluginval
 DEPLOYMENT_DIR="${ROOT}/bin/${PLATFORM}"
@@ -33,7 +33,7 @@ if [[ "$PLATFORM" == "linux" ]]; then
     BINARY_NAME="$PROJECT_NAME"
     APP_NAME=$BINARY_NAME
     APP_DIR="${CMAKE_BUILD_DIR}/${PROJECT_NAME}_artefacts"
-    APP_FILE=$APP_DIR/$APP_NAME
+    APP_FILE=$APP_DIR/$BINARY_NAME
     APP_BINARY="$APP_FILE"
     ZIP_FILE="${DEPLOYMENT_DIR}/${PROJECT_NAME}_Linux.zip"
 
@@ -41,7 +41,7 @@ if [[ "$PLATFORM" == "linux" ]]; then
 elif [[ "$PLATFORM" == "mac" ]]; then
     BINARY_NAME="$PROJECT_NAME"
     APP_NAME=$BINARY_NAME".app"
-    APP_DIR=$CMAKE_BUILD_DIR/${PROJECT_NAME}_artefacts/Release/
+    APP_DIR=$CMAKE_BUILD_DIR/${PROJECT_NAME}_artefacts/Release
     APP_FILE=$APP_DIR/$APP_NAME
     APP_BINARY="$APP_FILE/Contents/MacOS/${PROJECT_NAME}"
     ZIP_FILE="$DEPLOYMENT_DIR/$PROJECT_NAME"_macOS.zip
@@ -50,14 +50,22 @@ elif [[ "$PLATFORM" == "mac" ]]; then
 elif [[ "$PLATFORM" == "windows" ]]; then
     BINARY_NAME="$PROJECT_NAME".exe
     APP_NAME="$BINARY_NAME"
-    APP_FILE="$ROOT/Builds/VisualStudio2017/x64/Release/App/$APP_NAME"
+    APP_DIR=$CMAKE_BUILD_DIR/${PROJECT_NAME}_artefacts/Release
+    APP_FILE="$APP_DIR/$BINARY_NAME"
     APP_BINARY="$APP_FILE"
-    ZIP_FILE="$DEPLOYMENT_DIR/$PROJECT_NAME_Windows.zip"
+    ZIP_NAME="${PROJECT_NAME}_Windows.zip"
+    ZIP_FILE="${DEPLOYMENT_DIR}/${ZIP_NAME}"
 
     CMAKE_GENERATOR="Visual Studio 15 2017"
+    CMAKE_PLATFORM_ARGS="-A x64"
 
-    if [ -n "$MSBUILD_EXE" ]; then
+    if [ -z "$MSBUILD_EXE" ]; then
         MSBUILD_EXE="C:\Program Files (x86)\Microsoft Visual Studio\2017\Community\MSBuild\15.0\Bin\MSBuild.exe"
+    fi
+
+    if [ ! -f "$MSBUILD_EXE" ]; then
+        echo MSBuild.exe not found!
+        exit 1
     fi
 fi
 
@@ -83,7 +91,7 @@ if [ -n "$VST2_SDK_URL" ]; then
         curl -O $VST2_SDK_URL
         unzip vstsdk2.4.zip
     elif [[ "$PLATFORM" == "windows" ]]; then
-        powershell -Command "[Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12; Invoke-WebRequest %VST2_SDK_URL% -OutFile vstsdk2.4.zip"
+        powershell -Command "[Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12; Invoke-WebRequest ${VST2_SDK_URL} -OutFile vstsdk2.4.zip"
         powershell -Command "Expand-Archive vstsdk2.4.zip -DestinationPath ."
     fi
 
@@ -103,7 +111,7 @@ mkdir -p "$CMAKE_BUILD_DIR"
 cd "$CMAKE_ROOT"
 pwd
 
-cmake -S "$ROOT" -B "$CMAKE_BUILD_DIR" -G "$CMAKE_GENERATOR"
+cmake -S "$ROOT" -B "$CMAKE_BUILD_DIR" -G "$CMAKE_GENERATOR" $CMAKE_PLATFORM_ARGS
 cd "$CMAKE_BUILD_DIR"
 
 if [[ "$PLATFORM" == "linux" ]]; then
@@ -155,6 +163,8 @@ cd "$APP_DIR"
 if [[ "$PLATFORM" == "linux" ]] || [[ "$PLATFORM" == "mac" ]]; then
     zip -r "$ZIP_FILE" "$APP_NAME"
 elif [[ "$PLATFORM" == "windows" ]]; then
-    powershell -Command "Compress-Archive -Path '$APP_FILE' -DestinationPath '$ZIP_FILE'"
+    # N.B. we can't provide unix paths to powershell
+    cd "$APP_DIR"
+    powershell -Command "Compress-Archive -Path '$BINARY_NAME' -DestinationPath '$ZIP_NAME' -Force"
+    mv "$ZIP_NAME" "$DEPLOYMENT_DIR"
 fi
-
