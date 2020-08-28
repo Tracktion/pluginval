@@ -1,0 +1,157 @@
+#!/bin/bash -e
+
+#========================================================
+# Configure build environment
+#========================================================
+if [[ "$OSTYPE" == "linux-gnu" ]]; then PLATFORM=linux
+elif [[ "$OSTYPE" == "darwin"* ]]; then PLATFORM=mac
+elif [[ "$OSTYPE" == "msys" ]];    then PLATFORM=windows
+fi
+
+if [ -z "$PLATFORM" ]; then
+    echo ERROR: Unknown platform
+    exit 1
+fi
+
+ROOT=$(cd "$(dirname "$0")/.."; pwd)
+CMAKE_ROOT="$ROOT/cmake_build"
+CMAKE_BUILD_DIR="$CMAKE_ROOT/$PLATFORM"
+
+if [ -z "$ROOT" ]; then
+    echo "ERROR: Unknown workspace"
+    exit 1
+fi
+
+echo "\n=========================================="
+echo "\nRoot dir: $ROOT"
+
+
+PROJECT_NAME=pluginval
+DEPLOYMENT_DIR="$ROOT/bin/""$PLATFORM"
+
+if [[ "$PLATFORM" == "linux" ]]; then
+    BINARY_NAME="$PROJECT_NAME"
+    APP_NAME=$BINARY_NAME
+    APP_DIR=$ROOT/Builds/LinuxMakefile/build
+    APP_FILE=$APP_DIR/$APP_NAME
+    APP_BINARY="$APP_FILE"
+    ZIP_FILE="$DEPLOYMENT_DIR/$PROJECT_NAME"_Linux.zip
+
+    CMAKE_GENERATOR="Unix Makefiles"
+elif [[ "$PLATFORM" == "mac" ]]; then
+    BINARY_NAME="$PROJECT_NAME"
+    APP_NAME=$BINARY_NAME".app"
+    APP_DIR=$CMAKE_BUILD_DIR/${PROJECT_NAME}_artefacts/Release/
+    APP_FILE=$APP_DIR/$APP_NAME
+    APP_BINARY="$APP_FILE/Contents/MacOS/${PROJECT_NAME}"
+    ZIP_FILE="$DEPLOYMENT_DIR/$PROJECT_NAME"_macOS.zip
+
+    CMAKE_GENERATOR="Xcode"
+elif [[ "$PLATFORM" == "windows" ]]; then
+    BINARY_NAME="$PROJECT_NAME".exe
+    APP_NAME="$BINARY_NAME"
+    APP_FILE="$ROOT/Builds/VisualStudio2017/x64/Release/App/$APP_NAME"
+    APP_BINARY="$APP_FILE"
+    ZIP_FILE="$DEPLOYMENT_DIR/$PROJECT_NAME_Windows.zip"
+
+    CMAKE_GENERATOR="Visual Studio 15 2017"
+
+    if [ -n "$MSBUILD_EXE" ]; then
+        MSBUILD_EXE="C:\Program Files (x86)\Microsoft Visual Studio\2017\Community\MSBuild\15.0\Bin\MSBuild.exe"
+    fi
+fi
+
+echo PROJECT_NAME: "$PROJECT_NAME"
+echo DEPLOYMENT_DIR: "$DEPLOYMENT_DIR"
+echo BINARY_NAME: "$BINARY_NAME"
+echo APP_NAME: "$APP_NAME"
+echo APP_DIR: "$APP_DIR"
+echo APP_FILE: "$APP_FILE"
+echo ZIP_NAME: "$ZIP_NAME"
+echo CMAKE_GENERATOR: "$CMAKE_GENERATOR"
+
+
+#============================================================
+#   Prepare VST2 SDK
+#============================================================
+if [ -n "$VST2_SDK_URL" ]; then
+    rm -rf "$ROOT"/tmp
+    mkdir "$ROOT"/tmp
+    cd "$ROOT"/tmp
+
+    if [[ "$PLATFORM" == "linux" ]] | [[ "$PLATFORM" == "mac" ]]; then
+        curl -O $VST2_SDK_URL
+        unzip vstsdk2.4.zip
+    elif [[ "$PLATFORM" == "windows" ]]; then
+        powershell -Command "[Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12; Invoke-WebRequest %VST2_SDK_URL% -OutFile vstsdk2.4.zip"
+        powershell -Command "Expand-Archive vstsdk2.4.zip -DestinationPath ."
+    fi
+
+    if [ -d "vstsdk2.4" ]; then
+        export VST2_SDK_DIR="$ROOT"/tmp/vstsdk2.4;
+    fi
+else
+    echo "Not building with VST2 support. To enable VST2 support, set the VST2_SDK_URL environment variable"
+fi
+
+
+#============================================================
+#   Build
+#============================================================
+#ddd rm -rf "$CMAKE_BUILD_DIR"
+mkdir -p "$CMAKE_ROOT"
+cd "$CMAKE_ROOT"
+
+cmake -S .. -B "$CMAKE_BUILD_DIR" -G "$CMAKE_GENERATOR"
+cd "$CMAKE_BUILD_DIR"
+
+if [[ "$PLATFORM" == "linux" ]]; then
+    make CONFIG=Release
+elif [[ "$PLATFORM" == "mac" ]]; then
+    xcodebuild -configuration Release 
+elif [[ "$PLATFORM" == "windows" ]]; then
+    "$MSBUILD_EXE" "$PROJECT_NAME".sln -p:VisualStudioVersion=15.0 -m -t:Build -p:Configuration=Release -p:Platform=x64 -p:PreferredToolArchitecture=x64 -p:TreatWarningsAsErrors=true    
+fi
+
+
+#============================================================
+#   Run tests
+#============================================================
+"$APP_BINARY" --run-tests || exit 1
+
+
+#============================================================
+#   Sign with hardened runtime
+#============================================================
+if [[ "$PLATFORM" == "mac" ]]; then
+    if [ -n "$SIGN_ID" ]; then
+        ENTITLEMENTS_FILE=$CMAKE_BUILD_DIR/$PROJECT_NAME_artefacts/JuceLibraryCode/$PROJECT_NAME.entitlements
+
+        codesign --entitlements "$ENTITLEMENTS_FILE" --force -s "$SIGN_ID" -v "$APP_FILE" --deep --strict --options=runtime
+
+        echo "\nVerifying ..."
+        spctl -vvv --assess --type exec "$APP_FILE"
+        codesign -dvv "$APP_FILE"
+        codesign -vvv --deep --strict "$APP_FILE"
+    else
+        echo "Not notarising. To enable, set the SIGN_ID environment variable"
+    fi
+fi
+
+
+#============================================================
+#   Copy to deployment directory
+#============================================================
+cd "$ROOT"
+rm -rf "$DEPLOYMENT_DIR"
+mkdir -p "$DEPLOYMENT_DIR"
+
+echo "\nDeploying to: " "$DEPLOYMENT_DIR"
+cd "$APP_DIR"
+
+if [[ "$PLATFORM" == "linux" ]] | [[ "$PLATFORM" == "mac" ]]; then
+    zip -r "$ZIP_FILE" "$APP_NAME"
+elif [[ "$PLATFORM" == "windows" ]]; then
+    powershell -Command "Compress-Archive -Path '$APP_FILE' -DestinationPath '$ZIP_FILE'"
+fi
+
