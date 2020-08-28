@@ -4,6 +4,13 @@ project(PluginVal VERSION 0.2.7)
 
 add_subdirectory(modules/JUCE)
 
+if (DEFINED ENV{VST2_SDK_DIR})
+    MESSAGE(STATUS "Building with VST2 SDK: $ENV{VST2_SDK_DIR}")
+    juce_set_vst2_sdk_path($ENV{VST2_SDK_DIR})
+else()
+    MESSAGE(STATUS "Not building with VST2")
+endif()
+
 juce_add_gui_app(PluginVal
     BUNDLE_ID                       com.Tracktion.pluginval
     COMPANY_NAME                    Tracktion
@@ -37,6 +44,11 @@ target_sources(PluginVal PRIVATE
     Source/tests/ParameterFuzzTests.cpp
     Source/TestUtilities.cpp
     Source/Validator.cpp)
+
+if (DEFINED ENV{VST2_SDK_DIR})
+    target_compile_definitions(PluginVal PRIVATE
+        JUCE_PLUGINHOST_VST=1)
+endif()
 
 target_compile_definitions(PluginVal PRIVATE
     JUCE_PLUGINHOST_AU=1
