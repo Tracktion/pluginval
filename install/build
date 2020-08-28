@@ -118,8 +118,10 @@ fi
 #============================================================
 #   Run tests
 #============================================================
-"$APP_BINARY" --run-tests || exit 1
-
+if [[ "$PLATFORM" == "mac" ]] || [[ "$PLATFORM" == "windows" ]]; then
+    "$APP_BINARY" --run-tests || exit 1
+    # Linux app doesn't shut down cleanly after tests have run yet!
+fi
 
 #============================================================
 #   Sign with hardened runtime
