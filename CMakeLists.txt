@@ -2,7 +2,7 @@ cmake_minimum_required(VERSION 3.15)
 
 project(pluginval VERSION 0.2.7)
 
-add_subdirectory(modules/JUCE)
+add_subdirectory(modules/juce)
 
 if (DEFINED ENV{VST2_SDK_DIR})
     MESSAGE(STATUS "Building with VST2 SDK: $ENV{VST2_SDK_DIR}")
