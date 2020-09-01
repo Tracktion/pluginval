@@ -67,11 +67,12 @@ elif [[ "$PLATFORM" == "windows" ]]; then
     CMAKE_PLATFORM_ARGS="-A x64"
 
     if [ -z "$MSBUILD_EXE" ]; then
+        echo MSBuild not found, using default
         MSBUILD_EXE="C:\Program Files (x86)\Microsoft Visual Studio\2017\Community\MSBuild\15.0\Bin\MSBuild.exe"
     fi
 
     if [ ! -f "$MSBUILD_EXE" ]; then
-        echo MSBuild.exe not found!
+        echo MSBuild.exe not found at "${MSBUILD_EXE}"
         exit 1
     fi
 fi
