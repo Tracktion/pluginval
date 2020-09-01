@@ -37,4 +37,4 @@ jobs:
       - uses: actions/upload-artifact@v1
         with:
           name: ${{ matrix.name }}
-          path: ci/${{ matrix.platform }}/bin
+          path: ci/bin/${{ matrix.platform }}
