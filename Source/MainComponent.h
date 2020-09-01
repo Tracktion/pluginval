@@ -14,7 +14,7 @@
 
 #pragma once
 
-#include "../JuceLibraryCode/JuceHeader.h"
+#include <JuceHeader.h>
 #include "Validator.h"
 #include "CrashHandler.h"
 

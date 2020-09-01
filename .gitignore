@@ -63,3 +63,4 @@ enc_temp_folder/
 install/testresults.txt
 **/bin
 **/tmp
+**/cmake_build

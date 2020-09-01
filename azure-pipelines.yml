@@ -15,7 +15,7 @@ jobs:
       Xvfb :99 &
       export DISPLAY=:99
       sleep 3 # give xvfb some time to start
-      install/linux_build
+      install/build
     displayName: 'Linux Build'
   - task: PublishPipelineArtifact@0
     inputs:
@@ -44,7 +44,7 @@ jobs:
       certSecureFile: 'Installer.p12'
       certPwd: '$(CERT_PASSWORD)'
       keychain: 'temp'
-  - script: tests/mac_tests
+  - script: install/build
     displayName: 'macOS Build'
   - script: install/notarise ../bin/mac/pluginval_macOS.zip com.tracktion.pluginval $(AC_USERNAME) $(AC_PASSWORD)
     displayName: 'notarise'
@@ -57,9 +57,9 @@ jobs:
   pool:
     vmImage: 'vs2017-win2016'
   steps:
-  - script: |
-      set MSBUILD_EXE=C:\Program Files (x86)\Microsoft Visual Studio\2017\Enterprise\MSBuild\15.0\Bin\MSBuild.exe
-      tests/windows_tests
+  - bash: |
+      export MSBUILD_EXE="C:\Program Files (x86)\Microsoft Visual Studio\2017\Enterprise\MSBuild\15.0\Bin\MSBuild.exe"
+      install/build
     displayName: 'Windows Build'
   - task: PublishPipelineArtifact@0
     inputs:
