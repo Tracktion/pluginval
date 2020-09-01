@@ -38,7 +38,8 @@ jobs:
           ./install/build
           
           if [[ "$OSTYPE" == "darwin"* ]]; then
-            ./install/notarise ./bin/mac/pluginval_macOS.zip com.tracktion.pluginval ${AC_USERNAME} ${AC_PASSWORD}
+            ROOT=$(cd "$(dirname "$0")"; pwd)
+            ./install/notarise ${ROOT}/bin/mac/pluginval_macOS.zip com.tracktion.pluginval ${AC_USERNAME} ${AC_PASSWORD}
           fi
         shell: bash
         env:
