@@ -22,6 +22,7 @@ jobs:
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v1
+        submodules: true
       - name: "Run script"
         run: ./install/build
         shell: bash
