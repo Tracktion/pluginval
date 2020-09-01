@@ -31,6 +31,7 @@ jobs:
       - name: Setup windows
         if: ${{ matrix.platform == 'windows' }}
         run: export MSBUILD_EXE="C:\Program Files (x86)\Microsoft Visual Studio\2017\Enterprise\MSBuild\15.0\Bin\MSBuild.exe"
+        shell: bash
       - uses: actions/checkout@v2
         with:
           submodules: true
