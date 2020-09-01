@@ -3,7 +3,6 @@ on: [push]
 
 jobs:
   build:
-    runs-on: ${{ matrix.os }}
     strategy:
       matrix:
         include:
@@ -20,6 +19,7 @@ jobs:
         # - { name: Linux, os: ubuntu-16.04, platform: linux }
         # - { name: macOS, os: macos-latest, platform: mac }
         # - { name: Windows, os: windows-latest, platform: windows }
+    runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v1
       - name: "Run script"
