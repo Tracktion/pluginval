@@ -36,6 +36,10 @@ jobs:
           export MSBUILD_EXE="C:\Program Files (x86)\Microsoft Visual Studio\2017\Enterprise\MSBuild\15.0\Bin\MSBuild.exe"
           ./install/install_macos_certificate
           ./install/build
+          
+          if [[ "$OSTYPE" == "darwin"* ]]; then
+            ./install/notarise ./bin/mac/pluginval_macOS.zip com.tracktion.pluginval ${AC_USERNAME} ${AC_PASSWORD}
+          fi
         shell: bash
         env:
           VST2_SDK_URL: ${{ secrets.VST2_SDK_URL }}
@@ -44,11 +48,6 @@ jobs:
           DEV_CERT_INST: ${{ secrets.DEV_CERT_INST }}
           DEV_ID_APP: ${{ secrets.DEV_ID_APP }}
           DEV_ID_INST: ${{ secrets.DEV_ID_INST }}
-      - name: Notarize
-        if: ${{ matrix.platform == 'mac' }}
-        run: ./install/notarise ./bin/mac/pluginval_macOS.zip com.tracktion.pluginval ${AC_USERNAME} ${AC_PASSWORD}
-        shell: bash
-        env:
           AC_USERNAME: ${{ secrets.AC_USERNAME }}
           AC_PASSWORD: ${{ secrets.AC_PASSWORD }}
       - uses: actions/upload-artifact@v1
