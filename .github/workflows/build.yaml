@@ -14,7 +14,7 @@ jobs:
             os: macos-latest
             platform: mac
           - name: Windows
-            os: windows-latest
+            os: windows-2016
             platform: windows
         # cfg:
         # - { name: Linux, os: ubuntu-16.04, platform: linux }
@@ -33,7 +33,7 @@ jobs:
           submodules: true
       - name: "Run script"
         run: |
-          export MSBUILD_EXE="C:\Program Files (x86)\Microsoft Visual Studio\2019\Enterprise\MSBuild\Current\Bin\MSBuild.exe"
+          export MSBUILD_EXE="C:\Program Files (x86)\Microsoft Visual Studio\2017\Enterprise\MSBuild\Current\Bin\MSBuild.exe"
           ./install/build
         shell: bash
       - uses: actions/upload-artifact@v1
