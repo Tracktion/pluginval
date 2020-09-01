@@ -33,6 +33,10 @@ jobs:
           submodules: true
       - name: "Run script"
         run: |
+          cd "C:\Program Files (x86)\Microsoft Visual Studio\2017\Enterprise"
+          ls -la
+          cd "MSBuild"
+          ls -la
           export MSBUILD_EXE="C:\Program Files (x86)\Microsoft Visual Studio\2017\Enterprise\MSBuild\Current\Bin\MSBuild.exe"
           ./install/build
         shell: bash
