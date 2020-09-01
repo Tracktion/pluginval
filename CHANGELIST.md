@@ -1,5 +1,8 @@
 # pluginval Change List
 
+### 0.2.8
+- Added a test to process audio with different sample rate and block sizes but not call releaseResources in between
+
 ### 0.2.6
 - Avoided a deadlock when opening plugin windows for the second time on Linux
 

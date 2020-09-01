@@ -178,8 +178,9 @@ struct AudioProcessingTest  : public PluginTest
         : PluginTest ("Audio processing", 3)
     {
     }
-
-    void runTest (PluginTests& ut, AudioPluginInstance& instance) override
+    
+    static void runAudioProcessingTest (PluginTests& ut, AudioPluginInstance& instance,
+                                        bool callReleaseResourcesBeforeSampleRateChange)
     {
         const bool isPluginInstrument = instance.getPluginDescription().isInstrument;
         const double sampleRates[] = { 44100.0, 48000.0, 96000.0 };
@@ -194,7 +195,10 @@ struct AudioProcessingTest  : public PluginTest
                 ut.logMessage (String ("Testing with sample rate [SR] and block size [BS]")
                             .replace ("SR", String (sr, 0), false)
                             .replace ("BS", String (bs), false));
-                instance.releaseResources();
+                
+                if (callReleaseResourcesBeforeSampleRateChange)
+                    instance.releaseResources();
+                
                 instance.prepareToPlay (sr, bs);
 
                 const int numChannelsRequired = jmax (instance.getTotalNumInputChannels(), instance.getTotalNumOutputChannels());
@@ -225,9 +229,35 @@ struct AudioProcessingTest  : public PluginTest
             }
         }
     }
+
+    void runTest (PluginTests& ut, AudioPluginInstance& instance) override
+    {
+        runAudioProcessingTest (ut, instance, true);
+    }
 };
 
 static AudioProcessingTest audioProcessingTest;
+
+
+//==============================================================================
+/**
+    Test that process some audio changing the sample rate between runs but doesn't
+    call releaseResources between calls to prepare to play.
+*/
+struct NonReleasingAudioProcessingTest  : public PluginTest
+{
+    NonReleasingAudioProcessingTest()
+        : PluginTest ("Non-releasing audio processing", 4)
+    {
+    }
+
+    void runTest (PluginTests& ut, AudioPluginInstance& instance) override
+    {
+        AudioProcessingTest::runAudioProcessingTest (ut, instance, false);
+    }
+};
+
+static NonReleasingAudioProcessingTest nonReleasingAudioProcessingTest;
 
 
 //==============================================================================
