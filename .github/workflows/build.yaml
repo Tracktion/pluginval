@@ -66,8 +66,10 @@ jobs:
       # Upload artefacts
       - uses: actions/upload-artifact@v2
         with:
-          path: ./bin/${{ matrix.platform }}/*
+          name: pluginval_${{ matrix.name }}.zip
+          path: ./bin/${{ matrix.platform }}/pluginval_${{ matrix.name }}.zip
       - uses: actions/upload-artifact@v2
         if: ${{ matrix.platform == 'linux' }}
         with:
+          name: CHANGELIST.md
           path: ./CHANGELIST.md
