@@ -45,7 +45,7 @@ jobs:
           DEV_CERT_APP: ${{ secrets.DEV_CERT_APP }}
 
       # Build products
-      - name: "Run script"
+      - name: "Build products"
         run: |
           export MSBUILD_EXE="C:\Program Files (x86)\Microsoft Visual Studio\2017\Enterprise\MSBuild\15.0\Bin\MSBuild.exe"
           export SIGN_ID=${DEV_ID_APP}
@@ -66,10 +66,8 @@ jobs:
       # Upload artefacts
       - uses: actions/upload-artifact@v2
         with:
-          name: ${{ matrix.name }}
           path: ./bin/${{ matrix.platform }}/*
       - uses: actions/upload-artifact@v2
         if: ${{ matrix.platform == 'linux' }}
         with:
-          name: CHANGELIST.md
           path: ./CHANGELIST.md
