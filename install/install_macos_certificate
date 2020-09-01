@@ -1,0 +1,27 @@
+#!/bin/bash -e
+
+#========================================================
+# Install macOS certificates
+#========================================================
+
+if [[ "$OSTYPE" == "linux-gnu" ]]; then PLATFORM=linux
+elif [[ "$OSTYPE" == "darwin"* ]]; then PLATFORM=mac
+elif [[ "$OSTYPE" == "msys" ]];    then PLATFORM=windows
+fi
+
+if [ $PLATFORM = "mac" ]; then
+  # Create a temp keychain
+  if [ -n "$GITHUB_ACTIONS" ]; then
+    echo "Create a keychain"
+    security create-keychain -p ac2rTSpq Keys.keychain
+    echo ${DEV_CERT_APP} | base64 -D -o /tmp/Application.p12
+    echo ${DEV_CERT_INST} | base64 -D -o /tmp/Installer.p12
+    security import /tmp/Application.p12 -t agg -k Keys.keychain -P ${CERT_PASSWORD} -A -T /usr/bin/codesign
+    security import /tmp/Installer.p12 -t agg -k Keys.keychain -P ${CERT_PASSWORD} -A -T /usr/bin/codesign
+    security list-keychains -s Keys.keychain
+    security default-keychain -s Keys.keychain
+    security unlock-keychain -p ac2rTSpq Keys.keychain
+    security set-keychain-settings -l -u -t 13600 Keys.keychain
+    security set-key-partition-list -S apple-tool:,apple: -s -k ac2rTSpq Keys.keychain
+  fi
+fi

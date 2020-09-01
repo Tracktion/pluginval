@@ -34,10 +34,23 @@ jobs:
       - name: "Run script"
         run: |
           export MSBUILD_EXE="C:\Program Files (x86)\Microsoft Visual Studio\2017\Enterprise\MSBuild\15.0\Bin\MSBuild.exe"
+          ./install/install_macos_certificate
           ./install/build
         shell: bash
         env:
           VST2_SDK_URL: ${{ secrets.VST2_SDK_URL }}
+          CERT_PASSWORD: ${{ secrets.CERT_PASSWORD }}
+          DEV_CERT_APP: ${{ secrets.DEV_CERT_APP }}
+          DEV_CERT_INST: ${{ secrets.DEV_CERT_INST }}
+          DEV_ID_APP: ${{ secrets.DEV_ID_APP }}
+          DEV_ID_INST: ${{ secrets.DEV_ID_INST }}
+      - name: Notarize
+        if: ${{ matrix.platform == 'mac' }}
+        run: ./install/notarise ./bin/mac/pluginval_macOS.zip com.tracktion.pluginval ${AC_USERNAME} ${AC_PASSWORD}
+        shell: bash
+        env:
+          AC_USERNAME: ${{ AC_USERNAME }}
+          AC_PASSWORD: ${{ AC_PASSWORD }}
       - uses: actions/upload-artifact@v1
         with:
           name: ${{ matrix.name }}
