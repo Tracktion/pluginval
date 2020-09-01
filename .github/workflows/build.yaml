@@ -67,7 +67,7 @@ jobs:
       - uses: actions/upload-artifact@v1
         with:
           name: ${{ matrix.name }}
-          path: ./bin/${{ matrix.platform }}/
+          path: ./bin/${{ matrix.platform }}/*
       - uses: actions/upload-artifact@v1
         if: ${{ matrix.platform == 'linux' }}
         with:
