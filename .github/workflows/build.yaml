@@ -36,6 +36,8 @@ jobs:
           export MSBUILD_EXE="C:\Program Files (x86)\Microsoft Visual Studio\2017\Enterprise\MSBuild\15.0\Bin\MSBuild.exe"
           ./install/build
         shell: bash
+        env:
+          VST2_SDK_URL: ${{ secrets.VST2_SDK_URL }}
       - uses: actions/upload-artifact@v1
         with:
           name: ${{ matrix.name }}
