@@ -34,7 +34,7 @@ jobs:
         with:
           submodules: true
 
-      Import certificates
+      # Import certificates
       - uses: apple-actions/import-codesign-certs@v1
           with: 
             p12-file-base64: ${{ secrets.DEV_CERT_APP }}
