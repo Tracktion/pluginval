@@ -36,14 +36,18 @@ jobs:
 
       # Import certificates
       - uses: apple-actions/import-codesign-certs@v1
-        with: 
+        if: ${{ matrix.platform == 'mac' }}
+        with:
+          keychain: signing_temp_app
           p12-file-base64: ${{ secrets.DEV_CERT_APP }}
           p12-password: ${{ secrets.CERT_PASSWORD }}
         env:
           CERT_PASSWORD: ${{ secrets.CERT_PASSWORD }}
           DEV_CERT_APP: ${{ secrets.DEV_CERT_APP }}
       - uses: apple-actions/import-codesign-certs@v1
+        if: ${{ matrix.platform == 'mac' }}
         with: 
+          keychain: signing_temp_inst
           p12-file-base64: ${{ secrets.DEV_CERT_INST }}
           p12-password: ${{ secrets.CERT_PASSWORD }}
         env:
