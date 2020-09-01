@@ -49,12 +49,10 @@ jobs:
         run: |
           export MSBUILD_EXE="C:\Program Files (x86)\Microsoft Visual Studio\2017\Enterprise\MSBuild\15.0\Bin\MSBuild.exe"
           export SIGN_ID=${DEV_ID_APP}
-          # ./install/install_macos_certificate
           ./install/build
           
           if [[ "$OSTYPE" == "darwin"* ]]; then
-            ROOT=$(cd "."; pwd)
-            ./install/notarise ${ROOT}/bin/mac/pluginval_macOS.zip com.tracktion.pluginval ${AC_USERNAME} ${AC_PASSWORD}
+            ./install/notarise ${{ github.workspace }}/bin/mac/pluginval_macOS.zip com.tracktion.pluginval ${AC_USERNAME} ${AC_PASSWORD}
           fi
         shell: bash
         env:
@@ -69,4 +67,9 @@ jobs:
       - uses: actions/upload-artifact@v1
         with:
           name: ${{ matrix.name }}
-          path: ./bin/${{ matrix.platform }}
+          path: ./bin/${{ matrix.platform }}/
+      - uses: actions/upload-artifact@v1
+        if: ${{ matrix.platform == 'linux' }}
+        with:
+          name: CHANGELIST.md
+          path: ./CHANGELIST.md
