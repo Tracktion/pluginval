@@ -30,7 +30,7 @@ jobs:
             sudo apt-get install -y gcc-6 g++-6 freeglut3-dev g++ libasound2-dev libcurl4-openssl-dev libfreetype6-dev libjack-jackd2-dev libx11-dev libxcomposite-dev libxcursor-dev libxinerama-dev libxrandr-dev mesa-common-dev ladspa-sdk webkit2gtk-4.0 libgtk-3-dev xvfb
       - name: Setup windows
         if: ${{ matrix.platform == 'windows' }}
-        run: export MSBUILD_EXE="C:\Program Files (x86)\Microsoft Visual Studio\2017\Enterprise\MSBuild\15.0\Bin\MSBuild.exe"
+        run: export MSBUILD_EXE="C:\Program Files (x86)\Microsoft Visual Studio\2019\Enterprise\MSBuild\Current\Bin\MSBuild.exe"
         shell: bash
       - uses: actions/checkout@v2
         with:
