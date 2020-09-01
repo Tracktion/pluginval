@@ -21,7 +21,7 @@ struct CommandLineValidator : private ChangeListener,
                               private Validator::Listener
 {
     CommandLineValidator();
-    ~CommandLineValidator();
+    ~CommandLineValidator() override;
 
     void validate (const StringArray& fileOrIDs, PluginTests::Options, bool validateInProcess);
 

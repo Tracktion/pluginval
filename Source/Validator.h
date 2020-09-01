@@ -21,11 +21,11 @@
  #define LOG_PIPE_COMMUNICATION 0
 #endif
 
-#ifndef LOG_PIPE_SLAVE_COMMUNICATION
- #define LOG_PIPE_SLAVE_COMMUNICATION 0
+#ifndef LOG_PIPE_CHILD_COMMUNICATION
+ #define LOG_PIPE_CHILD_COMMUNICATION 0
 #endif
 
-class ValidatorMasterProcess;
+class ValidatorParentProcess;
 
 //==============================================================================
 /**
@@ -41,7 +41,7 @@ public:
     Validator();
 
     /** Destructor. */
-    ~Validator();
+    ~Validator() override;
 
     /** Returns true if there is currently an open connection to a validator process. */
     bool isConnected() const;
@@ -75,7 +75,7 @@ public:
 
 private:
     //==============================================================================
-    std::unique_ptr<ValidatorMasterProcess> masterProcess;
+    std::unique_ptr<ValidatorParentProcess> parentProcess;
     ListenerList<Listener> listeners;
     bool launchInProcess = false;
 
@@ -90,4 +90,4 @@ private:
     child process to launch when the command line parameters indicate that we're
     being asked to run as a child process.
 */
-bool invokeSlaveProcessValidator (const String& commandLine);
+bool invokeChildProcessValidator (const String& commandLine);

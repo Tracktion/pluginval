@@ -31,10 +31,10 @@ public:
         return *propertiesFile;
     }
 
-    void initialiseSlaveFileLogger()
+    void initialiseChildFileLogger()
     {
-       #if LOG_PIPE_SLAVE_COMMUNICATION
-        fileLogger = std::make_unique<FileLogger> (getPropertiesFileOptions().getDefaultFile().getSiblingFile ("slave_log.txt"),
+       #if LOG_PIPE_CHILD_COMMUNICATION
+        fileLogger = std::make_unique<FileLogger> (getPropertiesFileOptions().getDefaultFile().getSiblingFile ("child_log.txt"),
                                                    getApplicationName() + " v" + getApplicationVersion(), 1024 * 1024);
         Logger::setCurrentLogger (fileLogger.get());
        #endif
@@ -59,7 +59,7 @@ public:
             return;
         }
 
-        if (invokeSlaveProcessValidator (commandLine))
+        if (invokeChildProcessValidator (commandLine))
             return;
 
         validator = std::make_unique<Validator>();
@@ -190,7 +190,7 @@ PropertiesFile& getAppPreferences()
     return app->getAppPreferences();
 }
 
-void slaveInitialised()
+void childInitialised()
 {
-    dynamic_cast<PluginValidatorApplication*> (PluginValidatorApplication::getInstance())->initialiseSlaveFileLogger();
+    dynamic_cast<PluginValidatorApplication*> (PluginValidatorApplication::getInstance())->initialiseChildFileLogger();
 }

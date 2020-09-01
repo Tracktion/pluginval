@@ -388,7 +388,7 @@ void performCommandLine (CommandLineValidator& validator, const ArgumentList& ar
     cli.addCommand ({ "--validate",
                       "--validate [list]",
                       "Validates the files (or IDs for AUs).", String(),
-                      [&validator] (const auto& args) { validate (validator, args); }});
+                      [&validator] (const auto& validatorArgs) { validate (validator, validatorArgs); }});
     cli.addCommand ({ "--run-tests",
                       "--run-tests",
                       "Runs the internal unit tests.", String(),

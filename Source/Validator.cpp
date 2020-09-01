@@ -24,16 +24,16 @@
 #endif
 
 // Defined in Main.cpp, used to create the file logger as early as possible
-extern void slaveInitialised();
+extern void childInitialised();
 
-#if LOG_PIPE_SLAVE_COMMUNICATION
- #define LOG_FROM_MASTER(textToLog) if (Logger::getCurrentLogger() != nullptr) Logger::writeToLog ("*** Recieved:\n" + textToLog);
- #define LOG_TO_MASTER(textToLog)   if (Logger::getCurrentLogger() != nullptr) Logger::writeToLog ("*** Sending:\n" + textToLog);
- #define LOG_SLAVE(textToLog)       if (Logger::getCurrentLogger() != nullptr) Logger::writeToLog ("*** Log:\n" + String (textToLog));
+#if LOG_PIPE_CHILD_COMMUNICATION
+ #define LOG_FROM_PARENT(textToLog) if (Logger::getCurrentLogger() != nullptr) Logger::writeToLog ("*** Recieved:\n" + textToLog);
+ #define LOG_TO_PARENT(textToLog)   if (Logger::getCurrentLogger() != nullptr) Logger::writeToLog ("*** Sending:\n" + textToLog);
+ #define LOG_CHILD(textToLog)       if (Logger::getCurrentLogger() != nullptr) Logger::writeToLog ("*** Log:\n" + String (textToLog));
 #else
- #define LOG_FROM_MASTER(textToLog)
- #define LOG_TO_MASTER(textToLog)
- #define LOG_SLAVE(textToLog)
+ #define LOG_FROM_PARENT(textToLog)
+ #define LOG_TO_PARENT(textToLog)
+ #define LOG_CHILD(textToLog)
 #endif
 
 //==============================================================================
@@ -53,7 +53,7 @@ struct PluginsUnitTestRunner    : public UnitTestRunner,
             startThread (1);
     }
 
-    ~PluginsUnitTestRunner()
+    ~PluginsUnitTestRunner() override
     {
         stopThread (5000);
     }
@@ -289,26 +289,26 @@ static String toXmlString (const ValueTree& v)
 
 //==============================================================================
 /*  This class gets instantiated in the child process, and receives messages from
-    the master process.
+    the parent process.
 */
-class ValidatorSlaveProcess : public ChildProcessSlave,
+class ValidatorChildProcess : public ChildProcessSlave,
                               private Thread,
                               private DeletedAtShutdown
 {
 public:
-    ValidatorSlaveProcess()
-        : Thread ("ValidatorSlaveProcess")
+    ValidatorChildProcess()
+        : Thread ("ValidatorChildProcess")
     {
-        LOG_SLAVE("Constructing ValidatorSlaveProcess");
+        LOG_CHILD("Constructing ValidatorChildProcess");
 
         // Initialise the crash handler to clear any previous crash logs
         initialiseCrashHandler();
         startThread (4);
     }
 
-    ~ValidatorSlaveProcess()
+    ~ValidatorChildProcess() override
     {
-        LOG_SLAVE("Destructing ValidatorSlaveProcess");
+        LOG_CHILD("Destructing ValidatorChildProcess");
         stopThread (5000);
     }
 
@@ -317,18 +317,18 @@ public:
         isConnected = isNowConnected;
 
         if (isConnected)
-            sendValueTreeToMaster ({ IDs::MESSAGE, {{ IDs::type, "connected" }} });
+            sendValueTreeToParent ({ IDs::MESSAGE, {{ IDs::type, "connected" }} });
     }
 
-    void setMasterProcess (ChildProcessMaster* newMaster)
+    void setParentProcess (ChildProcessMaster* newParent)
     {
-        master = newMaster;
-        setConnected (master != nullptr);
+        parent = newParent;
+        setConnected (parent != nullptr);
     }
 
     void handleMessageFromMaster (const MemoryBlock& mb) override
     {
-        LOG_FROM_MASTER(toXmlString (memoryBlockToValueTree (mb)));
+        LOG_FROM_PARENT(toXmlString (memoryBlockToValueTree (mb)));
         addRequest (mb);
     }
 
@@ -341,13 +341,13 @@ public:
 private:
     struct LogMessagesSender    : public Thread
     {
-        LogMessagesSender (ValidatorSlaveProcess& vsp)
-            : Thread ("SlaveMessageSender"), owner (vsp)
+        LogMessagesSender (ValidatorChildProcess& vsp)
+            : Thread ("ChildMessageSender"), owner (vsp)
         {
             startThread (1);
         }
 
-        ~LogMessagesSender()
+        ~LogMessagesSender() override
         {
             stopThread (2000);
             sendLogMessages();
@@ -381,10 +381,10 @@ private:
             }
 
             if (owner.isConnected && ! messagesToSend.isEmpty())
-                owner.sendValueTreeToMaster ({ IDs::MESSAGE, {{ IDs::type, "log" }, { IDs::text, messagesToSend.joinIntoString ("\n") }} }, false);
+                owner.sendValueTreeToParent ({ IDs::MESSAGE, {{ IDs::type, "log" }, { IDs::text, messagesToSend.joinIntoString ("\n") }} }, false);
         }
 
-        ValidatorSlaveProcess& owner;
+        ValidatorChildProcess& owner;
         CriticalSection logMessagesLock;
         StringArray logMessages;
     };
@@ -393,31 +393,31 @@ private:
     std::vector<MemoryBlock> requestsToProcess;
     std::atomic<bool> isConnected { false };
     LogMessagesSender logMessagesSender { *this };
-    ChildProcessMaster* master = nullptr;
+    ChildProcessMaster* parent = nullptr;
 
     void logMessage (const String& m)
     {
         logMessagesSender.logMessage (m);
     }
 
-    void sendValueTreeToMaster (const ValueTree& v, bool flushLog = true)
+    void sendValueTreeToParent (const ValueTree& v, bool flushLog = true)
     {
         if (flushLog)
             logMessagesSender.sendLogMessages();
 
-        if (master != nullptr)
+        if (parent != nullptr)
         {
-            master->handleMessageFromSlave (valueTreeToMemoryBlock (v));
+            parent->handleMessageFromSlave (valueTreeToMemoryBlock (v));
             return;
         }
 
-        LOG_TO_MASTER(toXmlString (v));
+        LOG_TO_PARENT(toXmlString (v));
         sendMessageToMaster (valueTreeToMemoryBlock (v));
     }
 
     void run() override
     {
-        LOG_SLAVE("Starting slave thread");
+        LOG_CHILD("Starting child thread");
 
         while (! threadShouldExit())
         {
@@ -429,7 +429,7 @@ private:
                 Thread::sleep (500);
         }
 
-        LOG_SLAVE("Ended slave thread");
+        LOG_CHILD("Ended child thread");
     }
 
     void addRequest (const MemoryBlock& mb)
@@ -451,7 +451,7 @@ private:
             requests.swap (requestsToProcess);
         }
 
-        LOG_SLAVE("processRequests:\n" + String ((int) requests.size()));
+        LOG_CHILD("processRequests:\n" + String ((int) requests.size()));
 
         for (const auto& r : requests)
             processRequest (r);
@@ -460,7 +460,7 @@ private:
     void processRequest (MemoryBlock mb)
     {
         const ValueTree v (memoryBlockToValueTree (mb));
-        LOG_SLAVE("processRequest:\n" + toXmlString (v));
+        LOG_CHILD("processRequest:\n" + toXmlString (v));
 
         if (v.hasType (IDs::PLUGINS))
         {
@@ -480,12 +480,12 @@ private:
             {
                 String fileOrID;
                 Array<UnitTestRunner::TestResult> results;
-                LOG_SLAVE("processRequest - child:\n" + toXmlString (c));
+                LOG_CHILD("processRequest - child:\n" + toXmlString (c));
 
                 if (c.hasProperty (IDs::fileOrID))
                 {
                     fileOrID = c[IDs::fileOrID].toString();
-                    sendValueTreeToMaster ({
+                    sendValueTreeToParent ({
                         IDs::MESSAGE, {{ IDs::type, "started" }, { IDs::fileOrID, fileOrID }}
                     });
 
@@ -504,7 +504,7 @@ private:
                             if (pd.loadFromXml (*xml))
                             {
                                 fileOrID = pd.createIdentifierString();
-                                sendValueTreeToMaster ({
+                                sendValueTreeToParent ({
                                     IDs::MESSAGE, {{ IDs::type, "started" }, { IDs::fileOrID, fileOrID }}
                                 });
 
@@ -512,40 +512,40 @@ private:
                             }
                             else
                             {
-                                LOG_SLAVE("processRequest - failed to load PluginDescription from XML:\n" + ms.toString());
+                                LOG_CHILD("processRequest - failed to load PluginDescription from XML:\n" + ms.toString());
                             }
                         }
                         else
                         {
-                            LOG_SLAVE("processRequest - failed to parse pluginDescription:\n" + ms.toString());
+                            LOG_CHILD("processRequest - failed to parse pluginDescription:\n" + ms.toString());
                         }
                     }
                     else
                     {
-                        LOG_SLAVE("processRequest - failed to convert pluginDescription from base64:\n" + ms.toString());
+                        LOG_CHILD("processRequest - failed to convert pluginDescription from base64:\n" + ms.toString());
                     }
                 }
 
                 jassert (fileOrID.isNotEmpty());
-                sendValueTreeToMaster ({
+                sendValueTreeToParent ({
                     IDs::MESSAGE, {{ IDs::type, "result" }, { IDs::fileOrID, fileOrID }, { IDs::numFailures, getNumFailures (results) }}
                 });
             }
         }
 
-        sendValueTreeToMaster ({
+        sendValueTreeToParent ({
             IDs::MESSAGE, {{ IDs::type, "complete" }}
         });
     }
 };
 
 //==============================================================================
-class ValidatorMasterProcess    : public ChildProcessMaster
+class ValidatorParentProcess    : public ChildProcessMaster
 {
 public:
-    ValidatorMasterProcess() = default;
+    ValidatorParentProcess() = default;
 
-    // Callback which can be set to log any calls sent to the slave
+    // Callback which can be set to log any calls sent to the child
     std::function<void (const String&)> logCallback;
 
     // Callback which can be set to be notified of a lost connection
@@ -567,8 +567,8 @@ public:
     //==============================================================================
     Result launchInProcess()
     {
-        validatorSlaveProcess = std::make_unique<ValidatorSlaveProcess>();
-        validatorSlaveProcess->setMasterProcess (this);
+        validatorChildProcess = std::make_unique<ValidatorChildProcess>();
+        validatorChildProcess->setParentProcess (this);
 
         return Result::ok();
     }
@@ -580,9 +580,9 @@ public:
                                             validatorCommandLineUID, 2000, 0);
 
         if (! connectionWaiter.wait (5000))
-            return Result::fail ("Error: Slave took too long to launch");
+            return Result::fail ("Error: Child took too long to launch");
 
-        return ok ? Result::ok() : Result::fail ("Error: Slave failed to launch");
+        return ok ? Result::ok() : Result::fail ("Error: Child failed to launch");
     }
 
     //==============================================================================
@@ -613,7 +613,7 @@ public:
         logMessage ("Received: " + toXmlString (v));
     }
 
-    // This gets called if the slave process dies.
+    // This gets called if the child process dies.
     void handleConnectionLost() override
     {
         logMessage ("Connection lost to child process!");
@@ -634,7 +634,7 @@ public:
             v.appendChild ({ IDs::PLUGIN, {{ IDs::fileOrID, fileOrID.trimCharactersAtEnd ("\\/") }} }, nullptr);
         }
 
-        sendValueTreeToSlave (v);
+        sendValueTreeToChild (v);
     }
 
     /** Triggers validation of a set of PluginDescriptions. */
@@ -646,12 +646,12 @@ public:
             if (auto xml = std::unique_ptr<XmlElement> (pd.createXml()))
                 v.appendChild ({ IDs::PLUGIN, {{ IDs::pluginDescription, Base64::toBase64 (xml->toString()) }} }, nullptr);
 
-        sendValueTreeToSlave (v);
+        sendValueTreeToChild (v);
     }
 
 private:
     WaitableEvent connectionWaiter;
-    std::unique_ptr<ValidatorSlaveProcess> validatorSlaveProcess;
+    std::unique_ptr<ValidatorChildProcess> validatorChildProcess;
 
     static ValueTree createPluginsTree (PluginTests::Options options)
     {
@@ -670,11 +670,11 @@ private:
         return v;
     }
 
-    void sendValueTreeToSlave (const ValueTree& v)
+    void sendValueTreeToChild (const ValueTree& v)
     {
-        if (validatorSlaveProcess)
+        if (validatorChildProcess)
         {
-            validatorSlaveProcess->handleMessageFromMaster (valueTreeToMemoryBlock (v));
+            validatorChildProcess->handleMessageFromMaster (valueTreeToMemoryBlock (v));
             return;
         }
 
@@ -697,7 +697,7 @@ Validator::~Validator() {}
 
 bool Validator::isConnected() const
 {
-    return masterProcess != nullptr;
+    return parentProcess != nullptr;
 }
 
 bool Validator::validate (const StringArray& fileOrIDsToValidate, PluginTests::Options options)
@@ -705,7 +705,7 @@ bool Validator::validate (const StringArray& fileOrIDsToValidate, PluginTests::O
     if (! ensureConnection())
         return false;
 
-    masterProcess->validate (fileOrIDsToValidate, options);
+    parentProcess->validate (fileOrIDsToValidate, options);
     return true;
 }
 
@@ -714,7 +714,7 @@ bool Validator::validate (const Array<PluginDescription>& pluginsToValidate, Plu
     if (! ensureConnection())
         return false;
 
-    masterProcess->validate (pluginsToValidate, options);
+    parentProcess->validate (pluginsToValidate, options);
     return true;
 }
 
@@ -731,27 +731,27 @@ void Validator::logMessage (const String& m)
 
 bool Validator::ensureConnection()
 {
-    if (! masterProcess)
+    if (! parentProcess)
     {
         sendChangeMessage();
-        masterProcess = std::make_unique<ValidatorMasterProcess>();
+        parentProcess = std::make_unique<ValidatorParentProcess>();
 
        #if LOG_PIPE_COMMUNICATION
-        masterProcess->logCallback = [this] (const String& m) { logMessage (m); };
+        parentProcess->logCallback = [this] (const String& m) { logMessage (m); };
        #endif
-        masterProcess->connectionLostCallback = [this]
+        parentProcess->connectionLostCallback = [this]
             {
                 listeners.call (&Listener::connectionLost);
                 triggerAsyncUpdate();
             };
 
-        masterProcess->validationStartedCallback    = [this] (const String& id) { listeners.call (&Listener::validationStarted, id); };
-        masterProcess->logMessageCallback           = [this] (const String& m) { listeners.call (&Listener::logMessage, m); };
-        masterProcess->validationCompleteCallback   = [this] (const String& id, int numFailures) { listeners.call (&Listener::itemComplete, id, numFailures); };
-        masterProcess->completeCallback             = [this] { listeners.call (&Listener::allItemsComplete); triggerAsyncUpdate(); };
+        parentProcess->validationStartedCallback    = [this] (const String& id) { listeners.call (&Listener::validationStarted, id); };
+        parentProcess->logMessageCallback           = [this] (const String& m) { listeners.call (&Listener::logMessage, m); };
+        parentProcess->validationCompleteCallback   = [this] (const String& id, int numFailures) { listeners.call (&Listener::itemComplete, id, numFailures); };
+        parentProcess->completeCallback             = [this] { listeners.call (&Listener::allItemsComplete); triggerAsyncUpdate(); };
 
-        const auto result = launchInProcess ? masterProcess->launchInProcess()
-                                            : masterProcess->launch();
+        const auto result = launchInProcess ? parentProcess->launchInProcess()
+                                            : parentProcess->launch();
 
         if (result.failed())
         {
@@ -770,7 +770,7 @@ bool Validator::ensureConnection()
 
 void Validator::handleAsyncUpdate()
 {
-    masterProcess.reset();
+    parentProcess.reset();
     sendChangeMessage();
 }
 
@@ -795,19 +795,19 @@ static void setupSignalHandling()
 #endif
 
 //==============================================================================
-bool invokeSlaveProcessValidator (const String& commandLine)
+bool invokeChildProcessValidator (const String& commandLine)
 {
    #if JUCE_MAC
     setupSignalHandling();
    #endif
 
-    auto slave = std::make_unique<ValidatorSlaveProcess>();
+    auto child = std::make_unique<ValidatorChildProcess>();
 
-    if (slave->initialiseFromCommandLine (commandLine, validatorCommandLineUID))
+    if (child->initialiseFromCommandLine (commandLine, validatorCommandLineUID))
     {
-        slaveInitialised();
-        slave->setConnected (true);
-        slave.release(); // allow the slave object to stay alive - it'll handle its own deletion.
+        childInitialised();
+        child->setConnected (true);
+        child.release(); // allow the child object to stay alive - it'll handle its own deletion.
         return true;
     }
 

@@ -32,7 +32,7 @@ struct ConnectionStatus : public Component,
         validator.addChangeListener (this);
     }
 
-    ~ConnectionStatus()
+    ~ConnectionStatus() override
     {
         validator.removeListener (this);
         validator.removeChangeListener (this);
@@ -119,7 +119,7 @@ struct ConsoleComponent : public Component,
         editor.setScrollbarThickness (8);
     }
 
-    ~ConsoleComponent()
+    ~ConsoleComponent() override
     {
         validator.removeChangeListener (this);
         validator.removeListener (this);
@@ -222,7 +222,7 @@ class MainComponent   : public Component,
 public:
     //==============================================================================
     MainComponent (Validator&);
-    ~MainComponent();
+    ~MainComponent() override;
 
     //==============================================================================
     void paint (Graphics&) override;
