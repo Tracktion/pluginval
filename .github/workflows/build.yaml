@@ -64,11 +64,11 @@ jobs:
           AC_PASSWORD: ${{ secrets.AC_PASSWORD }}
 
       # Upload artefacts
-      - uses: actions/upload-artifact@v1
+      - uses: actions/upload-artifact@v2
         with:
           name: ${{ matrix.name }}
           path: ./bin/${{ matrix.platform }}/*
-      - uses: actions/upload-artifact@v1
+      - uses: actions/upload-artifact@v2
         if: ${{ matrix.platform == 'linux' }}
         with:
           name: CHANGELIST.md
