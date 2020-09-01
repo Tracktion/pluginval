@@ -34,28 +34,28 @@ jobs:
         with:
           submodules: true
 
-      # Import certificates
-      # - uses: apple-actions/import-codesign-certs@v1
-      #     with: 
-      #       p12-file-base64: ${{ secrets.DEV_CERT_APP }}
-      #       p12-password: ${{ secrets.CERT_PASSWORD }}
-      #   env:
-      #     CERT_PASSWORD: ${{ secrets.CERT_PASSWORD }}
-      #     DEV_CERT_APP: ${{ secrets.DEV_CERT_APP }}
-      # - uses: apple-actions/import-codesign-certs@v1
-      #     with: 
-      #       p12-file-base64: ${{ secrets.DEV_CERT_INST }}
-      #       p12-password: ${{ secrets.CERT_PASSWORD }}
-      #   env:
-      #     CERT_PASSWORD: ${{ secrets.CERT_PASSWORD }}
-      #     DEV_CERT_INST: ${{ secrets.DEV_CERT_INST }}
+      Import certificates
+      - uses: apple-actions/import-codesign-certs@v1
+          with: 
+            p12-file-base64: ${{ secrets.DEV_CERT_APP }}
+            p12-password: ${{ secrets.CERT_PASSWORD }}
+        env:
+          CERT_PASSWORD: ${{ secrets.CERT_PASSWORD }}
+          DEV_CERT_APP: ${{ secrets.DEV_CERT_APP }}
+      - uses: apple-actions/import-codesign-certs@v1
+          with: 
+            p12-file-base64: ${{ secrets.DEV_CERT_INST }}
+            p12-password: ${{ secrets.CERT_PASSWORD }}
+        env:
+          CERT_PASSWORD: ${{ secrets.CERT_PASSWORD }}
+          DEV_CERT_INST: ${{ secrets.DEV_CERT_INST }}
 
       # Build products
       - name: "Run script"
         run: |
           export MSBUILD_EXE="C:\Program Files (x86)\Microsoft Visual Studio\2017\Enterprise\MSBuild\15.0\Bin\MSBuild.exe"
           export SIGN_ID=${DEV_ID_APP}
-          ./install/install_macos_certificate
+          # ./install/install_macos_certificate
           ./install/build
           
           if [[ "$OSTYPE" == "darwin"* ]]; then
