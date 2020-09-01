@@ -1,0 +1,21 @@
+name: Build
+on: [push]
+
+jobs:
+  build:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        cfg:
+        - { name: Linux, os: ubuntu-16.04, platform: linux }
+        - { name: macOS, os: macos-latest, platform: mac }
+        - { name: Windows, os: windows-latest, platform: windows }
+    steps:
+      - uses: actions/checkout@v1
+      - name: "Run script"
+        run: ./install/build
+        shell: bash
+      - uses: actions/upload-artifact@v1
+        with:
+          name: ${{ matrix.name }}
+          path: ci/${{ matrix.platform }}/bin
