@@ -4,6 +4,7 @@ on: [push]
 jobs:
   build:
     strategy:
+    fail-fast: false
       matrix:
         include:
           - name: Linux
