@@ -27,7 +27,7 @@ jobs:
           REF=${GITHUB_REF}
           echo ::set-env name=TAG_NAME::${REF##*/}
         shell: bash
-      - name: Echo ${{ TAG_NAME }} tag name ${ TAG_NAME }variable
+      - name: Echo ${{ env.TAG_NAME }} tag name ${ env.TAG_NAME }variable
         run: |
           echo TAG_NAME: ${TAG_NAME}
         shell: bash        
