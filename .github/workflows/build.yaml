@@ -22,18 +22,6 @@ jobs:
         # - { name: Windows, os: windows-latest, platform: windows }
     runs-on: ${{ matrix.os }}
     steps:
-      - name: Set tag name variable
-        run: |
-          REF=${GITHUB_REF}
-          echo ::set-env name=TAG_NAME::${REF##*/}
-        shell: bash        
-      - name: Test tag name variable
-        run: |
-          echo "$TAG_NAME"
-          echo $TAG_NAME
-          echo ${TAG_NAME}
-        shell: bash
-
       # Install dependencies
       - name: Install dependencies
         if: ${{ matrix.platform == 'linux' }}
@@ -101,13 +89,16 @@ jobs:
         run: ls -la
     
       - name: Set tag name variable
-        run: echo ::set-env name=TAG_NAME::${echo $GITHUB_REF##*/}
+        run: |
+          REF=${GITHUB_REF}
+          echo ::set-env name=TAG_NAME::${REF##*/}
+        shell: bash        
 
       - name: Create Release
         uses: softprops/action-gh-release@v1
         with:
           tag_name: $TAG_NAME
-          name: Release $TAG_NAME
+          name: $TAG_NAME
           body_path: CHANGELIST.md/CHANGELIST.md
           draft: true
           files: |
