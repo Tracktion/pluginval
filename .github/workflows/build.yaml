@@ -51,9 +51,9 @@ jobs:
           export SIGN_ID=${DEV_ID_APP}
           ./install/build
           
-          if [[ "$OSTYPE" == "darwin"* ]]; then
-            ./install/notarise ${{ github.workspace }}/bin/mac/pluginval_macOS.zip com.tracktion.pluginval ${AC_USERNAME} ${AC_PASSWORD}
-          fi
+          # if [[ "$OSTYPE" == "darwin"* ]]; then
+          #   ./install/notarise ${{ github.workspace }}/bin/mac/pluginval_macOS.zip com.tracktion.pluginval ${AC_USERNAME} ${AC_PASSWORD}
+          # fi
         shell: bash
         env:
           VST2_SDK_URL: ${{ secrets.VST2_SDK_URL }}
@@ -73,3 +73,17 @@ jobs:
         with:
           name: CHANGELIST.md
           path: ./CHANGELIST.md
+
+  # Create release for tagged refs
+  deploy:
+    if: github.event_name == 'tag' && github.event.action == 'created'
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v1
+
+      - name: Get artifacts
+        uses: actions/download-artifact@v2
+        
+      - name: Display structure of downloaded files
+        run: ls -R
