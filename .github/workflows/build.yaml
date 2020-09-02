@@ -92,7 +92,6 @@ jobs:
       - name: Create Release
         uses: softprops/action-gh-release@v1
         with:
-          body_path: CHANGELOG.txt
           tag_name: ${{ github.ref }}
           release_name: Release ${{ github.ref }}
           body_path: CHANGELIST.md
