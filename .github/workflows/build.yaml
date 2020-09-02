@@ -93,15 +93,15 @@ jobs:
         uses: softprops/action-gh-release@v1
         with:
           tag_name: ${{ github.ref }}
-          release_name: Release ${{ github.ref }}
-          body_path: CHANGELIST.md
+          name: Release ${{ github.ref }}
+          body_path: CHANGELIST.md/CHANGELIST.md
           draft: true
           prerelease: true
           files: |
-            CHANGELIST.md
-            pluginval_Linux.zip
-            pluginval_macOS.zip
-            pluginval_Windows.zip
+            CHANGELIST.md/*
+            pluginval_Linux.zip/*
+            pluginval_macOS.zip/*
+            pluginval_Windows.zip/*
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
