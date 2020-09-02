@@ -102,4 +102,4 @@ jobs:
             pluginval_Windows.zip/*
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          VER: ${{ ${{ github.ref }}##*/ }}
+          VER: ${{ github.ref##*/ }}
