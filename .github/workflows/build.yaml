@@ -91,8 +91,8 @@ jobs:
       - name: Create Release
         uses: softprops/action-gh-release@v1
         with:
-          tag_name: ${{ github.ref }}
-          name: Release ${{ github.ref }}
+          tag_name: ${{ env.VER }}
+          name: Release ${{ env.VER }}
           body_path: CHANGELIST.md/CHANGELIST.md
           draft: true
           files: |
@@ -102,3 +102,4 @@ jobs:
             pluginval_Windows.zip/*
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          VER: ${${{ github.ref }}##*/}
