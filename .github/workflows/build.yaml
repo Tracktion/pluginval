@@ -95,7 +95,7 @@ jobs:
         with:
           tag_name: ${{ github.ref }}
           release_name: Release ${{ github.ref }}
-          body_path: ${{ github.workflow }}-CHANGELIST.md
+          body_path: CHANGELIST.md
           draft: true
           prerelease: true
 
