@@ -76,8 +76,7 @@ jobs:
 
   # Create release for tagged refs
   deploy:
-    # if: github.event_name == 'tag' && github.event.action == 'created'
-    # if: startsWith(github.ref, 'refs/tags/')
+    if: startsWith(github.ref, 'refs/tags/')
     needs: build
     runs-on: ubuntu-latest
     steps:
@@ -96,7 +95,6 @@ jobs:
           name: Release ${{ github.ref }}
           body_path: CHANGELIST.md/CHANGELIST.md
           draft: true
-          prerelease: true
           files: |
             CHANGELIST.md/*
             pluginval_Linux.zip/*
@@ -104,55 +102,3 @@ jobs:
             pluginval_Windows.zip/*
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
-      # - name: Create Release
-      #   id: create_release
-      #   uses: actions/create-release@v1
-      #   env:
-      #     GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      #   with:
-      #     tag_name: ${{ github.ref }}
-      #     release_name: Release ${{ github.ref }}
-      #     # body_path: ./CHANGELIST.md
-      #     draft: true
-      #     prerelease: true
-
-      # - name: Upload Linux Release Asset
-      #   uses: actions/upload-release-asset@v1
-      #   env:
-      #     GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      #   with:
-      #     upload_url: ${{ steps.create_release.outputs.upload_url }} # This pulls from the CREATE RELEASE step above, referencing it's ID to get its outputs object, which include a `upload_url`. See this blog post for more info: https://jasonet.co/posts/new-features-of-github-actions/#passing-data-to-future-steps 
-      #     asset_path: pluginval_Linux.zip
-      #     asset_name: pluginval_Linux.zip
-      #     asset_content_type: application/zip
-
-      # - name: Upload macOS Release Asset
-      #   uses: actions/upload-release-asset@v1
-      #   env:
-      #     GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      #   with:
-      #     upload_url: ${{ steps.create_release.outputs.upload_url }} # This pulls from the CREATE RELEASE step above, referencing it's ID to get its outputs object, which include a `upload_url`. See this blog post for more info: https://jasonet.co/posts/new-features-of-github-actions/#passing-data-to-future-steps 
-      #     asset_path: pluginval_macOS.zip
-      #     asset_name: pluginval_macOS.zip
-      #     asset_content_type: application/zip
-
-      # - name: Upload Windows Release Asset
-      #   uses: actions/upload-release-asset@v1
-      #   env:
-      #     GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      #   with:
-      #     upload_url: ${{ steps.create_release.outputs.upload_url }} # This pulls from the CREATE RELEASE step above, referencing it's ID to get its outputs object, which include a `upload_url`. See this blog post for more info: https://jasonet.co/posts/new-features-of-github-actions/#passing-data-to-future-steps 
-      #     asset_path: pluginval_Windows.zip
-      #     asset_name: pluginval_Windows.zip
-      #     asset_content_type: application/zip
-
-      # - name: Upload Changelist Release Asset
-      #   uses: actions/upload-release-asset@v1
-      #   env:
-      #     GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      #   with:
-      #     upload_url: ${{ steps.create_release.outputs.upload_url }} # This pulls from the CREATE RELEASE step above, referencing it's ID to get its outputs object, which include a `upload_url`. See this blog post for more info: https://jasonet.co/posts/new-features-of-github-actions/#passing-data-to-future-steps 
-      #     asset_path: CHANGELIST.md
-      #     asset_name: CHANGELIST.md
-      #     asset_content_type: text/plain
