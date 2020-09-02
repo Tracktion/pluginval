@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.15)
 
-project(pluginval VERSION 0.2.7)
+project(pluginval VERSION 0.2.8)
 
 add_subdirectory(modules/juce)
 
