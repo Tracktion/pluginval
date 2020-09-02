@@ -24,8 +24,7 @@ jobs:
     steps:
       - name: Set tag name variable
         run: |
-          echo github.ref: $github.ref
-          echo GITHUB_REF: $GITHUB_REF
+          echo "${GITHUB_REF##*/}:" ${GITHUB_REF##*/}
           echo GITHUB_REF: ${GITHUB_REF}
           echo GITHUB_REF: ${{ GITHUB_REF }}
           REF=${{ GITHUB_REF }}
