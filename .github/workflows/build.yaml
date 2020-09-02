@@ -87,12 +87,15 @@ jobs:
 
       - name: Display structure of downloaded files
         run: ls -la
+    
+      - name: Set tag name variable
+        run: echo ::set-env name=TAG_NAME::${echo $GITHUB_REF##*/}
 
       - name: Create Release
         uses: softprops/action-gh-release@v1
         with:
-          tag_name: $VER
-          name: Release $VER
+          tag_name: $TAG_NAME
+          name: Release $TAG_NAME
           body_path: CHANGELIST.md/CHANGELIST.md
           draft: true
           files: |
@@ -102,4 +105,3 @@ jobs:
             pluginval_Windows.zip/*
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          VER: ${{ github.ref##*/ }}
