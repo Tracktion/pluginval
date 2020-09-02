@@ -24,10 +24,8 @@ jobs:
     steps:
       - name: Set tag name variable
         run: |
-          echo "${GITHUB_REF##*/}:" ${GITHUB_REF##*/}
-          echo GITHUB_REF: ${GITHUB_REF}
           REF=${GITHUB_REF}
-          echo ::set-env name=TAG_NAME::${REF##*/}
+          echo ::set-env name=TAG_NAME::${${GITHUB_REF}##*/}
         shell: bash        
       - name: Test tag name variable
         run: |
