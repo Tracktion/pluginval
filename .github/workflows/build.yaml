@@ -51,9 +51,9 @@ jobs:
           export SIGN_ID=${DEV_ID_APP}
           ./install/build
           
-          # if [[ "$OSTYPE" == "darwin"* ]]; then
-          #   ./install/notarise ${{ github.workspace }}/bin/mac/pluginval_macOS.zip com.tracktion.pluginval ${AC_USERNAME} ${AC_PASSWORD}
-          # fi
+          if [[ "$OSTYPE" == "darwin"* ]]; then
+            ./install/notarise ${{ github.workspace }}/bin/mac/pluginval_macOS.zip com.tracktion.pluginval ${AC_USERNAME} ${AC_PASSWORD}
+          fi
         shell: bash
         env:
           VST2_SDK_URL: ${{ secrets.VST2_SDK_URL }}
