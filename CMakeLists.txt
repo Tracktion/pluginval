@@ -2,6 +2,10 @@ cmake_minimum_required(VERSION 3.15)
 
 project(pluginval VERSION 0.2.8)
 
+# Adds all the module sources so they appear correctly in the IDE
+set_property(GLOBAL PROPERTY USE_FOLDERS YES)
+option(JUCE_ENABLE_MODULE_SOURCE_GROUPS "Enable Module Source Groups" ON)
+
 add_subdirectory(modules/juce)
 
 if (DEFINED ENV{VST2_SDK_DIR})
@@ -26,14 +30,13 @@ set_target_properties(pluginval PROPERTIES
     C_VISIBILITY_PRESET hidden
     CXX_VISIBILITY_PRESET hidden)
 
-target_sources(pluginval PRIVATE
+set(SourceFiles
     Source/CommandLine.h
     Source/CrashHandler.h
     Source/MainComponent.h
     Source/PluginTests.h
     Source/TestUtilities.h
     Source/Validator.h
-
     Source/CommandLine.cpp
     Source/CrashHandler.cpp
     Source/Main.cpp
@@ -44,6 +47,9 @@ target_sources(pluginval PRIVATE
     Source/tests/ParameterFuzzTests.cpp
     Source/TestUtilities.cpp
     Source/Validator.cpp)
+
+target_sources(pluginval PRIVATE ${SourceFiles})
+source_group(TREE ${CMAKE_CURRENT_SOURCE_DIR}/Source PREFIX Source FILES ${SourceFiles})
 
 if (DEFINED ENV{VST2_SDK_DIR})
     target_compile_definitions(pluginval PRIVATE
