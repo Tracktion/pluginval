@@ -7,9 +7,9 @@ if (MSVC)
     set (CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>")
 endif()
 
-# If we are compiling for macOS we want to target OS versions down to 10.9
+# If we are compiling for macOS we want to target OS versions down to 10.11
 if (APPLE)
-    set (CMAKE_OSX_DEPLOYMENT_TARGET "10.9" CACHE INTERNAL "")
+    set (CMAKE_OSX_DEPLOYMENT_TARGET "10.11" CACHE INTERNAL "")
 endif()
 
 # Adds all the module sources so they appear correctly in the IDE

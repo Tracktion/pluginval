@@ -1,7 +1,7 @@
 # pluginval Change List
 
 ### 0.2.9
-- Fixed support for macOS from 10.9 and Windows without the runtime DLLs
+- Fixed support for macOS from 10.11 and Windows without the runtime DLLs
 
 ### 0.2.8
 - Added a test to process audio with different sample rate and block sizes but not call releaseResources in between
