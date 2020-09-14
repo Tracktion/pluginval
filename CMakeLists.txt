@@ -2,6 +2,16 @@ cmake_minimum_required(VERSION 3.15)
 
 project(pluginval VERSION 0.2.8)
 
+# If we are using MSVC we want static runtime linkage
+if (MSVC)
+    set (CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>")
+endif()
+
+# If we are compiling for macOS we want to target OS versions down to 10.9
+if (APPLE)
+    set (CMAKE_OSX_DEPLOYMENT_TARGET "10.9" CACHE INTERNAL "")
+endif()
+
 # Adds all the module sources so they appear correctly in the IDE
 set_property(GLOBAL PROPERTY USE_FOLDERS YES)
 option(JUCE_ENABLE_MODULE_SOURCE_GROUPS "Enable Module Source Groups" ON)
