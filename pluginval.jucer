@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 
-<JUCERPROJECT name="pluginval" projectType="guiapp" id="IA2Ov0" version="0.2.8"
+<JUCERPROJECT name="pluginval" projectType="guiapp" id="IA2Ov0" version="0.2.9"
               companyName="Tracktion" headerPath="../../modules/juce/modules/juce_audio_processors/format_types/VST3_SDK&#10;../../VST3_SDK"
               jucerFormatVersion="1">
   <MAINGROUP id="zUhKLj" name="pluginval">
