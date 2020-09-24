@@ -51,7 +51,7 @@ struct ConnectionStatus : public Component,
                 case Status::complete:      return Colours::lightgreen;
             }
 
-			return Colours::darkred;
+            return Colours::darkred;
         }());
         g.fillEllipse (r);
 

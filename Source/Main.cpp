@@ -173,8 +173,8 @@ private:
         return new PropertiesFile (opts.getDefaultFile(), opts);
     }
 
-	void handleAsyncUpdate() override
-	{
+    void handleAsyncUpdate() override
+    {
         commandLineValidator = std::make_unique<CommandLineValidator>();
         performCommandLine (*commandLineValidator, JUCEApplication::getCommandLineParameters());
     }

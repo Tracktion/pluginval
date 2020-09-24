@@ -176,10 +176,10 @@ File getOutputDir (const ArgumentList& args)
 StringArray getDisabledTest (const ArgumentList& args)
 {
     const File disabledTestsFile (getOptionValue (args, "--disabled-tests", {}, "Missing disabled-tests path argument!").toString());
-    
+
     StringArray disabledTests;
     disabledTestsFile.readLines (disabledTests);
-  
+
     return disabledTests;
 }
 
@@ -332,7 +332,10 @@ static void validate (CommandLineValidator& validator, const ArgumentList& args)
         if (arg.isLongOption() || arg.isShortOption())
             break;
 
-        fileOrIDs.add (arg.text);
+        if (arg.text.contains ("~") || arg.text.contains ("."))
+            fileOrIDs.add (File (arg.text).getFullPathName());
+        else
+            fileOrIDs.add (arg.text);
     }
 
     if (! fileOrIDs.isEmpty())
@@ -359,7 +362,7 @@ static void validate (CommandLineValidator& validator, const ArgumentList& args)
 int getNumTestFailures (UnitTestRunner& testRunner)
 {
     int numFailures = 0;
-    
+
     for (int i = 0; i < testRunner.getNumResults(); ++i)
         if (auto result = testRunner.getResult (i))
             numFailures += result->failures;
@@ -372,7 +375,7 @@ void runUnitTests()
     UnitTestRunner testRunner;
     testRunner.runTestsInCategory ("pluginval");
     const int numFailures = getNumTestFailures (testRunner);
-    
+
     if (numFailures > 0)
         ConsoleApplication::fail (String (numFailures) + " tests failed!!!");
 }
