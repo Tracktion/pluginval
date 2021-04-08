@@ -423,9 +423,13 @@ private:
         {
             processRequests();
 
-            const ScopedLock sl (requestsLock);
+            auto noRequests = [&]
+            {
+                const ScopedLock sl (requestsLock);
+                return requestsToProcess.empty();
+            }();
 
-            if (requestsToProcess.empty())
+            if (noRequests)
                 Thread::sleep (500);
         }
 
