@@ -92,6 +92,16 @@ File getOutputDir()
     return getAppPreferences().getValue ("outputDir", String());
 }
 
+StringArray getSampleRates() // from UI no setting of sampleRates yet 
+{
+    return {"44100","48000","96000"};
+}
+
+StringArray getBlockSizes() // from UI no setting of block sizes yet
+{
+    return  { "64", "128", "256", "512", "1024" };
+}
+
 
 PluginTests::Options getTestOptions()
 {
@@ -103,6 +113,8 @@ PluginTests::Options getTestOptions()
     options.numRepeats = getNumRepeats();
     options.randomiseTestOrder = getRandomiseTests();
     options.outputDir = getOutputDir();
+    options.sampleRates = getSampleRates();
+    options.blockSizes = getBlockSizes();
 
     return options;
 }

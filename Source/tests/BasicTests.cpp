@@ -134,7 +134,12 @@ struct EditorWhilstProcessingTest   : public PluginTest
         if (instance.hasEditor())
         {
             instance.releaseResources();
-            instance.prepareToPlay (44100.0, 512);
+
+            const StringArray& sampleRates = ut.getOptions().sampleRates;
+            const StringArray& blockSizes = ut.getOptions().blockSizes;
+            
+            jassert (sampleRates.size()>0 && blockSizes.size()>0);
+            instance.prepareToPlay (sampleRates[0].getDoubleValue(), blockSizes[0].getIntValue());
 
             const int numChannelsRequired = jmax (instance.getTotalNumInputChannels(), instance.getTotalNumOutputChannels());
             AudioBuffer<float> ab (numChannelsRequired, instance.getBlockSize());
@@ -183,8 +188,13 @@ struct AudioProcessingTest  : public PluginTest
                                         bool callReleaseResourcesBeforeSampleRateChange)
     {
         const bool isPluginInstrument = instance.getPluginDescription().isInstrument;
-        const double sampleRates[] = { 44100.0, 48000.0, 96000.0 };
-        const int blockSizes[] = { 64, 128, 256, 512, 1024 };
+        
+        const StringArray& sampleRates = ut.getOptions().sampleRates;
+        const StringArray& blockSizes = ut.getOptions().blockSizes;
+        
+        jassert (sampleRates.size()>0 && blockSizes.size()>0);
+        instance.prepareToPlay (sampleRates[0].getDoubleValue(), blockSizes[0].getIntValue());
+               
         const int numBlocks = 10;
         auto r = ut.getRandom();
 
@@ -193,16 +203,16 @@ struct AudioProcessingTest  : public PluginTest
             for (auto bs : blockSizes)
             {
                 ut.logMessage (String ("Testing with sample rate [SR] and block size [BS]")
-                            .replace ("SR", String (sr, 0), false)
-                            .replace ("BS", String (bs), false));
+                               .replace ("SR", sr, false)
+                            .replace ("BS", bs, false));
                 
                 if (callReleaseResourcesBeforeSampleRateChange)
                     instance.releaseResources();
                 
-                instance.prepareToPlay (sr, bs);
+                instance.prepareToPlay (sr.getDoubleValue(), bs.getIntValue());
 
                 const int numChannelsRequired = jmax (instance.getTotalNumInputChannels(), instance.getTotalNumOutputChannels());
-                AudioBuffer<float> ab (numChannelsRequired, bs);
+                AudioBuffer<float> ab (numChannelsRequired, bs.getIntValue());
                 MidiBuffer mb;
 
                 // Add a random note on if the plugin is a synth
@@ -210,7 +220,7 @@ struct AudioProcessingTest  : public PluginTest
                 const int noteNumber = r.nextInt (128);
 
                 if (isPluginInstrument)
-                    addNoteOn (mb, noteChannel, noteNumber, jmin (10, bs));
+                    addNoteOn (mb, noteChannel, noteNumber, jmin (10, bs.getIntValue()));
 
                 for (int i = 0; i < numBlocks; ++i)
                 {
@@ -344,8 +354,13 @@ struct AutomationTest  : public PluginTest
     {
         const bool subnormalsAreErrors = ut.getOptions().strictnessLevel > 5;
         const bool isPluginInstrument = instance.getPluginDescription().isInstrument;
-        const double sampleRates[] = { 44100.0, 48000.0, 96000.0 };
-        const int blockSizes[] = { 64, 128, 256, 512, 1024 };
+        
+        const StringArray& sampleRates = ut.getOptions().sampleRates;
+        const StringArray& blockSizes = ut.getOptions().blockSizes;
+        
+        jassert (sampleRates.size()>0 && blockSizes.size()>0);
+        instance.prepareToPlay (sampleRates[0].getDoubleValue(), blockSizes[0].getIntValue());
+
         auto r = ut.getRandom();
 
         for (auto sr : sampleRates)
@@ -354,16 +369,16 @@ struct AutomationTest  : public PluginTest
             {
                 const int subBlockSize = 32;
                 ut.logMessage (String ("Testing with sample rate [SR] and block size [BS] and sub-block size [SB]")
-                            .replace ("SR", String (sr, 0), false)
-                            .replace ("BS", String (bs), false)
+                            .replace ("SR", sr, false)
+                            .replace ("BS", bs, false)
                             .replace ("SB", String (subBlockSize), false));
 
                 instance.releaseResources();
-                instance.prepareToPlay (sr, bs);
+                instance.prepareToPlay (sr.getDoubleValue(), bs.getIntValue());
 
                 int numSamplesDone = 0;
                 const int numChannelsRequired = jmax (instance.getTotalNumInputChannels(), instance.getTotalNumOutputChannels());
-                AudioBuffer<float> ab (numChannelsRequired, bs);
+                AudioBuffer<float> ab (numChannelsRequired, bs.getIntValue());
                 MidiBuffer mb;
 
                 // Add a random note on if the plugin is a synth
@@ -387,10 +402,10 @@ struct AutomationTest  : public PluginTest
                     }
 
                     // Create a sub-buffer and process
-                    const int numSamplesThisTime = jmin (subBlockSize, bs - numSamplesDone);
+                    const int numSamplesThisTime = jmin (subBlockSize, bs.getIntValue() - numSamplesDone);
 
                     // Trigger a note off in the last sub block
-                    if (isPluginInstrument && (bs - numSamplesDone) <= subBlockSize)
+                    if (isPluginInstrument && (bs.getIntValue() - numSamplesDone) <= subBlockSize)
                         addNoteOff (mb, noteChannel, noteNumber, jmin (10, subBlockSize));
 
                     AudioBuffer<float> subBuffer (ab.getArrayOfWritePointers(),
@@ -403,7 +418,7 @@ struct AutomationTest  : public PluginTest
 
                     mb.clear();
 
-                    if (numSamplesDone >= bs)
+                    if (numSamplesDone >= bs.getIntValue())
                         break;
                 }
 

@@ -173,6 +173,22 @@ File getOutputDir (const ArgumentList& args)
     return getOptionValue (args, "--output-dir", {}, "Missing output-dir path argument!").toString();
 }
 
+StringArray getSampleRates (const ArgumentList& args)
+{
+    return StringArray::fromTokens(getOptionValue (args, "--sample-rates", String ("44100,48000,96000") , "Missing sample rate list argument!").toString(),
+                                   ",",
+                                   "\""
+                                   );
+}
+
+StringArray getBlockSizes (const ArgumentList& args)
+{
+    return StringArray::fromTokens(getOptionValue (args, "--block-sizes", String ("64,128,256,512,1024") , "Missing block size list argument!").toString(),
+                                   ",",
+                                   "\""
+                                   );
+}
+
 StringArray getDisabledTest (const ArgumentList& args)
 {
     const File disabledTestsFile (getOptionValue (args, "--disabled-tests", {}, "Missing disabled-tests path argument!").toString());
@@ -221,7 +237,9 @@ static Option possibleOptions[] =
     { "--data-file",            true    },
     { "--output-dir",           true    },
     { "--repeat",               true    },
-    { "--randomise",            false   }
+    { "--randomise",            false   },
+    { "--sample-rates",         true    },
+    { "--block-sizes",          true    }, 
 };
 
 StringArray mergeEnvironmentVariables (StringArray args, std::function<String (const String& name, const String& defaultValue)> environmentVariableProvider = [] (const String& name, const String& defaultValue) { return SystemStats::getEnvironmentVariable (name, defaultValue); })
@@ -292,6 +310,10 @@ static String getHelpMessage()
          << "    If specified, sets a directory to store the log files. This can be useful for continuous integration." << newLine
          << "  --disabled-tests [pathToFile]" << newLine
          << "    If specified, sets a path to a file that should have the names of disabled tests on each row." << newLine
+         << "  --sample-rates [list of comma separated sample rates]" << newLine
+         << "    If specified, sets the list of sample rates at which tests will be executed (default=44100,48000,96000)" << newLine
+         << "  --block-sizes [list of comma separated block sizes]" << newLine
+         << "    If specified, sets the list of block sizes at which tests will be executed (default=64,128,256,512,1024)" << newLine
          << "  --version" << newLine
          << "    Print pluginval version." << newLine
          << newLine
@@ -352,6 +374,8 @@ static void validate (CommandLineValidator& validator, const ArgumentList& args)
         options.outputDir = getOutputDir (args);
         options.withGUI = ! args.containsOption ("--skip-gui-tests");
         options.disabledTests = getDisabledTest (args);
+        options.sampleRates = getSampleRates (args);
+        options.blockSizes = getBlockSizes (args);
 
         validator.validate (fileOrIDs,
                             options,
