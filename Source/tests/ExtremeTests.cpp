@@ -27,11 +27,11 @@ struct AllocationsInRealTimeThreadTest  : public PluginTest
     {
         const bool isPluginInstrument = instance.getPluginDescription().isInstrument;
  
-        const StringArray& sampleRates = ut.getOptions().sampleRates;
-        const StringArray& blockSizes = ut.getOptions().blockSizes;
+        const std::vector<double>& sampleRates = ut.getOptions().sampleRates;
+        const std::vector<int>& blockSizes = ut.getOptions().blockSizes;
         
         jassert (sampleRates.size()>0 && blockSizes.size()>0);
-        instance.prepareToPlay (sampleRates[0].getDoubleValue(), blockSizes[0].getIntValue());
+        instance.prepareToPlay (sampleRates[0], blockSizes[0]);
 
         const int numBlocks = 10;
         auto r = ut.getRandom();
@@ -41,13 +41,13 @@ struct AllocationsInRealTimeThreadTest  : public PluginTest
             for (auto bs : blockSizes)
             {
                 ut.logMessage (String ("Testing with sample rate [SR] and block size [BS]")
-                               .replace ("SR", sr, false)
-                               .replace ("BS", bs, false));
+                               .replace ("SR", String(sr,0), false)
+                               .replace ("BS", String(bs), false));
                 instance.releaseResources();
-                instance.prepareToPlay (sr.getDoubleValue(), bs.getIntValue());
+                instance.prepareToPlay (sr, bs);
 
                 const int numChannelsRequired = jmax (instance.getTotalNumInputChannels(), instance.getTotalNumOutputChannels());
-                AudioBuffer<float> ab (numChannelsRequired, bs.getIntValue());
+                AudioBuffer<float> ab (numChannelsRequired, bs);
                 MidiBuffer mb;
 
                 // Add a random note on if the plugin is a synth
@@ -55,7 +55,7 @@ struct AllocationsInRealTimeThreadTest  : public PluginTest
                 const int noteNumber = r.nextInt (128);
 
                 if (isPluginInstrument)
-                    addNoteOn (mb, noteChannel, noteNumber, jmin (10, bs.getIntValue() - 1));
+                    addNoteOn (mb, noteChannel, noteNumber, jmin (10, bs - 1));
 
                 for (int i = 0; i < numBlocks; ++i)
                 {
@@ -109,8 +109,8 @@ struct LargerThanPreparedBlockSizeTest   : public PluginTest
             return;
         }
         
-        const StringArray& sampleRates = ut.getOptions().sampleRates;
-        const StringArray& blockSizes = ut.getOptions().blockSizes;
+        const std::vector<double>& sampleRates = ut.getOptions().sampleRates;
+        const std::vector<int>& blockSizes = ut.getOptions().blockSizes;
 
         jassert (sampleRates.size()>0 && blockSizes.size()>0);
         
@@ -118,13 +118,13 @@ struct LargerThanPreparedBlockSizeTest   : public PluginTest
         {
             for (auto preparedBlockSize : blockSizes)
             {
-                const auto processingBlockSize = preparedBlockSize.getIntValue() * 2;
+                const auto processingBlockSize = preparedBlockSize * 2;
                 ut.logMessage (String ("Preparing with sample rate [SR] and block size [BS], processing with block size [BSP]")
-                               .replace ("SR", sr, false)
+                               .replace ("SR", String(sr,0), false)
                                .replace ("BSP", String (processingBlockSize), false)
-                               .replace ("BS", preparedBlockSize, false));
+                               .replace ("BS", String(preparedBlockSize), false));
                 instance.releaseResources();
-                instance.prepareToPlay (sr.getDoubleValue(), preparedBlockSize.getIntValue());
+                instance.prepareToPlay (sr, preparedBlockSize);
 
                 const int numChannelsRequired = jmax (instance.getTotalNumInputChannels(), instance.getTotalNumOutputChannels());
                 AudioBuffer<float> ab (numChannelsRequired, processingBlockSize);

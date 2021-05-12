@@ -173,20 +173,30 @@ File getOutputDir (const ArgumentList& args)
     return getOptionValue (args, "--output-dir", {}, "Missing output-dir path argument!").toString();
 }
 
-StringArray getSampleRates (const ArgumentList& args)
+std::vector<double> getSampleRates (const ArgumentList& args)
 {
-    return StringArray::fromTokens(getOptionValue (args, "--sample-rates", String ("44100,48000,96000") , "Missing sample rate list argument!").toString(),
+    StringArray input = StringArray::fromTokens(getOptionValue (args, "--sample-rates", String ("44100,48000,96000") , "Missing sample rate list argument!").toString(),
                                    ",",
                                    "\""
                                    );
+    std::vector<double> output;
+    for(String sr: input)  {
+        output.push_back(sr.getDoubleValue());
+    }  
+    return output;
 }
 
-StringArray getBlockSizes (const ArgumentList& args)
+std::vector<int> getBlockSizes (const ArgumentList& args)
 {
-    return StringArray::fromTokens(getOptionValue (args, "--block-sizes", String ("64,128,256,512,1024") , "Missing block size list argument!").toString(),
+    StringArray input = StringArray::fromTokens(getOptionValue (args, "--block-sizes", String ("64,128,256,512,1024") , "Missing block size list argument!").toString(),
                                    ",",
                                    "\""
                                    );
+    std::vector<int> output;
+    for(String sr: input)  {
+        output.push_back(sr.getIntValue());
+    }  
+    return output;
 }
 
 StringArray getDisabledTest (const ArgumentList& args)

@@ -92,14 +92,14 @@ File getOutputDir()
     return getAppPreferences().getValue ("outputDir", String());
 }
 
-StringArray getSampleRates() // from UI no setting of sampleRates yet 
+std::vector<double> getSampleRates() // from UI no setting of sampleRates yet
 {
-    return {"44100","48000","96000"};
+    return {44100., 48000., 96000. };
 }
 
-StringArray getBlockSizes() // from UI no setting of block sizes yet
+std::vector<int> getBlockSizes() // from UI no setting of block sizes yet
 {
-    return  { "64", "128", "256", "512", "1024" };
+    return { 64, 128, 256, 512, 1024 };
 }
 
 

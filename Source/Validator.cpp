@@ -481,8 +481,8 @@ private:
             options.outputDir = File (v[IDs::outputDir].toString());
             options.withGUI = v.getProperty (IDs::withGUI, true);
             options.disabledTests = StringArray::fromLines (v.getProperty (IDs::disabledTests).toString());
-            options.sampleRates = StringArray::fromLines (v.getProperty (IDs::sampleRates).toString());
-            options.blockSizes = StringArray::fromLines (v.getProperty (IDs::blockSizes).toString());
+            options.sampleRates = juce::VariantConverter<std::vector<double>>::fromVar( v.getProperty (IDs::sampleRates).toString() );
+            options.blockSizes  = juce::VariantConverter<std::vector<int>>::fromVar( v.getProperty (IDs::blockSizes).toString() );
             
             for (auto c : v)
             {
@@ -674,8 +674,8 @@ private:
         v.setProperty (IDs::outputDir, options.outputDir.getFullPathName(), nullptr);
         v.setProperty (IDs::withGUI, options.withGUI, nullptr);
         v.setProperty (IDs::disabledTests, options.disabledTests.joinIntoString ("\n"), nullptr);
-        v.setProperty (IDs::sampleRates, options.sampleRates.joinIntoString ("\n"), nullptr);
-        v.setProperty (IDs::blockSizes, options.blockSizes.joinIntoString ("\n"), nullptr);
+        v.setProperty (IDs::sampleRates, juce::VariantConverter<std::vector<double>>::toVar(options.sampleRates), nullptr);
+        v.setProperty (IDs::blockSizes, juce::VariantConverter<std::vector<int>>::toVar(options.blockSizes), nullptr);
 
         return v;
     }
