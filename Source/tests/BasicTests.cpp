@@ -134,7 +134,12 @@ struct EditorWhilstProcessingTest   : public PluginTest
         if (instance.hasEditor())
         {
             instance.releaseResources();
-            instance.prepareToPlay (44100.0, 512);
+
+            const std::vector<double>& sampleRates = ut.getOptions().sampleRates;
+            const std::vector<int>& blockSizes = ut.getOptions().blockSizes;
+            
+            jassert (sampleRates.size()>0 && blockSizes.size()>0);
+            instance.prepareToPlay (sampleRates[0], blockSizes[0]);
 
             const int numChannelsRequired = jmax (instance.getTotalNumInputChannels(), instance.getTotalNumOutputChannels());
             AudioBuffer<float> ab (numChannelsRequired, instance.getBlockSize());
@@ -183,8 +188,13 @@ struct AudioProcessingTest  : public PluginTest
                                         bool callReleaseResourcesBeforeSampleRateChange)
     {
         const bool isPluginInstrument = instance.getPluginDescription().isInstrument;
-        const double sampleRates[] = { 44100.0, 48000.0, 96000.0 };
-        const int blockSizes[] = { 64, 128, 256, 512, 1024 };
+        
+        const std::vector<double>& sampleRates = ut.getOptions().sampleRates;
+        const std::vector<int>& blockSizes = ut.getOptions().blockSizes;
+        
+        jassert (sampleRates.size()>0 && blockSizes.size()>0);
+        instance.prepareToPlay (sampleRates[0], blockSizes[0]);
+               
         const int numBlocks = 10;
         auto r = ut.getRandom();
 
@@ -193,8 +203,8 @@ struct AudioProcessingTest  : public PluginTest
             for (auto bs : blockSizes)
             {
                 ut.logMessage (String ("Testing with sample rate [SR] and block size [BS]")
-                            .replace ("SR", String (sr, 0), false)
-                            .replace ("BS", String (bs), false));
+                               .replace ("SR", String(sr,0) , false)
+                            .replace ("BS", String(bs), false));
                 
                 if (callReleaseResourcesBeforeSampleRateChange)
                     instance.releaseResources();
@@ -344,8 +354,13 @@ struct AutomationTest  : public PluginTest
     {
         const bool subnormalsAreErrors = ut.getOptions().strictnessLevel > 5;
         const bool isPluginInstrument = instance.getPluginDescription().isInstrument;
-        const double sampleRates[] = { 44100.0, 48000.0, 96000.0 };
-        const int blockSizes[] = { 64, 128, 256, 512, 1024 };
+        
+        const std::vector<double>& sampleRates = ut.getOptions().sampleRates;
+        const std::vector<int>& blockSizes = ut.getOptions().blockSizes;
+        
+        jassert (sampleRates.size()>0 && blockSizes.size()>0);
+        instance.prepareToPlay (sampleRates[0], blockSizes[0]);
+
         auto r = ut.getRandom();
 
         for (auto sr : sampleRates)
@@ -354,8 +369,8 @@ struct AutomationTest  : public PluginTest
             {
                 const int subBlockSize = 32;
                 ut.logMessage (String ("Testing with sample rate [SR] and block size [BS] and sub-block size [SB]")
-                            .replace ("SR", String (sr, 0), false)
-                            .replace ("BS", String (bs), false)
+                            .replace ("SR", String(sr,0), false)
+                            .replace ("BS", String(bs), false)
                             .replace ("SB", String (subBlockSize), false));
 
                 instance.releaseResources();

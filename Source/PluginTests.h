@@ -36,6 +36,8 @@ struct PluginTests : public UnitTest
         File dataFile;                      /**< File which tests can use to run user provided data. */
         File outputDir;                     /**< Directory in which to write the log files for each test run. */
         StringArray disabledTests;          /**< List of disabled tests. */
+        std::vector<double> sampleRates;    /**< List of sample rates. */
+        std::vector<int> blockSizes;        /**< List of block sizes. */
     };
 
     /** Creates a set of tests for a fileOrIdentifier. */

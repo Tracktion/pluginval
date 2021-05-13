@@ -25,6 +25,34 @@
  #define LOG_PIPE_CHILD_COMMUNICATION 0
 #endif
 
+namespace juce
+{
+template<typename T>
+struct VariantConverter<std::vector<T>>
+{
+    static std::vector<T> fromVar (const var& v)
+    {
+        jassert (v.isArray());
+        Array<var>*    vr = v.getArray();
+        std::vector<T> vc;
+        for (var vItem : *vr)
+        {
+            vc.push_back (static_cast<T> (vItem));
+        }
+        return vc;
+    }
+    static var toVar (const std::vector<T>& vc)
+    {
+        juce::var vr;
+        for (T t : vc)
+        {
+            vr.append (t);
+        }
+        return vr;
+    }
+};
+}// namespace juce
+
 class ValidatorParentProcess;
 
 //==============================================================================
