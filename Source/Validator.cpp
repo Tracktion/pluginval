@@ -481,9 +481,9 @@ private:
             options.outputDir = File (v[IDs::outputDir].toString());
             options.withGUI = v.getProperty (IDs::withGUI, true);
             options.disabledTests = StringArray::fromLines (v.getProperty (IDs::disabledTests).toString());
-            options.sampleRates = juce::VariantConverter<std::vector<double>>::fromVar( v.getProperty (IDs::sampleRates).toString() );
-            options.blockSizes  = juce::VariantConverter<std::vector<int>>::fromVar( v.getProperty (IDs::blockSizes).toString() );
-            
+            options.sampleRates = juce::VariantConverter<std::vector<double>>::fromVar( v.getProperty (IDs::sampleRates) );
+            options.blockSizes  = juce::VariantConverter<std::vector<int>>::fromVar( v.getProperty (IDs::blockSizes) );
+
             for (auto c : v)
             {
                 String fileOrID;

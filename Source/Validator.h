@@ -27,28 +27,29 @@
 
 namespace juce
 {
-template<typename T>
+template <typename T>
 struct VariantConverter<std::vector<T>>
 {
     static std::vector<T> fromVar (const var& v)
     {
-        jassert (v.isArray());
-        Array<var>*    vr = v.getArray();
+        jassert (v.isString());
+
         std::vector<T> vc;
-        for (var vItem : *vr)
-        {
-            vc.push_back (static_cast<T> (vItem));
-        }
+
+        for (auto token : StringArray::fromTokens (v.toString(), ",", ""))
+            vc.push_back (static_cast<T> (var (token)));
+
         return vc;
     }
+
     static var toVar (const std::vector<T>& vc)
     {
-        juce::var vr;
-        for (T t : vc)
-        {
-            vr.append (t);
-        }
-        return vr;
+        if (vc.empty())
+            return "";
+
+        String text { vc.front() };
+        std::for_each (std::next (vc.begin()), vc.end(), [&] (const T& t) { text << ',' << t; });
+        return text;
     }
 };
 }// namespace juce
