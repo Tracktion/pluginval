@@ -175,27 +175,35 @@ File getOutputDir (const ArgumentList& args)
 
 std::vector<double> getSampleRates (const ArgumentList& args)
 {
-    StringArray input = StringArray::fromTokens(getOptionValue (args, "--sample-rates", String ("44100,48000,96000") , "Missing sample rate list argument!").toString(),
-                                   ",",
-                                   "\""
-                                   );
+    StringArray input = StringArray::fromTokens (getOptionValue (args,
+                                                                 "--sample-rates",
+                                                                 String ("44100,48000,96000"),
+                                                                 "Missing sample rate list argument!")
+                                                     .toString(),
+                                                 ",",
+                                                 "\"");
     std::vector<double> output;
-    for(String sr: input)  {
-        output.push_back(sr.getDoubleValue());
-    }  
+    for (String sr : input)
+    {
+        output.push_back (sr.getDoubleValue());
+    }
     return output;
 }
 
 std::vector<int> getBlockSizes (const ArgumentList& args)
 {
-    StringArray input = StringArray::fromTokens(getOptionValue (args, "--block-sizes", String ("64,128,256,512,1024") , "Missing block size list argument!").toString(),
-                                   ",",
-                                   "\""
-                                   );
+    StringArray input = StringArray::fromTokens (getOptionValue (args,
+                                                                 "--block-sizes",
+                                                                 String ("64,128,256,512,1024"),
+                                                                 "Missing block size list argument!")
+                                                     .toString(),
+                                                 ",",
+                                                 "\"");
     std::vector<int> output;
-    for(String sr: input)  {
-        output.push_back(sr.getIntValue());
-    }  
+    for (String sr : input)
+    {
+        output.push_back (sr.getIntValue());
+    }
     return output;
 }
 
@@ -249,7 +257,7 @@ static Option possibleOptions[] =
     { "--repeat",               true    },
     { "--randomise",            false   },
     { "--sample-rates",         true    },
-    { "--block-sizes",          true    }, 
+    { "--block-sizes",          true    },
 };
 
 StringArray mergeEnvironmentVariables (StringArray args, std::function<String (const String& name, const String& defaultValue)> environmentVariableProvider = [] (const String& name, const String& defaultValue) { return SystemStats::getEnvironmentVariable (name, defaultValue); })
