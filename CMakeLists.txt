@@ -74,6 +74,7 @@ target_compile_definitions(pluginval PRIVATE
     JUCE_WEB_BROWSER=0
     JUCER_ENABLE_GPL_MODE=1
     JUCE_DISPLAY_SPLASH_SCREEN=0
+    JUCE_MODAL_LOOPS_PERMITTED=1
     JUCE_REPORT_APP_USAGE=0)
 
 target_link_libraries(pluginval PRIVATE

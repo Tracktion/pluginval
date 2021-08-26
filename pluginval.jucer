@@ -2,7 +2,7 @@
 
 <JUCERPROJECT name="pluginval" projectType="guiapp" id="IA2Ov0" version="0.2.9"
               companyName="Tracktion" headerPath="../../modules/juce/modules/juce_audio_processors/format_types/VST3_SDK&#10;../../VST3_SDK"
-              jucerFormatVersion="1">
+              jucerFormatVersion="1" defines="JUCE_PLUGINHOST_AU=1 JUCE_PLUGINHOST_VST3=1 JUCE_PLUGINHOST_LADSPA=1 JUCE_WEB_BROWSER=0 JUCE_USE_CURL=0 JUCE_MODAL_LOOPS_PERMITTED=1">
   <MAINGROUP id="zUhKLj" name="pluginval">
     <FILE id="gV5MZv" name="CHANGELIST.md" compile="0" resource="0" file="CHANGELIST.md"/>
     <GROUP id="{DF1CFAD6-E73F-2DAB-3957-D1F25BDD2E13}" name="Source">
@@ -118,5 +118,5 @@
     <MODULE id="juce_gui_extra" showAllCode="1" useLocalCopy="0" useGlobalPath="0"/>
   </MODULES>
   <JUCEOPTIONS JUCE_PLUGINHOST_AU="1" JUCE_PLUGINHOST_VST3="1" JUCE_PLUGINHOST_LADSPA="1"
-               JUCE_WEB_BROWSER="0" JUCE_USE_CURL="0"/>
+               JUCE_WEB_BROWSER="0" JUCE_USE_CURL="0" JUCE_MODAL_LOOPS_PERMITTED="1"/>
 </JUCERPROJECT>
