@@ -91,7 +91,7 @@ jobs:
       - name: Set tag name variable
         run: |
           REF=${GITHUB_REF}
-          echo ::set-env name=TAG_NAME::${REF##*/}
+          echo "TAG_NAME=${REF##*/}" >> $GITHUB_ENV
         shell: bash        
 
       - name: Create Release
