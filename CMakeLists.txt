@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.15)
 
-project(pluginval VERSION 0.2.9)
+project(pluginval VERSION 0.3.0)
 
 # If we are using MSVC we want static runtime linkage
 if (MSVC)
