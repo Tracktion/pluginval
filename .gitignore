@@ -24,6 +24,9 @@
 ipch/
 obj/
 
+# VS Code workspace config
+.vscode
+
 # Build products
 build/
 *.o
