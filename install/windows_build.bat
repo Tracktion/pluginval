@@ -4,18 +4,18 @@ cd "%~dp0%.."
 set ROOT=%cd%
 
 echo ROOT: "%ROOT%"
-if not exist "%ROOT%" exit 1
+if not exist "%ROOT%" exit /b 1
 
 set PROJECT_NAME=pluginval
 set DEPLOYMENT_DIR=%ROOT%\bin\windows
 
 set BINARY_NAME=%PROJECT_NAME%.exe
 set APP_NAME=%BINARY_NAME%
-set APP_FILE="%ROOT%\Builds\VisualStudio2017\x64\Release\App\%APP_NAME%"
+set APP_FILE="%ROOT%\Builds\VisualStudio2019\x64\Release\App\%APP_NAME%"
 
 set ZIP_FILE="%DEPLOYMENT_DIR%\%PROJECT_NAME%_Windows.zip"
 
-if not defined MSBUILD_EXE set MSBUILD_EXE=C:\Program Files (x86)\Microsoft Visual Studio\2017\Community\MSBuild\15.0\Bin\MSBuild.exe
+if not defined MSBUILD_EXE set MSBUILD_EXE=C:\Program Files (x86)\Microsoft Visual Studio\2019\BuildTools\MSBuild\Current\Bin\MSBuild.exe
 
 :: First clear the bin
 echo "=========================================================="
@@ -26,13 +26,13 @@ rd /S /Q "%ROOT%\bin\windows"
 ::   Build Projucer and generate projects
 ::============================================================
 echo "Building Projucer and creating projects"
-set PROJUCER_ROOT=%ROOT%/modules/juce/extras/Projucer/Builds/VisualStudio2017
+set PROJUCER_ROOT=%ROOT%/modules/juce/extras/Projucer/Builds/VisualStudio2019
 set PROJUCER_EXE=%PROJUCER_ROOT%/x64/Release/App/Projucer.exe
 
 cd "%PROJUCER_ROOT%"
 set CL=/DJUCER_ENABLE_GPL_MODE
-"%MSBUILD_EXE%" Projucer.sln /p:VisualStudioVersion=15.0 /m /p:Configuration=Release /p:Platform=x64 /p:PreferredToolArchitecture=x64
-if not exist "%PROJUCER_EXE%" exit 1
+"%MSBUILD_EXE%" Projucer.sln /p:VisualStudioVersion=16.0 /m /p:Configuration=Release /p:Platform=x64 /p:PreferredToolArchitecture=x64
+if not exist "%PROJUCER_EXE%" exit /b 1
 
 :: Resave project
 "%PROJUCER_EXE%" --resave "%ROOT%/%PROJECT_NAME%.jucer"
@@ -72,10 +72,10 @@ if not exist "%VST2_SDK_DIR%" goto SKIP_VST2_SUPPORT
 ::============================================================
 echo "=========================================================="
 echo "Building products"
-cd "%ROOT%/Builds/VisualStudio2017"
+cd "%ROOT%/Builds/VisualStudio2019"
 rd /S /Q "x64/Release"
 "%MSBUILD_EXE%" %PROJECT_NAME%.sln /p:VisualStudioVersion=15.0 /m /t:Build /p:Configuration=Release /p:Platform=x64 /p:PreferredToolArchitecture=x64  /p:TreatWarningsAsErrors=true
-call "%APP_FILE%" --run-tests || exit 1
+call "%APP_FILE%" --run-tests || exit /b 1
 
 ::============================================================
 ::   Copy to deployment directory

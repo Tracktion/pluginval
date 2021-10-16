@@ -66,7 +66,7 @@
         <MODULEPATH id="juce_audio_processors" path="modules/juce/modules"/>
       </MODULEPATHS>
     </XCODE_MAC>
-    <VS2017 targetFolder="Builds/VisualStudio2017" smallIcon="k3tDOE" bigIcon="k3tDOE"
+    <VS2019 targetFolder="Builds/VisualStudio2019" smallIcon="k3tDOE" bigIcon="k3tDOE"
             vst3Folder="modules/vst3">
       <CONFIGURATIONS>
         <CONFIGURATION isDebug="1" name="Debug" targetName="pluginval" useRuntimeLibDLL="0"/>
@@ -85,7 +85,7 @@
         <MODULEPATH id="juce_audio_devices" path="modules/juce/modules"/>
         <MODULEPATH id="juce_audio_basics" path="modules/juce/modules"/>
       </MODULEPATHS>
-    </VS2017>
+    </VS2019>
     <LINUX_MAKE targetFolder="Builds/LinuxMakefile" smallIcon="k3tDOE" bigIcon="k3tDOE">
       <CONFIGURATIONS>
         <CONFIGURATION isDebug="1" name="Debug" targetName="pluginval" linuxArchitecture="-m64"/>
