@@ -713,14 +713,6 @@ public:
             if (validationCompleteCallback && type == "result")
             {
                 auto results = deserializeTestResults(v.getChildWithName(IDs::testResultArray));
-                for (const auto& r: results)
-                {
-                    std::cout << "TEST:" << r.subcategoryName << std::endl;
-                    for (const auto& m: r.messages)
-                    {
-                        std::cout << "MSG:" << m << std::endl;
-                    }
-                }
                 validationCompleteCallback (v[IDs::fileOrID].toString(), v[IDs::numFailures], results);
             }
 
