@@ -1,5 +1,6 @@
 #include "JUnitReport.h"
 
+// JUnit example from https://www.ibm.com/docs/en/adfz/developer-for-zos/9.1.1?topic=formats-junit-xml-format
 //<?xml version="1.0" encoding="UTF-8" ?>
 //   <testsuites id="20140612_170519" name="New_configuration (14/06/12 17:05:19)" tests="225" failures="1262" time="0.001">
 //      <testsuite id="codereview.cobol.analysisProvider" name="COBOL Code Review" tests="45" failures="17" time="0.001">
