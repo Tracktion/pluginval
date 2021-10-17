@@ -1,6 +1,6 @@
 #include "JUnitListener.h"
 
-#include "JUnitWriter.h"
+#include "JUnitReport.h"
 
 JUnitListener::JUnitListener()
 {
@@ -28,6 +28,6 @@ void JUnitListener::allItemsComplete()
 {
     if (!reportFile.getFullPathName().isEmpty())
     {
-        JUnitWriter::write(results, reportFile);
+        JUnitReport::write(results, reportFile);
     }
 }

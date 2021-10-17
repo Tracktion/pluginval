@@ -1,4 +1,4 @@
-#include "JUnitWriter.h"
+#include "JUnitReport.h"
 
 //<?xml version="1.0" encoding="UTF-8" ?>
 //   <testsuites id="20140612_170519" name="New_configuration (14/06/12 17:05:19)" tests="225" failures="1262" time="0.001">
@@ -14,7 +14,60 @@
 //  </testsuite>
 //</testsuites>
 
-bool JUnitWriter::write(const HashMap<String, Array<UnitTestRunner::TestResult>> &allResults, File &output)
+namespace
+{
+
+String stringToId(const String& s)
+{
+    if (s.isEmpty())
+    {
+        return "-";
+    }
+
+    auto firstChar = s[0];
+    bool validFirstChar =
+            (firstChar >= 'a' && firstChar <= 'z') ||
+            (firstChar >= 'A' && firstChar <= 'Z');
+
+    String id = validFirstChar ? "" : "-";
+    for (auto it = s.begin(); it != s.end(); ++it)
+    {
+        auto c = *it;
+        bool valid =
+                (c >= 'a' && c <= 'z') ||
+                (c >= 'A' && c <= 'Z') ||
+                (c >= '0' && c <= '9') ||
+                c == '-' || c == '_' || c == ':' || c == '.';
+        id += valid ? c : '-';
+    }
+    return id.toLowerCase();
+}
+
+
+XmlElement* createTestCase(const UnitTestRunner::TestResult& r)
+{
+    auto testcase = new XmlElement("testcase");
+
+    //testcase->setAttribute("id", stringToId(r.unitTestName + "." + r.subcategoryName));
+    testcase->setAttribute("name", r.subcategoryName);
+
+    auto duration = (r.endTime - r.startTime).inMilliseconds();
+    testcase->setAttribute("time", duration / 1000.0);
+
+    for (const auto& m: r.messages)
+    {
+        auto failure = new XmlElement("failure");
+        failure->setAttribute("type", "ERROR");
+        failure->setAttribute("message", m);
+
+        testcase->prependChildElement(failure);
+    }
+    return testcase;
+}
+
+}
+
+bool JUnitReport::write(const HashMap<String, Array<UnitTestRunner::TestResult>> &allResults, File &output)
 {
     XmlElement testsuites("testsuites");
 
@@ -35,37 +88,20 @@ bool JUnitWriter::write(const HashMap<String, Array<UnitTestRunner::TestResult>>
 
         for (const auto& r: results)
         {
-            auto testcase = new XmlElement("testcase");
-
-            testcase->setAttribute("id", "pluginval." + String(count));
-            testcase->setAttribute("name", r.subcategoryName);
-
-            auto test_time = (r.endTime - r.startTime).inMilliseconds();
-
-            testcase->setAttribute("time", test_time / 1000.0);
-
-            for (const auto& m: r.messages)
-            {
-                auto failure = new XmlElement("failure");
-                failure->setAttribute("type", "ERROR");
-                failure->setAttribute("message", m);
-
-                testcase->prependChildElement(failure);
-            }
-
+            auto testcase = createTestCase(r);
             // add test case to test suite
             testsuite->prependChildElement(testcase);
 
             // calculate totals for test suite
             failures += r.failures;
             passes += r.passes;
-            time += test_time;
+            time += (r.endTime - r.startTime).inMilliseconds();
 
             // increment count
             count++;
         }
 
-        testsuite->setAttribute("id", "pluginval." + SystemStats::getOperatingSystemName() + "." + pluginName);
+        //testsuite->setAttribute("id", stringToId("pluginval." + SystemStats::getOperatingSystemName() + "." + pluginName));
         testsuite->setAttribute("name", "pluginval of " + pluginName + " on " + SystemStats::getOperatingSystemName());
         testsuite->setAttribute("tests", count);
         testsuite->setAttribute("failures", failures);

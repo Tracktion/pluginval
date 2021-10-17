@@ -91,7 +91,7 @@ private:
     {
     }
 
-    void itemComplete (const String&, int) override
+    void itemComplete (const String&, int, const Array<UnitTestRunner::TestResult>&) override
     {
     }
 
@@ -194,7 +194,7 @@ private:
         std::cout << m << "\n";
     }
 
-    void itemComplete (const String& id, int numFailures) override
+    void itemComplete (const String& id, int numFailures, const Array<UnitTestRunner::TestResult>&) override
     {
         logMessage ("\nFinished validating: " + id);
 

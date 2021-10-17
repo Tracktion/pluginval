@@ -258,6 +258,18 @@ namespace IDs
     DECLARE_ID(log)
     DECLARE_ID(numFailures)
 
+    DECLARE_ID(testResultArray)
+        DECLARE_ID(testResultItem)
+            DECLARE_ID(testName)
+            DECLARE_ID(testSubcategoryName)
+            DECLARE_ID(testPassCount)
+            DECLARE_ID(testFailureCount)
+            DECLARE_ID(testFailureMessageArray)
+                DECLARE_ID(testFailureMessageItem)
+                    DECLARE_ID(testFailureMessageText)
+            DECLARE_ID(testStartTime)
+            DECLARE_ID(testEndTime)
+
     #undef DECLARE_ID
 }
 
@@ -463,6 +475,40 @@ private:
             processRequest (r);
     }
 
+    static ValueTree serializeTestResults(const Array<UnitTestRunner::TestResult>& results)
+    {
+        ValueTree testResultArray { IDs::testResultArray };
+        for (const auto& r: results)
+        {
+            ValueTree testFailureMessageArray {
+                IDs::testFailureMessageArray
+            };
+            for (const auto& m: r.messages)
+            {
+                testFailureMessageArray.appendChild(
+                    { IDs::testFailureMessageItem,
+                        { { IDs::testFailureMessageText, m } }
+                    }, nullptr);
+            }
+
+            ValueTree testResultItem { IDs::testResultItem,
+                {
+                    { IDs::testName, r.unitTestName },
+                    { IDs::testSubcategoryName, r.subcategoryName },
+                    { IDs::testPassCount, r.passes },
+                    { IDs::testFailureCount, r.failures },
+                    { IDs::testStartTime, r.startTime.toMilliseconds() },
+                    { IDs::testEndTime, r.endTime.toMilliseconds() },
+                },
+                { testFailureMessageArray }
+            };
+
+            testResultArray.appendChild( testResultItem, nullptr );
+        }
+
+        return testResultArray;
+    }
+
     void processRequest (MemoryBlock mb)
     {
         const ValueTree v (memoryBlockToValueTree (mb));
@@ -535,9 +581,17 @@ private:
                 }
 
                 jassert (fileOrID.isNotEmpty());
-                sendValueTreeToParent ({
-                    IDs::MESSAGE, {{ IDs::type, "result" }, { IDs::fileOrID, fileOrID }, { IDs::numFailures, getNumFailures (results) }}
-                });
+
+                ValueTree result {
+                    IDs::MESSAGE,
+                    {
+                        { IDs::type, "result" },
+                        { IDs::fileOrID, fileOrID },
+                        { IDs::numFailures, getNumFailures (results) }
+                    },
+                    { serializeTestResults( results ) }
+                };
+                sendValueTreeToParent ( result );
             }
         }
 
@@ -567,7 +621,7 @@ public:
     std::function<void (const String&)> logMessageCallback;
 
     // Callback which can be set to be informed when a validation completes
-    std::function<void (const String&, int)> validationCompleteCallback;
+    std::function<void (const String&, int, const Array<UnitTestRunner::TestResult>&)> validationCompleteCallback;
 
     // Callback which can be set to be informed when all validations have been completed
     std::function<void()> completeCallback;
@@ -593,6 +647,55 @@ public:
         return ok ? Result::ok() : Result::fail ("Error: Child failed to launch");
     }
 
+    static Array<UnitTestRunner::TestResult> deserializeTestResults(const ValueTree& testResultArray)
+    {
+        if (!testResultArray.hasType(IDs::testResultArray))
+        {
+            return {};
+        }
+        Array<UnitTestRunner::TestResult> results;
+        for (const auto& testResultItem: testResultArray)
+        {
+            if (!testResultItem.hasType(IDs::testResultItem) ||
+                    !testResultItem.hasProperty(IDs::testName) ||
+                    !testResultItem.hasProperty(IDs::testSubcategoryName) ||
+                    !testResultItem.hasProperty(IDs::testPassCount) ||
+                    !testResultItem.hasProperty(IDs::testFailureCount) ||
+                    !testResultItem.hasProperty(IDs::testStartTime) ||
+                    !testResultItem.hasProperty(IDs::testEndTime)
+                )
+            {
+                continue;
+            }
+            var v;
+            UnitTestRunner::TestResult result;
+            result.unitTestName = testResultItem.getProperty(IDs::testName);
+            result.subcategoryName = testResultItem.getProperty(IDs::testSubcategoryName);
+            result.passes = testResultItem.getProperty(IDs::testPassCount);
+            result.failures = testResultItem.getProperty(IDs::testFailureCount);
+            result.startTime = Time(testResultItem.getProperty(IDs::testStartTime));
+            result.endTime = Time(testResultItem.getProperty(IDs::testEndTime));
+
+            auto testFailureMessageArray = testResultItem.getChildWithName(IDs::testFailureMessageArray);
+            if (!testFailureMessageArray.hasType(IDs::testFailureMessageArray))
+            {
+                continue;
+            }
+            for (const auto& testFailureMessageItem: testFailureMessageArray)
+            {
+                if (!testFailureMessageItem.hasType(IDs::testFailureMessageItem) ||
+                        !testFailureMessageItem.hasProperty(IDs::testFailureMessageText))
+                {
+                    continue;
+                }
+                result.messages.add(testFailureMessageItem.getProperty(IDs::testFailureMessageText));
+            }
+
+            results.add(result);
+        }
+        return results;
+    }
+
     //==============================================================================
     void handleMessageFromSlave (const MemoryBlock& mb) override
     {
@@ -603,19 +706,38 @@ public:
             const auto type = v[IDs::type].toString();
 
             if (logMessageCallback && type == "log")
+            {
                 logMessageCallback (v[IDs::text].toString());
+            }
 
             if (validationCompleteCallback && type == "result")
-                validationCompleteCallback (v[IDs::fileOrID].toString(), v[IDs::numFailures]);
+            {
+                auto results = deserializeTestResults(v.getChildWithName(IDs::testResultArray));
+                for (const auto& r: results)
+                {
+                    std::cout << "TEST:" << r.subcategoryName << std::endl;
+                    for (const auto& m: r.messages)
+                    {
+                        std::cout << "MSG:" << m << std::endl;
+                    }
+                }
+                validationCompleteCallback (v[IDs::fileOrID].toString(), v[IDs::numFailures], results);
+            }
 
             if (validationStartedCallback && type == "started")
+            {
                 validationStartedCallback (v[IDs::fileOrID].toString());
+            }
 
             if (completeCallback && type == "complete")
+            {
                 completeCallback();
+            }
 
             if (type == "connected")
+            {
                 connectionWaiter.signal();
+            }
         }
 
         logMessage ("Received: " + toXmlString (v));
@@ -757,7 +879,7 @@ bool Validator::ensureConnection()
 
         parentProcess->validationStartedCallback    = [this] (const String& id) { listeners.call (&Listener::validationStarted, id); };
         parentProcess->logMessageCallback           = [this] (const String& m) { listeners.call (&Listener::logMessage, m); };
-        parentProcess->validationCompleteCallback   = [this] (const String& id, int numFailures) { listeners.call (&Listener::itemComplete, id, numFailures); };
+        parentProcess->validationCompleteCallback   = [this] (const String& id, int numFailures, const Array<UnitTestRunner::TestResult>& results) { listeners.call (&Listener::itemComplete, id, numFailures, results); };
         parentProcess->completeCallback             = [this] { listeners.call (&Listener::allItemsComplete); triggerAsyncUpdate(); };
 
         const auto result = launchInProcess ? parentProcess->launchInProcess()

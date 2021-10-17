@@ -94,7 +94,7 @@ public:
 
         virtual void validationStarted (const String& idString) = 0;
         virtual void logMessage (const String&) = 0;
-        virtual void itemComplete (const String& idString, int numFailures) = 0;
+        virtual void itemComplete (const String& idString, int numFailures, const Array<UnitTestRunner::TestResult>&) = 0;
         virtual void allItemsComplete() = 0;
         virtual void connectionLost() {}
     };

@@ -2,13 +2,13 @@
 
 #include <JuceHeader.h>
 
-class JUnitWriter
+class JUnitReport
 {
 public:
-    ~JUnitWriter() = default;
+    ~JUnitReport() = default;
 
     static bool write(const HashMap<String, Array<UnitTestRunner::TestResult> > &allResults, File &output);
 
 private:
-    JUnitWriter() = default;
+    JUnitReport() = default;
 };
