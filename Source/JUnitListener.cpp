@@ -15,7 +15,7 @@ void JUnitListener::validationStarted(const String &)
 {
 }
 
-void JUnitListener::logMessage(const String &)
+void JUnitListener::logMessage(const String &m)
 {
 }
 
@@ -30,4 +30,10 @@ void JUnitListener::allItemsComplete()
     {
         JUnitReport::write(results, reportFile);
     }
+}
+
+void JUnitListener::connectionLost()
+{
+    Validator::Listener::connectionLost();
+    // TODO: create report when connection is lost
 }

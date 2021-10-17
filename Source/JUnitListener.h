@@ -13,8 +13,7 @@ private:
     void logMessage (const String& m) override;
     void itemComplete (const String& id, int numItemFailures, const Array<UnitTestRunner::TestResult>& itemResults) override;
     void allItemsComplete() override;
-    // void connectionLost() override;
-
+    void connectionLost() override;
 
     File reportFile;
     HashMap<String, Array<UnitTestRunner::TestResult>> results;

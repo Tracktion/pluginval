@@ -3,7 +3,7 @@
 namespace
 {
 
-XmlElement* createTestCase(const String& pluginName, const UnitTestRunner::TestResult& r)
+XmlElement* createTestCaseElement(const String& pluginName, const UnitTestRunner::TestResult& r)
 {
     auto testcase = new XmlElement("testcase");
 
@@ -48,7 +48,7 @@ bool JUnitReport::write(const HashMap<String, Array<UnitTestRunner::TestResult>>
 
         for (const auto& r: results)
         {
-            auto testcase = createTestCase(pluginName, r);
+            auto testcase = createTestCaseElement(pluginName, r);
             // add test case to test suite
             testsuite->prependChildElement(testcase);
 
@@ -56,8 +56,6 @@ bool JUnitReport::write(const HashMap<String, Array<UnitTestRunner::TestResult>>
             failures += r.failures;
             passes += r.passes;
             time += (r.endTime - r.startTime).inMilliseconds();
-
-            // increment count
             count++;
         }
 
