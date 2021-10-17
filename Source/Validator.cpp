@@ -273,6 +273,15 @@ namespace IDs
     #undef DECLARE_ID
 }
 
+namespace MessageTypes
+{
+    const String result = "result";
+    const String log = "log";
+    const String started = "started";
+    const String complete = "complete";
+    const String connected = "connected";
+}
+
 //==============================================================================
 // This is a token that's used at both ends of our parent-child processes, to
 // act as a unique token in the command line arguments.
@@ -331,7 +340,7 @@ public:
         isConnected = isNowConnected;
 
         if (isConnected)
-            sendValueTreeToParent ({ IDs::MESSAGE, {{ IDs::type, "connected" }} });
+            sendValueTreeToParent ({ IDs::MESSAGE, {{ IDs::type, MessageTypes::connected }} });
     }
 
     void setParentProcess (ChildProcessMaster* newParent)
@@ -395,7 +404,7 @@ private:
             }
 
             if (owner.isConnected && ! messagesToSend.isEmpty())
-                owner.sendValueTreeToParent ({ IDs::MESSAGE, {{ IDs::type, "log" }, { IDs::text, messagesToSend.joinIntoString ("\n") }} }, false);
+                owner.sendValueTreeToParent ({ IDs::MESSAGE, {{ IDs::type, MessageTypes::log }, { IDs::text, messagesToSend.joinIntoString ("\n") }} }, false);
         }
 
         ValidatorChildProcess& owner;
@@ -540,7 +549,7 @@ private:
                 {
                     fileOrID = c[IDs::fileOrID].toString();
                     sendValueTreeToParent ({
-                        IDs::MESSAGE, {{ IDs::type, "started" }, { IDs::fileOrID, fileOrID }}
+                        IDs::MESSAGE, {{ IDs::type, MessageTypes::started }, { IDs::fileOrID, fileOrID }}
                     });
 
                     results = validate (c[IDs::fileOrID].toString(), options, [this] (const String& m) { logMessage (m); });
@@ -559,7 +568,7 @@ private:
                             {
                                 fileOrID = pd.createIdentifierString();
                                 sendValueTreeToParent ({
-                                    IDs::MESSAGE, {{ IDs::type, "started" }, { IDs::fileOrID, fileOrID }}
+                                    IDs::MESSAGE, {{ IDs::type, MessageTypes::started }, { IDs::fileOrID, fileOrID }}
                                 });
 
                                 results = validate (pd, options, [this] (const String& m) { logMessage (m); });
@@ -585,7 +594,7 @@ private:
                 ValueTree result {
                     IDs::MESSAGE,
                     {
-                        { IDs::type, "result" },
+                        { IDs::type, MessageTypes::result },
                         { IDs::fileOrID, fileOrID },
                         { IDs::numFailures, getNumFailures (results) }
                     },
@@ -596,7 +605,7 @@ private:
         }
 
         sendValueTreeToParent ({
-            IDs::MESSAGE, {{ IDs::type, "complete" }}
+            IDs::MESSAGE, {{ IDs::type, MessageTypes::complete }}
         });
     }
 };
@@ -705,28 +714,28 @@ public:
         {
             const auto type = v[IDs::type].toString();
 
-            if (logMessageCallback && type == "log")
+            if (logMessageCallback && type == MessageTypes::log)
             {
                 logMessageCallback (v[IDs::text].toString());
             }
 
-            if (validationCompleteCallback && type == "result")
+            if (validationCompleteCallback && type == MessageTypes::result)
             {
                 auto results = deserializeTestResults(v.getChildWithName(IDs::testResultArray));
                 validationCompleteCallback (v[IDs::fileOrID].toString(), v[IDs::numFailures], results);
             }
 
-            if (validationStartedCallback && type == "started")
+            if (validationStartedCallback && type == MessageTypes::started)
             {
                 validationStartedCallback (v[IDs::fileOrID].toString());
             }
 
-            if (completeCallback && type == "complete")
+            if (completeCallback && type == MessageTypes::complete)
             {
                 completeCallback();
             }
 
-            if (type == "connected")
+            if (type == MessageTypes::connected)
             {
                 connectionWaiter.signal();
             }
