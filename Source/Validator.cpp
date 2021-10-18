@@ -676,7 +676,6 @@ public:
             {
                 continue;
             }
-            var v;
             UnitTestRunner::TestResult result;
             result.unitTestName = testResultItem.getProperty(IDs::testName);
             result.subcategoryName = testResultItem.getProperty(IDs::testSubcategoryName);

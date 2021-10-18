@@ -2,13 +2,9 @@
 
 #include <JuceHeader.h>
 
-class JUnitReport
+namespace JUnitReport
 {
-public:
-    ~JUnitReport() = default;
 
-    static bool write(const HashMap<String, Array<UnitTestRunner::TestResult> > &allResults, File &output);
+bool write(const HashMap<String, Array<UnitTestRunner::TestResult> > &allResults, File &output);
 
-private:
-    JUnitReport() = default;
-};
+} // namespace JUnitReport

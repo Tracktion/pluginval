@@ -1,6 +1,6 @@
 #include "JUnitReport.h"
 
-namespace
+namespace JUnitReport
 {
 
 XmlElement* createTestCaseElement(const String& pluginName, const UnitTestRunner::TestResult& r)
@@ -25,26 +25,39 @@ XmlElement* createTestCaseElement(const String& pluginName, const UnitTestRunner
     return testcase;
 }
 
+XmlElement* createTestSuiteElement(const String& pluginName)
+{
+    auto testsuite = new XmlElement("testsuite");
+    testsuite->setAttribute("package", "pluginval");
+    testsuite->setAttribute("name", "pluginval of " + pluginName + " on " + SystemStats::getOperatingSystemName());
+    return testsuite;
 }
 
-bool JUnitReport::write(const HashMap<String, Array<UnitTestRunner::TestResult>> &allResults, File &output)
+void addTestsStats(XmlElement* element, int tests, int failures, int64 duration)
+{
+    element->setAttribute("tests", tests);
+    element->setAttribute("failures", failures);
+    element->setAttribute("time", duration / 1000.0);
+}
+
+bool write(const HashMap<String, Array<UnitTestRunner::TestResult>> &allResults, File &output)
 {
     XmlElement testsuites("testsuites");
+    testsuites.setAttribute("name", "pluginval test suites");
 
     int total_failures = 0;
-    int64 total_time = 0;
-    int total_count = 0;
+    int total_tests = 0;
+    int64 total_duration = 0;
     for (auto it = allResults.begin(); it != allResults.end(); ++it)
     {
-        const auto& results = it.getValue();
+        const auto results = it.getValue();
         auto pluginName = File(it.getKey()).getFileName();
 
-        auto testsuite = new XmlElement("testsuite");
+        int suite_failures = 0;
+        int64 suite_duration = 0;
+        int suite_tests = results.size();
 
-        int failures = 0;
-        int passes = 0;
-        int64 time = 0;
-        int count = 0;
+        auto testsuite = createTestSuiteElement(pluginName);
 
         for (const auto& r: results)
         {
@@ -53,30 +66,23 @@ bool JUnitReport::write(const HashMap<String, Array<UnitTestRunner::TestResult>>
             testsuite->prependChildElement(testcase);
 
             // calculate totals for test suite
-            failures += r.failures;
-            passes += r.passes;
-            time += (r.endTime - r.startTime).inMilliseconds();
-            count++;
+            suite_failures += r.failures;
+            suite_duration += (r.endTime - r.startTime).inMilliseconds();
         }
 
-        testsuite->setAttribute("package", "pluginval");
-        testsuite->setAttribute("name", "pluginval of " + pluginName + " on " + SystemStats::getOperatingSystemName());
-        testsuite->setAttribute("tests", count);
-        testsuite->setAttribute("failures", failures);
-        testsuite->setAttribute("time", time / 1000.0);
+        addTestsStats(testsuite, suite_tests, suite_failures, suite_duration);
 
         testsuites.prependChildElement(testsuite);
 
         // accumulate totals for all test suites
-        total_failures += failures;
-        total_time += time;
-        total_count += count;
+        total_failures += suite_failures;
+        total_duration += suite_duration;
+        total_tests += suite_tests;
     }
 
-    testsuites.setAttribute("name", "pluginval test suites");
-    testsuites.setAttribute("tests", total_count);
-    testsuites.setAttribute("failures", total_failures);
-    testsuites.setAttribute("time", total_time / 1000.0);
+    addTestsStats(&testsuites, total_tests, total_failures, total_duration);
 
     return testsuites.writeTo(output);
 }
+
+} // namespace JUnitReport

@@ -15,7 +15,7 @@ void JUnitListener::validationStarted(const String &)
 {
 }
 
-void JUnitListener::logMessage(const String &m)
+void JUnitListener::logMessage(const String &)
 {
 }
 
