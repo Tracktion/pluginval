@@ -83,7 +83,7 @@ void CommandLineValidator::logMessage (const String& m)
     std::cout << m << "\n";
 }
 
-void CommandLineValidator::itemComplete (const String& id, int numItemFailures, const Array<UnitTestRunner::TestResult>&)
+void CommandLineValidator::itemComplete (const String& id, int numItemFailures, const UnitTestResultsWithOutput&)
 {
     logMessage ("\nFinished validating: " + id);
 

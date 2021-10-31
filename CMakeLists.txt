@@ -61,6 +61,7 @@ set(SourceFiles
     Source/JUnitReport.h
     Source/JUnitListener.cpp
     Source/JUnitListener.h
+    Source/CommonTypes.h
     )
 
 target_sources(pluginval PRIVATE ${SourceFiles})

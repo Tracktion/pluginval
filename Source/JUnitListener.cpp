@@ -19,7 +19,7 @@ void JUnitListener::logMessage(const String &)
 {
 }
 
-void JUnitListener::itemComplete(const String &id, int, const Array<UnitTestRunner::TestResult> &itemResults)
+void JUnitListener::itemComplete(const String &id, int, const UnitTestResultsWithOutput &itemResults)
 {
     results.set(id, itemResults);
 }

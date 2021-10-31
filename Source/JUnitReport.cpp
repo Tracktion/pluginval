@@ -3,22 +3,36 @@
 namespace JUnitReport
 {
 
-XmlElement* createTestCaseElement(const String& pluginName, const UnitTestRunner::TestResult& r)
+XmlElement* createTestCaseElement(const String& pluginName, const std::pair<UnitTestRunner::TestResult, StringArray>& r)
 {
     auto testcase = new XmlElement("testcase");
 
+    testcase->setAttribute("classname", r.first.unitTestName);
+#if defined(USE_FILENAME_IN_JUNIT_REPORT)
     testcase->setAttribute("name", r.subcategoryName);
-    testcase->setAttribute("classname", r.unitTestName);
     testcase->setAttribute("file", pluginName);
+#else
+    testcase->setAttribute("name", r.first.subcategoryName + " of " + pluginName);
+#endif
 
-    auto duration = (r.endTime - r.startTime).inMilliseconds();
+    auto duration = (r.first.endTime - r.first.startTime).inMilliseconds();
     testcase->setAttribute("time", duration / 1000.0);
 
-    for (const auto& m: r.messages)
+    if (r.first.messages.isEmpty())
     {
+        // Passed test case
+        auto output = new XmlElement("system-out");
+        output->addTextElement(r.second.joinIntoString("\n"));
+
+        testcase->prependChildElement(output);
+    }
+    else
+    {
+        // Failing test case
         auto failure = new XmlElement("failure");
         failure->setAttribute("type", "ERROR");
-        failure->setAttribute("message", m);
+        failure->setAttribute("message", r.first.messages.joinIntoString(" "));
+        failure->addTextElement(r.second.joinIntoString("\n"));
 
         testcase->prependChildElement(failure);
     }
@@ -40,7 +54,7 @@ void addTestsStats(XmlElement* element, int tests, int failures, int64 duration)
     element->setAttribute("time", duration / 1000.0);
 }
 
-bool write(const HashMap<String, Array<UnitTestRunner::TestResult>> &allResults, File &output)
+bool write(const HashMap<String, UnitTestResultsWithOutput> &allResults, File &output)
 {
     XmlElement testsuites("testsuites");
     testsuites.setAttribute("name", "pluginval test suites");
@@ -51,7 +65,7 @@ bool write(const HashMap<String, Array<UnitTestRunner::TestResult>> &allResults,
     for (auto it = allResults.begin(); it != allResults.end(); ++it)
     {
         const auto results = it.getValue();
-        auto pluginName = File(it.getKey()).getFileName();
+        auto pluginName = it.getKey();
 
         int suite_failures = 0;
         int64 suite_duration = 0;
@@ -66,8 +80,8 @@ bool write(const HashMap<String, Array<UnitTestRunner::TestResult>> &allResults,
             testsuite->prependChildElement(testcase);
 
             // calculate totals for test suite
-            suite_failures += r.failures;
-            suite_duration += (r.endTime - r.startTime).inMilliseconds();
+            suite_failures += r.first.failures;
+            suite_duration += (r.first.endTime - r.first.startTime).inMilliseconds();
         }
 
         addTestsStats(testsuite, suite_tests, suite_failures, suite_duration);
