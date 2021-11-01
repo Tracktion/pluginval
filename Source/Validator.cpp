@@ -210,10 +210,10 @@ void updateFileNameIfPossible (PluginTests& test, PluginsUnitTestRunner& runner)
 
 //==============================================================================
 //==============================================================================
-inline UnitTestResultsWithOutput runTests (PluginTests& test, std::function<void (const String&)> callback)
+inline PluginTestResultArray runTests (PluginTests& test, std::function<void (const String&)> callback)
 {
     const auto options = test.getOptions();
-    UnitTestResultsWithOutput results;
+    PluginTestResultArray results;
     PluginsUnitTestRunner testRunner (std::move (callback), createDestinationFileStream (test), options.timeoutMs);
     testRunner.setAssertOnFailure (false);
 
@@ -223,7 +223,7 @@ inline UnitTestResultsWithOutput runTests (PluginTests& test, std::function<void
 
     for (int i = 0; i < testRunner.getNumResults(); ++i)
     {
-        results.add(std::make_pair(*testRunner.getResult (i), testRunner.getTestOutput(i)));
+        results.add({ *testRunner.getResult(i), testRunner.getTestOutput(i) });
     }
 
     updateFileNameIfPossible (test, testRunner);
@@ -231,22 +231,22 @@ inline UnitTestResultsWithOutput runTests (PluginTests& test, std::function<void
     return results;
 }
 
-inline UnitTestResultsWithOutput validate (const PluginDescription& pluginToValidate, PluginTests::Options options, std::function<void (const String&)> callback)
+inline PluginTestResultArray validate (const PluginDescription& pluginToValidate, PluginTests::Options options, std::function<void (const String&)> callback)
 {
     PluginTests test (pluginToValidate, options);
     return runTests (test, std::move (callback));
 }
 
-inline UnitTestResultsWithOutput validate (const String& fileOrIDToValidate, PluginTests::Options options, std::function<void (const String&)> callback)
+inline PluginTestResultArray validate (const String& fileOrIDToValidate, PluginTests::Options options, std::function<void (const String&)> callback)
 {
     PluginTests test (fileOrIDToValidate, options);
     return runTests (test, std::move (callback));
 }
 
-inline int getNumFailures (const UnitTestResultsWithOutput& results)
+inline int getNumFailures (const PluginTestResultArray& results)
 {
     return std::accumulate (results.begin(), results.end(), 0,
-                            [] (int count, const auto& r) { return count + r.first.failures; });
+                            [] (int count, const auto& r) { return count + r.result.failures; });
 }
 
 //==============================================================================
@@ -506,7 +506,7 @@ private:
             processRequest (r);
     }
 
-    static ValueTree serializeTestResults(const UnitTestResultsWithOutput& results)
+    static ValueTree serializeTestResults(const PluginTestResultArray& results)
     {
         ValueTree testResultArray { IDs::testResultArray };
         for (const auto& r: results)
@@ -522,20 +522,20 @@ private:
 
             ValueTree testFailureMessageArray { IDs::testFailureMessageArray };
 
-            add_messages(r.first.messages, IDs::testFailureMessageItem, IDs::testFailureMessageText, testFailureMessageArray);
+            add_messages(r.result.messages, IDs::testFailureMessageItem, IDs::testFailureMessageText, testFailureMessageArray);
 
             ValueTree testOutputMessageArray { IDs::testOutputMessageArray };
 
-            add_messages(r.second, IDs::testOutputMessageItem, IDs::testOutputMessageText, testOutputMessageArray);
+            add_messages(r.output, IDs::testOutputMessageItem, IDs::testOutputMessageText, testOutputMessageArray);
 
             ValueTree testResultItem { IDs::testResultItem,
                 {
-                    { IDs::testName, r.first.unitTestName },
-                    { IDs::testSubcategoryName, r.first.subcategoryName },
-                    { IDs::testPassCount, r.first.passes },
-                    { IDs::testFailureCount, r.first.failures },
-                    { IDs::testStartTime, r.first.startTime.toMilliseconds() },
-                    { IDs::testEndTime, r.first.endTime.toMilliseconds() },
+                    { IDs::testName, r.result.unitTestName },
+                    { IDs::testSubcategoryName, r.result.subcategoryName },
+                    { IDs::testPassCount, r.result.passes },
+                    { IDs::testFailureCount, r.result.failures },
+                    { IDs::testStartTime, r.result.startTime.toMilliseconds() },
+                    { IDs::testEndTime, r.result.endTime.toMilliseconds() },
                 },
                 { testFailureMessageArray, testOutputMessageArray }
             };
@@ -570,7 +570,7 @@ private:
             for (auto c : v)
             {
                 String fileOrID;
-                UnitTestResultsWithOutput results;
+                PluginTestResultArray results;
                 LOG_CHILD("processRequest - child:\n" + toXmlString (c));
 
                 if (c.hasProperty (IDs::fileOrID))
@@ -658,7 +658,7 @@ public:
     std::function<void (const String&)> logMessageCallback;
 
     // Callback which can be set to be informed when a validation completes
-    std::function<void (const String&, int, const UnitTestResultsWithOutput&)> validationCompleteCallback;
+    std::function<void (const String&, int, const PluginTestResultArray&)> validationCompleteCallback;
 
     // Callback which can be set to be informed when all validations have been completed
     std::function<void()> completeCallback;
@@ -684,13 +684,13 @@ public:
         return ok ? Result::ok() : Result::fail ("Error: Child failed to launch");
     }
 
-    static UnitTestResultsWithOutput deserializeTestResults(const ValueTree& testResultArray)
+    static PluginTestResultArray deserializeTestResults(const ValueTree& testResultArray)
     {
         if (!testResultArray.hasType(IDs::testResultArray))
         {
             return {};
         }
-        UnitTestResultsWithOutput results;
+        PluginTestResultArray results;
         for (const auto& testResultItem: testResultArray)
         {
             if (!testResultItem.hasType(IDs::testResultItem) ||
@@ -736,7 +736,7 @@ public:
             add_messages(IDs::testOutputMessageArray, IDs::testOutputMessageItem,
                          IDs::testOutputMessageText, output);
 
-            results.add(std::make_pair(result, output));
+            results.add( { result, output } );
         }
         return results;
     }
@@ -916,7 +916,7 @@ bool Validator::ensureConnection()
 
         parentProcess->validationStartedCallback    = [this] (const String& id) { listeners.call (&Listener::validationStarted, id); };
         parentProcess->logMessageCallback           = [this] (const String& m) { listeners.call (&Listener::logMessage, m); };
-        parentProcess->validationCompleteCallback   = [this] (const String& id, int numFailures, const UnitTestResultsWithOutput& results) { listeners.call (&Listener::itemComplete, id, numFailures, results); };
+        parentProcess->validationCompleteCallback   = [this] (const String& id, int numFailures, const PluginTestResultArray& results) { listeners.call (&Listener::itemComplete, id, numFailures, results); };
         parentProcess->completeCallback             = [this] { listeners.call (&Listener::allItemsComplete); triggerAsyncUpdate(); };
 
         const auto result = launchInProcess ? parentProcess->launchInProcess()

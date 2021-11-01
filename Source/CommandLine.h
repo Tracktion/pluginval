@@ -15,7 +15,7 @@
 #pragma once
 
 #include <JuceHeader.h>
-#include "CommonTypes.h"
+#include "PluginTestResult.h"
 #include "Validator.h"
 #include "JUnitListener.h"
 
@@ -37,7 +37,7 @@ private:
 
     void validationStarted (const String&) override;
     void logMessage (const String& m) override;
-    void itemComplete (const String&, int numItemFailures, const UnitTestResultsWithOutput&) override;
+    void itemComplete (const String&, int numItemFailures, const PluginTestResultArray&) override;
     void allItemsComplete() override;
     void connectionLost() override;
 };

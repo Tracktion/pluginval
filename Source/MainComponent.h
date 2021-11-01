@@ -15,7 +15,7 @@
 #pragma once
 
 #include <JuceHeader.h>
-#include "CommonTypes.h"
+#include "PluginTestResult.h"
 #include "Validator.h"
 #include "CrashHandler.h"
 
@@ -92,7 +92,7 @@ private:
     {
     }
 
-    void itemComplete (const String&, int, const UnitTestResultsWithOutput&) override
+    void itemComplete (const String&, int, const PluginTestResultArray&) override
     {
     }
 
@@ -195,7 +195,7 @@ private:
         std::cout << m << "\n";
     }
 
-    void itemComplete (const String& id, int numFailures, const UnitTestResultsWithOutput&) override
+    void itemComplete (const String& id, int numFailures, const PluginTestResultArray&) override
     {
         logMessage ("\nFinished validating: " + id);
 
