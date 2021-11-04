@@ -17,8 +17,8 @@ XmlElement* createTestCaseElement(const String& pluginName, int testIndex, const
     testcase->setAttribute("name", "Test " + String(testIndex + 1) + ": " + r.result.subcategoryName + " of " + pluginName);
 #endif
 
-    auto duration = (r.result.endTime - r.result.startTime).inMilliseconds();
-    testcase->setAttribute("time", duration / 1000.0);
+    auto duration = (r.result.endTime - r.result.startTime).inMilliseconds() / 1000.0;
+    testcase->setAttribute("time", duration);
 
     String output = r.output.joinIntoString("\n");
     if (r.result.messages.isEmpty())
