@@ -8,6 +8,8 @@ XmlElement* createTestCaseElement(const String& pluginName, int testIndex, const
     auto testcase = new XmlElement("testcase");
 
     testcase->setAttribute("classname", r.result.unitTestName);
+
+    // Adding test index here to have unique name for each test case execution
 #if defined(USE_FILENAME_IN_JUNIT_REPORT)
     testcase->setAttribute("name", "Test " + String(testIndex + 1) + ": " + r.subcategoryName);
     testcase->setAttribute("file", pluginName);
@@ -78,7 +80,6 @@ bool write(const HashMap<String, PluginTestResultArray> &allResults, File &outpu
         for (const auto& r: results)
         {
             auto testcase = createTestCaseElement(pluginName, test_index, r);
-            // add test case to test suite
             testsuite->prependChildElement(testcase);
 
             // calculate totals for test suite
