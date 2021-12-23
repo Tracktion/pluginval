@@ -15,6 +15,7 @@
 #pragma once
 
 #include <JuceHeader.h>
+#include "PluginTestResult.h"
 #include "PluginTests.h"
 
 #ifndef LOG_PIPE_COMMUNICATION
@@ -94,7 +95,7 @@ public:
 
         virtual void validationStarted (const String& idString) = 0;
         virtual void logMessage (const String&) = 0;
-        virtual void itemComplete (const String& idString, int numFailures) = 0;
+        virtual void itemComplete (const String& idString, int numFailures, const PluginTestResultArray&) = 0;
         virtual void allItemsComplete() = 0;
         virtual void connectionLost() {}
     };

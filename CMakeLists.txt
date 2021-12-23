@@ -56,7 +56,13 @@ set(SourceFiles
     Source/tests/BusTests.cpp
     Source/tests/ParameterFuzzTests.cpp
     Source/TestUtilities.cpp
-    Source/Validator.cpp)
+    Source/Validator.cpp
+    Source/JUnitReport.cpp
+    Source/JUnitReport.h
+    Source/JUnitListener.cpp
+    Source/JUnitListener.h
+    Source/PluginTestResult.h
+    )
 
 target_sources(pluginval PRIVATE ${SourceFiles})
 source_group(TREE ${CMAKE_CURRENT_SOURCE_DIR}/Source PREFIX Source FILES ${SourceFiles})

@@ -49,6 +49,8 @@ CommandLineValidator::CommandLineValidator()
 {
     validator.addChangeListener (this);
     validator.addListener (this);
+
+    validator.addListener(&junitListener);
 }
 
 CommandLineValidator::~CommandLineValidator()
@@ -57,6 +59,8 @@ CommandLineValidator::~CommandLineValidator()
 
 void CommandLineValidator::validate (const StringArray& fileOrIDs, PluginTests::Options options, bool validateInProcess)
 {
+    junitListener.setReportFile(options.junitReportFile);
+
     validator.setValidateInProcess (validateInProcess);
     validator.validate (fileOrIDs, options);
 }
@@ -79,7 +83,7 @@ void CommandLineValidator::logMessage (const String& m)
     std::cout << m << "\n";
 }
 
-void CommandLineValidator::itemComplete (const String& id, int numItemFailures)
+void CommandLineValidator::itemComplete (const String& id, int numItemFailures, const PluginTestResultArray&)
 {
     logMessage ("\nFinished validating: " + id);
 
@@ -217,6 +221,11 @@ StringArray getDisabledTest (const ArgumentList& args)
     return disabledTests;
 }
 
+File getJunitReportFile (const ArgumentList& args)
+{
+    return getOptionValue (args, "--junit-report-file", {}, "Missing junit-report-file path argument!").toString();
+}
+
 //==============================================================================
 String parseCommandLineArgs (String commandLine)
 {
@@ -332,6 +341,8 @@ static String getHelpMessage()
          << "    If specified, sets the list of sample rates at which tests will be executed (default=44100,48000,96000)" << newLine
          << "  --block-sizes [list of comma separated block sizes]" << newLine
          << "    If specified, sets the list of block sizes at which tests will be executed (default=64,128,256,512,1024)" << newLine
+         << "  --junit-report-file [output filename]" << newLine
+         << "    If specified, creates JUnit report" << newLine
          << "  --version" << newLine
          << "    Print pluginval version." << newLine
          << newLine
@@ -394,6 +405,7 @@ static void validate (CommandLineValidator& validator, const ArgumentList& args)
         options.disabledTests = getDisabledTest (args);
         options.sampleRates = getSampleRates (args);
         options.blockSizes = getBlockSizes (args);
+        options.junitReportFile = getJunitReportFile(args);
 
         validator.validate (fileOrIDs,
                             options,
