@@ -21,9 +21,8 @@ XmlElement* createTestCaseElement(const String& pluginName, int testIndex, const
     testcase->setAttribute("time", duration);
 
     String output = r.output.joinIntoString("\n");
-    if (r.result.messages.isEmpty())
+    if (r.result.failures == 0)
     {
-        // Passed test case
         auto system_out = new XmlElement("system-out");
         system_out->addTextElement(output);
 
@@ -31,7 +30,6 @@ XmlElement* createTestCaseElement(const String& pluginName, int testIndex, const
     }
     else
     {
-        // Failing test case
         auto failure = new XmlElement("failure");
         failure->setAttribute("type", "ERROR");
         failure->setAttribute("message", r.result.messages.joinIntoString(" "));
