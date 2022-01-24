@@ -19,17 +19,23 @@ In these examples the following is assumed:
 ```sh
 $ curl -L "https://github.com/Tracktion/pluginval/releases/latest/download/pluginval_macOS.zip" -o pluginval.zip
 $ unzip pluginval
-$ pluginval.app/Contents/MacOS/pluginval --validate-in-process --output-dir "./bin" --validate "<path_to_plugin>" || exit 1
+$ pluginval.app/Contents/MacOS/pluginval --validate-in-process --output-dir "./bin" --validate "<path_to_plugin>"
 ```
 
 ##### Linux
+
+Be sure to specify `--skip-gui-tests` if you are running headless on linux (otherwise pluginval will crash).
+
 ```sh
 $ curl -L "https://github.com/Tracktion/pluginval/releases/latest/download/pluginval_Linux.zip" -o pluginval.zip
 $ unzip pluginval
-$ ./pluginval --validate-in-process --output-dir "./bin" --validate "<path_to_plugin>" || exit 1
+$ ./pluginval --validate-in-process --skip-gui-tests --output-dir "./bin" --validate "<path_to_plugin>"
 ```
 
 ##### Windows
+
+Note: On GitHub actions you must specify `shell: cmd`, as it will otherwise default to powershell. 
+
 ```sh
 > powershell -Command "[Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12; Invoke-WebRequest https://github.com/Tracktion/pluginval/releases/latest/download/pluginval_Windows.zip -OutFile pluginval.zip"
 > powershell -Command "Expand-Archive pluginval.zip -DestinationPath ."
