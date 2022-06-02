@@ -293,7 +293,7 @@ static String toXmlString (const ValueTree& v)
 /*  This class gets instantiated in the child process, and receives messages from
     the parent process.
 */
-class ValidatorChildProcess : public ChildProcessSlave,
+class ValidatorChildProcess : public ChildProcessWorker,
                               private Thread,
                               private DeletedAtShutdown
 {
@@ -322,7 +322,7 @@ public:
             sendValueTreeToParent ({ IDs::MESSAGE, {{ IDs::type, "connected" }} });
     }
 
-    void setParentProcess (ChildProcessMaster* newParent)
+    void setParentProcess (ChildProcessCoordinator* newParent)
     {
         parent = newParent;
         setConnected (parent != nullptr);
@@ -395,7 +395,7 @@ private:
     std::vector<MemoryBlock> requestsToProcess;
     std::atomic<bool> isConnected { false };
     LogMessagesSender logMessagesSender { *this };
-    ChildProcessMaster* parent = nullptr;
+    ChildProcessCoordinator* parent = nullptr;
 
     void logMessage (const String& m)
     {
@@ -409,12 +409,12 @@ private:
 
         if (parent != nullptr)
         {
-            parent->handleMessageFromSlave (valueTreeToMemoryBlock (v));
+            parent->handleMessageFromWorker (valueTreeToMemoryBlock (v));
             return;
         }
 
         LOG_TO_PARENT(toXmlString (v));
-        sendMessageToMaster (valueTreeToMemoryBlock (v));
+        sendMessageToCoordinator (valueTreeToMemoryBlock (v));
     }
 
     void run() override
@@ -548,7 +548,7 @@ private:
 };
 
 //==============================================================================
-class ValidatorParentProcess    : public ChildProcessMaster
+class ValidatorParentProcess    : public ChildProcessCoordinator
 {
 public:
     ValidatorParentProcess() = default;
@@ -584,7 +584,7 @@ public:
     Result launch()
     {
         // Make sure we send 0 as the streamFlags args or the pipe can hang during DBG messages
-        const bool ok = launchSlaveProcess (File::getSpecialLocation (File::currentExecutableFile),
+        const bool ok = launchWorkerProcess (File::getSpecialLocation (File::currentExecutableFile),
                                             validatorCommandLineUID, 2000, 0);
 
         if (! connectionWaiter.wait (5000))
@@ -690,7 +690,7 @@ private:
 
         logMessage ("Sending: " + toXmlString (v));
 
-        if (! sendMessageToSlave (valueTreeToMemoryBlock (v)))
+        if (! sendMessageToWorker (valueTreeToMemoryBlock (v)))
             logMessage ("...failed");
     }
 
