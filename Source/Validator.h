@@ -54,6 +54,9 @@ struct VariantConverter<std::vector<T>>
 };
 }// namespace juce
 
+// Defined in Main.cpp, used to create the file logger as early as possible
+void childInitialised();
+
 class ValidatorParentProcess;
 
 //==============================================================================

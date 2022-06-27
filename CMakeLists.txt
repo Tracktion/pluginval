@@ -34,7 +34,7 @@ juce_add_gui_app(pluginval
 
 juce_generate_juce_header(pluginval)
 
-target_compile_features(pluginval PRIVATE cxx_std_14)
+target_compile_features(pluginval PRIVATE cxx_std_17)
 
 set_target_properties(pluginval PROPERTIES
     C_VISIBILITY_PRESET hidden

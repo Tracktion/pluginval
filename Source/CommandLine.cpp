@@ -18,7 +18,7 @@
 
 
 //==============================================================================
-void exitWithError (const String& error)
+static void exitWithError (const String& error)
 {
     std::cout << error << std::endl << std::endl;
     JUCEApplication::getInstance()->setApplicationReturnValue (1);
@@ -39,11 +39,12 @@ static String& getCurrentID()
     return currentID;
 }
 
-void setCurrentID (const String& currentID)
+static void setCurrentID (const String& currentID)
 {
     getCurrentID() = currentID;
 }
 
+//==============================================================================
 //==============================================================================
 CommandLineValidator::CommandLineValidator()
 {
@@ -111,114 +112,117 @@ void CommandLineValidator::connectionLost()
 
 
 //==============================================================================
-static inline ArgumentList::Argument getArgumentAfterOption (const ArgumentList& args, StringRef option)
+namespace
 {
-    for (int i = 0; i < args.size() - 1; ++i)
-        if (args[i] == option)
-            return args[i + 1];
-
-    return {};
-}
-
-static var getOptionValue (const ArgumentList& args, StringRef option, var defaultValue, StringRef errorMessage)
-{
-    if (args.containsOption (option))
+    ArgumentList::Argument getArgumentAfterOption (const ArgumentList& args, StringRef option)
     {
-        const auto nextArg = getArgumentAfterOption (args, option);
+        for (int i = 0; i < args.size() - 1; ++i)
+            if (args[i] == option)
+                return args[i + 1];
 
-        if (nextArg.isShortOption() || nextArg.isLongOption())
-            ConsoleApplication::fail (errorMessage, -1);
-
-        return nextArg.text;
+        return {};
     }
 
-    return defaultValue;
-}
-
-static int getStrictnessLevel (const ArgumentList& args)
-{
-    return jlimit (1, 10, (int) getOptionValue (args, "--strictness-level", 5, "Missing strictness level argument! (Must be between 1 - 10)"));
-}
-
-int64 getRandomSeed (const ArgumentList& args)
-{
-    const String seedString = getOptionValue (args, "--random-seed", "0", "Missing random seed argument!").toString();
-
-    if (! seedString.containsOnly ("x-0123456789acbdef"))
-        ConsoleApplication::fail ("Invalid random seed argument!", -1);
-
-    if (seedString.startsWith ("0x"))
-        return seedString.getHexValue64();
-
-    return seedString.getLargeIntValue();
-}
-
-static int64 getTimeout (const ArgumentList& args)
-{
-    return getOptionValue (args, "--timeout-ms", 30000, "Missing timeout-ms level argument!");
-}
-
-static int getNumRepeats (const ArgumentList& args)
-{
-    return jmax (1, (int) getOptionValue (args, "--repeat", 1, "Missing repeat argument! (Must be greater than 0)"));
-}
-
-File getDataFile (const ArgumentList& args)
-{
-    return getOptionValue (args, "--data-file", {}, "Missing data-file path argument!").toString();
-}
-
-File getOutputDir (const ArgumentList& args)
-{
-    return getOptionValue (args, "--output-dir", {}, "Missing output-dir path argument!").toString();
-}
-
-std::vector<double> getSampleRates (const ArgumentList& args)
-{
-    StringArray input = StringArray::fromTokens (getOptionValue (args,
-                                                                 "--sample-rates",
-                                                                 String ("44100,48000,96000"),
-                                                                 "Missing sample rate list argument!")
-                                                     .toString(),
-                                                 ",",
-                                                 "\"");
-    std::vector<double> output;
-    for (String sr : input)
+    var getOptionValue (const ArgumentList& args, StringRef option, var defaultValue, StringRef errorMessage)
     {
-        output.push_back (sr.getDoubleValue());
-    }
-    return output;
-}
+        if (args.containsOption (option))
+        {
+            const auto nextArg = getArgumentAfterOption (args, option);
 
-std::vector<int> getBlockSizes (const ArgumentList& args)
-{
-    StringArray input = StringArray::fromTokens (getOptionValue (args,
-                                                                 "--block-sizes",
-                                                                 String ("64,128,256,512,1024"),
-                                                                 "Missing block size list argument!")
-                                                     .toString(),
-                                                 ",",
-                                                 "\"");
-    std::vector<int> output;
-    for (String sr : input)
+            if (nextArg.isShortOption() || nextArg.isLongOption())
+                ConsoleApplication::fail (errorMessage, -1);
+
+            return nextArg.text;
+        }
+
+        return defaultValue;
+    }
+
+    int getStrictnessLevel (const ArgumentList& args)
     {
-        output.push_back (sr.getIntValue());
+        return jlimit (1, 10, (int) getOptionValue (args, "--strictness-level", 5, "Missing strictness level argument! (Must be between 1 - 10)"));
     }
-    return output;
-}
 
-StringArray getDisabledTest (const ArgumentList& args)
-{
-    const File disabledTestsFile (getOptionValue (args, "--disabled-tests", {}, "Missing disabled-tests path argument!").toString());
+    int64 getRandomSeed (const ArgumentList& args)
+    {
+        const String seedString = getOptionValue (args, "--random-seed", "0", "Missing random seed argument!").toString();
 
-    StringArray disabledTests;
-    disabledTestsFile.readLines (disabledTests);
+        if (! seedString.containsOnly ("x-0123456789acbdef"))
+            ConsoleApplication::fail ("Invalid random seed argument!", -1);
 
-    return disabledTests;
+        if (seedString.startsWith ("0x"))
+            return seedString.getHexValue64();
+
+        return seedString.getLargeIntValue();
+    }
+
+    int64 getTimeout (const ArgumentList& args)
+    {
+        return getOptionValue (args, "--timeout-ms", 30000, "Missing timeout-ms level argument!");
+    }
+
+    int getNumRepeats (const ArgumentList& args)
+    {
+        return jmax (1, (int) getOptionValue (args, "--repeat", 1, "Missing repeat argument! (Must be greater than 0)"));
+    }
+
+    File getDataFile (const ArgumentList& args)
+    {
+        return getOptionValue (args, "--data-file", {}, "Missing data-file path argument!").toString();
+    }
+
+    File getOutputDir (const ArgumentList& args)
+    {
+        return getOptionValue (args, "--output-dir", {}, "Missing output-dir path argument!").toString();
+    }
+
+    std::vector<double> getSampleRates (const ArgumentList& args)
+    {
+        StringArray input = StringArray::fromTokens (getOptionValue (args,
+                                                                     "--sample-rates",
+                                                                     String ("44100,48000,96000"),
+                                                                     "Missing sample rate list argument!")
+                                                         .toString(),
+                                                     ",",
+                                                     "\"");
+        std::vector<double> output;
+
+        for (String sr : input)
+            output.push_back (sr.getDoubleValue());
+
+        return output;
+    }
+
+    std::vector<int> getBlockSizes (const ArgumentList& args)
+    {
+        StringArray input = StringArray::fromTokens (getOptionValue (args,
+                                                                     "--block-sizes",
+                                                                     String ("64,128,256,512,1024"),
+                                                                     "Missing block size list argument!")
+                                                         .toString(),
+                                                     ",",
+                                                     "\"");
+        std::vector<int> output;
+
+        for (String sr : input)
+            output.push_back (sr.getIntValue());
+
+        return output;
+    }
+
+    StringArray getDisabledTest (const ArgumentList& args)
+    {
+        const File disabledTestsFile (getOptionValue (args, "--disabled-tests", {}, "Missing disabled-tests path argument!").toString());
+
+        StringArray disabledTests;
+        disabledTestsFile.readLines (disabledTests);
+
+        return disabledTests;
+    }
 }
 
 //==============================================================================
-String parseCommandLineArgs (String commandLine)
+static String parseCommandLineArgs (String commandLine)
 {
     if (commandLine.contains ("strictnessLevel"))
     {
@@ -239,7 +243,7 @@ struct Option
     bool requiresValue;
 };
 
-String getEnvironmentVariableName (Option opt)
+static String getEnvironmentVariableName (Option opt)
 {
     return String (opt.name).trimCharactersAtStart ("-").replace ("-", "_").toUpperCase();
 }
@@ -260,7 +264,7 @@ static Option possibleOptions[] =
     { "--block-sizes",          true    },
 };
 
-StringArray mergeEnvironmentVariables (StringArray args, std::function<String (const String& name, const String& defaultValue)> environmentVariableProvider = [] (const String& name, const String& defaultValue) { return SystemStats::getEnvironmentVariable (name, defaultValue); })
+static StringArray mergeEnvironmentVariables (StringArray args, std::function<String (const String& name, const String& defaultValue)> environmentVariableProvider = [] (const String& name, const String& defaultValue) { return SystemStats::getEnvironmentVariable (name, defaultValue); })
 {
     for (auto arg : possibleOptions)
     {
@@ -401,7 +405,7 @@ static void validate (CommandLineValidator& validator, const ArgumentList& args)
     }
 }
 
-int getNumTestFailures (UnitTestRunner& testRunner)
+static int getNumTestFailures (UnitTestRunner& testRunner)
 {
     int numFailures = 0;
 
@@ -412,7 +416,7 @@ int getNumTestFailures (UnitTestRunner& testRunner)
     return numFailures;
 }
 
-void runUnitTests()
+static void runUnitTests()
 {
     UnitTestRunner testRunner;
     testRunner.runTestsInCategory ("pluginval");
@@ -423,7 +427,7 @@ void runUnitTests()
 }
 
 //==============================================================================
-void performCommandLine (CommandLineValidator& validator, const ArgumentList& args)
+static void performCommandLine (CommandLineValidator& validator, const ArgumentList& args)
 {
     hideDockIcon();
 
@@ -446,7 +450,7 @@ void performCommandLine (CommandLineValidator& validator, const ArgumentList& ar
         JUCEApplication::getInstance()->quit();
 }
 
-bool shouldPerformCommandLine (const ArgumentList& args)
+static bool shouldPerformCommandLine (const ArgumentList& args)
 {
     return args.containsOption ("--help|-h")
         || args.containsOption ("--version")

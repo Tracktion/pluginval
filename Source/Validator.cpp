@@ -23,8 +23,6 @@
  #include <unistd.h>
 #endif
 
-// Defined in Main.cpp, used to create the file logger as early as possible
-extern void childInitialised();
 
 #if LOG_PIPE_CHILD_COMMUNICATION
  #define LOG_FROM_PARENT(textToLog) if (Logger::getCurrentLogger() != nullptr) Logger::writeToLog ("*** Recieved:\n" + textToLog);
@@ -118,7 +116,7 @@ private:
 
 //==============================================================================
 //==============================================================================
-String getFileNameFromDescription (PluginTests& test)
+static String getFileNameFromDescription (PluginTests& test)
 {
     auto getBaseName = [&]() -> String
     {
@@ -139,7 +137,7 @@ String getFileNameFromDescription (PluginTests& test)
     return getBaseName() + "_" + Time::getCurrentTime().toString (true, true).replace (":", ",") + ".txt";
 }
 
-File getDestinationFile (PluginTests& test)
+static File getDestinationFile (PluginTests& test)
 {
     const auto dir = test.getOptions().outputDir;
 
@@ -155,7 +153,7 @@ File getDestinationFile (PluginTests& test)
     return dir.getChildFile (getFileNameFromDescription (test));
 }
 
-std::unique_ptr<FileOutputStream> createDestinationFileStream (PluginTests& test)
+static std::unique_ptr<FileOutputStream> createDestinationFileStream (PluginTests& test)
 {
     auto file = getDestinationFile (test);
 
@@ -174,7 +172,7 @@ std::unique_ptr<FileOutputStream> createDestinationFileStream (PluginTests& test
 /** Renames a file based upon its description.
     This is useful if a path or AU ID was passed in as the plugin info isn't known at that point.
 */
-void updateFileNameIfPossible (PluginTests& test, PluginsUnitTestRunner& runner)
+static void updateFileNameIfPossible (PluginTests& test, PluginsUnitTestRunner& runner)
 {
     if (auto os = runner.getOutputFileStream())
     {
@@ -293,7 +291,7 @@ static String toXmlString (const ValueTree& v)
 /*  This class gets instantiated in the child process, and receives messages from
     the parent process.
 */
-class ValidatorChildProcess : public ChildProcessSlave,
+class ValidatorChildProcess : public ChildProcessWorker,
                               private Thread,
                               private DeletedAtShutdown
 {
@@ -322,13 +320,13 @@ public:
             sendValueTreeToParent ({ IDs::MESSAGE, {{ IDs::type, "connected" }} });
     }
 
-    void setParentProcess (ChildProcessMaster* newParent)
+    void setParentProcess (ChildProcessCoordinator* newParent)
     {
         parent = newParent;
         setConnected (parent != nullptr);
     }
 
-    void handleMessageFromMaster (const MemoryBlock& mb) override
+    void handleMessageFromCoordinator (const MemoryBlock& mb) override
     {
         LOG_FROM_PARENT(toXmlString (memoryBlockToValueTree (mb)));
         addRequest (mb);
@@ -395,7 +393,7 @@ private:
     std::vector<MemoryBlock> requestsToProcess;
     std::atomic<bool> isConnected { false };
     LogMessagesSender logMessagesSender { *this };
-    ChildProcessMaster* parent = nullptr;
+    ChildProcessCoordinator* parent = nullptr;
 
     void logMessage (const String& m)
     {
@@ -409,12 +407,12 @@ private:
 
         if (parent != nullptr)
         {
-            parent->handleMessageFromSlave (valueTreeToMemoryBlock (v));
+            parent->handleMessageFromWorker (valueTreeToMemoryBlock (v));
             return;
         }
 
         LOG_TO_PARENT(toXmlString (v));
-        sendMessageToMaster (valueTreeToMemoryBlock (v));
+        sendMessageToCoordinator (valueTreeToMemoryBlock (v));
     }
 
     void run() override
@@ -548,7 +546,7 @@ private:
 };
 
 //==============================================================================
-class ValidatorParentProcess    : public ChildProcessMaster
+class ValidatorParentProcess    : public ChildProcessCoordinator
 {
 public:
     ValidatorParentProcess() = default;
@@ -584,8 +582,8 @@ public:
     Result launch()
     {
         // Make sure we send 0 as the streamFlags args or the pipe can hang during DBG messages
-        const bool ok = launchSlaveProcess (File::getSpecialLocation (File::currentExecutableFile),
-                                            validatorCommandLineUID, 2000, 0);
+        const bool ok = launchWorkerProcess (File::getSpecialLocation (File::currentExecutableFile),
+                                             validatorCommandLineUID, 2000, 0);
 
         if (! connectionWaiter.wait (5000))
             return Result::fail ("Error: Child took too long to launch");
@@ -594,7 +592,7 @@ public:
     }
 
     //==============================================================================
-    void handleMessageFromSlave (const MemoryBlock& mb) override
+    void handleMessageFromWorker (const MemoryBlock& mb) override
     {
         auto v = memoryBlockToValueTree (mb);
 
@@ -684,13 +682,13 @@ private:
     {
         if (validatorChildProcess)
         {
-            validatorChildProcess->handleMessageFromMaster (valueTreeToMemoryBlock (v));
+            validatorChildProcess->handleMessageFromCoordinator (valueTreeToMemoryBlock (v));
             return;
         }
 
         logMessage ("Sending: " + toXmlString (v));
 
-        if (! sendMessageToSlave (valueTreeToMemoryBlock (v)))
+        if (! sendMessageToWorker (valueTreeToMemoryBlock (v)))
             logMessage ("...failed");
     }
 
