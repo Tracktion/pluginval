@@ -2,11 +2,6 @@ cmake_minimum_required(VERSION 3.15)
 
 project(pluginval VERSION 0.3.0)
 
-# If we are using MSVC we want static runtime linkage
-if (MSVC)
-    set (CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>")
-endif()
-
 if (APPLE)
     # Target OS versions down to 10.11
     set (CMAKE_OSX_DEPLOYMENT_TARGET "10.11" CACHE INTERNAL "")
