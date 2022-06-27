@@ -1,6 +1,11 @@
 name: Build
 on: [push]
 
+env:
+  BUILD_TYPE: Release
+  BUILD_DIR: Builds
+  GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
 jobs:
   build:
     strategy:
@@ -24,7 +29,7 @@ jobs:
         run: |
             sudo add-apt-repository ppa:ubuntu-toolchain-r/test
             sudo apt-get update
-            sudo apt-get install -y freeglut3-dev g++ libasound2-dev libcurl4-openssl-dev libfreetype6-dev libjack-jackd2-dev libx11-dev libxcomposite-dev libxcursor-dev libxinerama-dev libxrandr-dev mesa-common-dev ladspa-sdk webkit2gtk-4.0 libgtk-3-dev xvfb
+            sudo apt-get install -y freeglut3-dev g++ libasound2-dev libcurl4-openssl-dev libfreetype6-dev libjack-jackd2-dev libx11-dev libxcomposite-dev libxcursor-dev libxinerama-dev libxrandr-dev mesa-common-dev ladspa-sdk webkit2gtk-4.0 libgtk-3-dev xvfb ccache
 
       - uses: actions/checkout@v3
         with:
@@ -40,24 +45,19 @@ jobs:
           CERT_PASSWORD: ${{ secrets.CERT_PASSWORD }}
           DEV_CERT_APP: ${{ secrets.DEV_CERT_APP }}
 
-      # Build products
-      - name: "Build products"
-        run: |
-          export MSBUILD_EXE="C:\Program Files (x86)\Microsoft Visual Studio\2017\Enterprise\MSBuild\15.0\Bin\MSBuild.exe"
-          export SIGN_ID=${DEV_ID_APP}
-          ./install/build
-          
-          if [[ "$OSTYPE" == "darwin"* ]]; then
-            ./install/notarise ${{ github.workspace }}/bin/mac/pluginval_macOS.zip com.tracktion.pluginval ${AC_USERNAME} ${AC_PASSWORD}
-          fi
+      - name: ccache
+        if: matrix.platform != 'windows'
+        uses: hendrikmuhs/ccache-action@v1
+        with:
+          key: ${{ matrix.os }}-${{ matrix.type }}
+
+      - name: Configure
         shell: bash
-        env:
-          VST2_SDK_URL: ${{ secrets.VST2_SDK_URL }}
-          CERT_PASSWORD: ${{ secrets.CERT_PASSWORD }}
-          DEV_CERT_APP: ${{ secrets.DEV_CERT_APP }}
-          DEV_ID_APP: ${{ secrets.DEV_ID_APP }}
-          AC_USERNAME: ${{ secrets.AC_USERNAME }}
-          AC_PASSWORD: ${{ secrets.AC_PASSWORD }}
+        run: cmake -B ${{ env.BUILD_DIR }} -DCMAKE_BUILD_TYPE=${{ env.BUILD_TYPE}} -DCMAKE_C_COMPILER_LAUNCHER=ccache -DCMAKE_CXX_COMPILER_LAUNCHER=ccache" .
+
+      - name: Build
+        shell: bash
+        run: cmake --build ${{ env.BUILD_DIR }} --config ${{ env.BUILD_TYPE }} --parallel 4
 
       # Upload artefacts
       - uses: actions/upload-artifact@v2
