@@ -79,26 +79,30 @@ private:
 
 //==============================================================================
 //==============================================================================
-class ChildProcessValidator : private juce::Timer
+class ChildProcessValidator
 {
 public:
     ChildProcessValidator (const juce::String& fileOrIdToValidate, PluginTests::Options,
                            std::function<void (juce::String)> validationStarted,
                            std::function<void (juce::String, uint32_t /*exitCode*/)> validationEnded,
                            std::function<void(const String&)> outputGenerated);
+    ~ChildProcessValidator();
 
     bool hasFinished() const;
 
 private:
     const juce::String fileOrID;
     PluginTests::Options options;
+
     ChildProcess childProcess;
+    std::thread thread;
+    std::atomic<bool> isRunning { true };
 
     std::function<void (juce::String)> validationStarted;
     std::function<void (juce::String, uint32_t)> validationEnded;
     std::function<void(const String&)> outputGenerated;
 
-    void timerCallback() override;
+    void run();
 };
 
 //==============================================================================

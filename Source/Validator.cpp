@@ -355,21 +355,29 @@ ChildProcessValidator::ChildProcessValidator (const juce::String& fileOrID_, Plu
       validationEnded (std::move (validationEnded_)),
       outputGenerated (std::move (outputGenerated_))
 {
-    const auto started = childProcess.start (createCommandLine (fileOrID, options));
+    thread = std::thread ([this] { run(); });
+}
 
-    if (started && validationStarted)
-        validationStarted (fileOrID);
-
-    startTimerHz (60);
+ChildProcessValidator::~ChildProcessValidator()
+{
+    thread.join();
 }
 
 bool ChildProcessValidator::hasFinished() const
 {
-    return ! childProcess.isRunning();
+    return ! isRunning;
 }
 
-void ChildProcessValidator::timerCallback()
+void ChildProcessValidator::run()
 {
+    isRunning = childProcess.start (createCommandLine (fileOrID, options));
+
+    if (! isRunning)
+        return;
+
+    if (validationStarted)
+        validationStarted (fileOrID);
+
     // Flush the output from the process
     for (;;)
     {
@@ -384,19 +392,18 @@ void ChildProcessValidator::timerCallback()
             if (outputGenerated)
                 outputGenerated (msg);
         }
-        else
-        {
+
+        if (! childProcess.isRunning())
             break;
-        }
+
+        using namespace std::literals;
+        std::this_thread::sleep_for (100ms);
     }
 
-    if (! childProcess.isRunning())
-    {
-        stopTimer();
+    if (validationEnded)
+        validationEnded (fileOrID, childProcess.getExitCode());
 
-        if (validationEnded)
-            validationEnded (fileOrID, childProcess.getExitCode());
-    }
+    isRunning = false;
 }
 
 AsyncValidator::AsyncValidator (const juce::String& fileOrID_, PluginTests::Options options_,

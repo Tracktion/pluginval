@@ -40,8 +40,8 @@ public:
     void initialise (const String& commandLine) override
     {
        #if JUCE_DEBUG
-//ddd        UnitTestRunner testRunner;
-//        testRunner.runTestsInCategory ("pluginval");
+        UnitTestRunner testRunner;
+        testRunner.runTestsInCategory ("pluginval");
        #endif
 
         if (shouldPerformCommandLine (commandLine))
