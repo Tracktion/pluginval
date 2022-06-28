@@ -15,24 +15,9 @@
 #include "Validator.h"
 #include "PluginTests.h"
 #include "CrashHandler.h"
+#include "CommandLine.h"
 #include <numeric>
 
-#if JUCE_MAC
- #include <signal.h>
- #include <sys/types.h>
- #include <unistd.h>
-#endif
-
-
-#if LOG_PIPE_CHILD_COMMUNICATION
- #define LOG_FROM_PARENT(textToLog) if (Logger::getCurrentLogger() != nullptr) Logger::writeToLog ("*** Recieved:\n" + textToLog);
- #define LOG_TO_PARENT(textToLog)   if (Logger::getCurrentLogger() != nullptr) Logger::writeToLog ("*** Sending:\n" + textToLog);
- #define LOG_CHILD(textToLog)       if (Logger::getCurrentLogger() != nullptr) Logger::writeToLog ("*** Log:\n" + String (textToLog));
-#else
- #define LOG_FROM_PARENT(textToLog)
- #define LOG_TO_PARENT(textToLog)
- #define LOG_CHILD(textToLog)
-#endif
 
 //==============================================================================
 struct PluginsUnitTestRunner    : public UnitTestRunner,
@@ -210,12 +195,6 @@ inline Array<UnitTestRunner::TestResult> runTests (PluginTests& test, std::funct
     return results;
 }
 
-inline Array<UnitTestRunner::TestResult> validate (const PluginDescription& pluginToValidate, PluginTests::Options options, std::function<void (const String&)> callback)
-{
-    PluginTests test (pluginToValidate, options);
-    return runTests (test, std::move (callback));
-}
-
 inline Array<UnitTestRunner::TestResult> validate (const String& fileOrIDToValidate, PluginTests::Options options, std::function<void (const String&)> callback)
 {
     PluginTests test (fileOrIDToValidate, options);
@@ -228,474 +207,96 @@ inline int getNumFailures (Array<UnitTestRunner::TestResult> results)
                             [] (int count, const UnitTestRunner::TestResult& r) { return count + r.failures; });
 }
 
-//==============================================================================
-namespace IDs
-{
-    #define DECLARE_ID(name) const Identifier name (#name);
-
-    DECLARE_ID(PLUGINS)
-    DECLARE_ID(PLUGIN)
-    DECLARE_ID(fileOrID)
-    DECLARE_ID(pluginDescription)
-    DECLARE_ID(strictnessLevel)
-    DECLARE_ID(randomSeed)
-    DECLARE_ID(timeoutMs)
-    DECLARE_ID(verbose)
-    DECLARE_ID(numRepeats)
-    DECLARE_ID(randomiseTestOrder)
-    DECLARE_ID(dataFile)
-    DECLARE_ID(outputDir)
-    DECLARE_ID(withGUI)
-    DECLARE_ID(disabledTests)
-    DECLARE_ID(sampleRates)
-    DECLARE_ID(blockSizes)
-
-    DECLARE_ID(MESSAGE)
-    DECLARE_ID(type)
-    DECLARE_ID(text)
-    DECLARE_ID(log)
-    DECLARE_ID(numFailures)
-
-    #undef DECLARE_ID
-}
 
 //==============================================================================
-// This is a token that's used at both ends of our parent-child processes, to
-// act as a unique token in the command line arguments.
-static const char* validatorCommandLineUID = "validatorUID";
-
-// A few quick utility functions to convert between raw data and ValueTrees
-static ValueTree memoryBlockToValueTree (const MemoryBlock& mb)
-{
-    return ValueTree::readFromData (mb.getData(), mb.getSize());
-}
-
-static MemoryBlock valueTreeToMemoryBlock (const ValueTree& v)
-{
-    MemoryOutputStream mo;
-    v.writeToStream (mo);
-
-    return mo.getMemoryBlock();
-}
-
-static String toXmlString (const ValueTree& v)
-{
-    if (auto xml = std::unique_ptr<XmlElement> (v.createXml()))
-        return xml->toString (XmlElement::TextFormat().withoutHeader());
-
-    return {};
-}
-
-
 //==============================================================================
-/*  This class gets instantiated in the child process, and receives messages from
-    the parent process.
-*/
-class ValidatorChildProcess : public ChildProcessWorker,
-                              private Thread,
-                              private DeletedAtShutdown
+class GroupValidator    : public juce::Timer
 {
 public:
-    ValidatorChildProcess()
-        : Thread ("ValidatorChildProcess")
+    GroupValidator (juce::StringArray fileOrIDsToValidate,
+                    PluginTests::Options options_,
+                    bool validateInProcess_,
+                    std::function<void (juce::String)> validationStarted_,
+                    std::function<void (juce::String, uint32_t /*exitCode*/)> validationEnded_,
+                    std::function<void(const String&)> outputGenerated_,
+                    std::function<void()> allCompleteCallback_)
+        : pluginsToValidate (std::move (fileOrIDsToValidate)),
+          options (std::move (options_)),
+          validateInProcess (validateInProcess_),
+          validationStarted (std::move (validationStarted_)),
+          validationEnded (std::move (validationEnded_)),
+          outputGenerated (std::move (outputGenerated_)),
+          completeCallback (std::move (allCompleteCallback_))
     {
-        LOG_CHILD("Constructing ValidatorChildProcess");
-
-        // Initialise the crash handler to clear any previous crash logs
-        initialiseCrashHandler();
-        startThread (4);
-    }
-
-    ~ValidatorChildProcess() override
-    {
-        LOG_CHILD("Destructing ValidatorChildProcess");
-        stopThread (5000);
-    }
-
-    void setConnected (bool isNowConnected) noexcept
-    {
-        isConnected = isNowConnected;
-
-        if (isConnected)
-            sendValueTreeToParent ({ IDs::MESSAGE, {{ IDs::type, "connected" }} });
-    }
-
-    void setParentProcess (ChildProcessCoordinator* newParent)
-    {
-        parent = newParent;
-        setConnected (parent != nullptr);
-    }
-
-    void handleMessageFromCoordinator (const MemoryBlock& mb) override
-    {
-        LOG_FROM_PARENT(toXmlString (memoryBlockToValueTree (mb)));
-        addRequest (mb);
-    }
-
-    void handleConnectionLost() override
-    {
-        // Force terminate to avoid any zombie processed that can't quit cleanly
-        Process::terminate();
+        startTimerHz (20);
+        timerCallback();
     }
 
 private:
-    struct LogMessagesSender    : public Thread
-    {
-        LogMessagesSender (ValidatorChildProcess& vsp)
-            : Thread ("ChildMessageSender"), owner (vsp)
-        {
-            startThread (1);
-        }
+    juce::StringArray pluginsToValidate;
+    const PluginTests::Options options;
+    const bool validateInProcess;
 
-        ~LogMessagesSender() override
-        {
-            stopThread (2000);
-            sendLogMessages();
-        }
+    std::unique_ptr<AsyncValidator> asyncValidator;
+    std::unique_ptr<ChildProcessValidator> childProcessValidator;
 
-        void logMessage (const String& m)
-        {
-            if (! owner.isConnected)
-                return;
-
-            const ScopedLock sl (logMessagesLock);
-            logMessages.add (m);
-        }
-
-        void run() override
-        {
-            while (! threadShouldExit())
-            {
-                sendLogMessages();
-                Thread::sleep (200);
-            }
-        }
-
-        void sendLogMessages()
-        {
-            StringArray messagesToSend;
-
-            {
-                const ScopedLock sl (logMessagesLock);
-                messagesToSend.swapWith (logMessages);
-            }
-
-            if (owner.isConnected && ! messagesToSend.isEmpty())
-                owner.sendValueTreeToParent ({ IDs::MESSAGE, {{ IDs::type, "log" }, { IDs::text, messagesToSend.joinIntoString ("\n") }} }, false);
-        }
-
-        ValidatorChildProcess& owner;
-        CriticalSection logMessagesLock;
-        StringArray logMessages;
-    };
-
-    CriticalSection requestsLock;
-    std::vector<MemoryBlock> requestsToProcess;
-    std::atomic<bool> isConnected { false };
-    LogMessagesSender logMessagesSender { *this };
-    ChildProcessCoordinator* parent = nullptr;
-
-    void logMessage (const String& m)
-    {
-        logMessagesSender.logMessage (m);
-    }
-
-    void sendValueTreeToParent (const ValueTree& v, bool flushLog = true)
-    {
-        if (flushLog)
-            logMessagesSender.sendLogMessages();
-
-        if (parent != nullptr)
-        {
-            parent->handleMessageFromWorker (valueTreeToMemoryBlock (v));
-            return;
-        }
-
-        LOG_TO_PARENT(toXmlString (v));
-        sendMessageToCoordinator (valueTreeToMemoryBlock (v));
-    }
-
-    void run() override
-    {
-        LOG_CHILD("Starting child thread");
-
-        while (! threadShouldExit())
-        {
-            processRequests();
-
-            auto noRequests = [&]
-            {
-                const ScopedLock sl (requestsLock);
-                return requestsToProcess.empty();
-            }();
-
-            if (noRequests)
-                Thread::sleep (500);
-        }
-
-        LOG_CHILD("Ended child thread");
-    }
-
-    void addRequest (const MemoryBlock& mb)
-    {
-        {
-            const ScopedLock sl (requestsLock);
-            requestsToProcess.push_back (mb);
-        }
-
-        notify();
-    }
-
-    void processRequests()
-    {
-        std::vector<MemoryBlock> requests;
-
-        {
-            const ScopedLock sl (requestsLock);
-            requests.swap (requestsToProcess);
-        }
-
-        LOG_CHILD("processRequests:\n" + String ((int) requests.size()));
-
-        for (const auto& r : requests)
-            processRequest (r);
-    }
-
-    void processRequest (MemoryBlock mb)
-    {
-        const ValueTree v (memoryBlockToValueTree (mb));
-        LOG_CHILD("processRequest:\n" + toXmlString (v));
-
-        if (v.hasType (IDs::PLUGINS))
-        {
-            PluginTests::Options options;
-            options.strictnessLevel = v.getProperty (IDs::strictnessLevel, 5);
-            options.randomSeed = v[IDs::randomSeed];
-            options.timeoutMs = v.getProperty (IDs::timeoutMs, -1);
-            options.verbose = v[IDs::verbose];
-            options.numRepeats = v.getProperty (IDs::numRepeats, 1);
-            options.randomiseTestOrder = v[IDs::randomiseTestOrder];
-            options.dataFile = File (v[IDs::dataFile].toString());
-            options.outputDir = File (v[IDs::outputDir].toString());
-            options.withGUI = v.getProperty (IDs::withGUI, true);
-            options.disabledTests = StringArray::fromLines (v.getProperty (IDs::disabledTests).toString());
-            options.sampleRates = juce::VariantConverter<std::vector<double>>::fromVar (v.getProperty (IDs::sampleRates));
-            options.blockSizes = juce::VariantConverter<std::vector<int>>::fromVar (v.getProperty (IDs::blockSizes));
-
-            for (auto c : v)
-            {
-                String fileOrID;
-                Array<UnitTestRunner::TestResult> results;
-                LOG_CHILD("processRequest - child:\n" + toXmlString (c));
-
-                if (c.hasProperty (IDs::fileOrID))
-                {
-                    fileOrID = c[IDs::fileOrID].toString();
-                    sendValueTreeToParent ({
-                        IDs::MESSAGE, {{ IDs::type, "started" }, { IDs::fileOrID, fileOrID }}
-                    });
-
-                    results = validate (c[IDs::fileOrID].toString(), options, [this] (const String& m) { logMessage (m); });
-                }
-                else if (c.hasProperty (IDs::pluginDescription))
-                {
-                    MemoryOutputStream ms;
-
-                    if (Base64::convertFromBase64 (ms, c[IDs::pluginDescription].toString()))
-                    {
-                        if (auto xml = std::unique_ptr<XmlElement> (XmlDocument::parse (ms.toString())))
-                        {
-                            PluginDescription pd;
-
-                            if (pd.loadFromXml (*xml))
-                            {
-                                fileOrID = pd.createIdentifierString();
-                                sendValueTreeToParent ({
-                                    IDs::MESSAGE, {{ IDs::type, "started" }, { IDs::fileOrID, fileOrID }}
-                                });
-
-                                results = validate (pd, options, [this] (const String& m) { logMessage (m); });
-                            }
-                            else
-                            {
-                                LOG_CHILD("processRequest - failed to load PluginDescription from XML:\n" + ms.toString());
-                            }
-                        }
-                        else
-                        {
-                            LOG_CHILD("processRequest - failed to parse pluginDescription:\n" + ms.toString());
-                        }
-                    }
-                    else
-                    {
-                        LOG_CHILD("processRequest - failed to convert pluginDescription from base64:\n" + ms.toString());
-                    }
-                }
-
-                jassert (fileOrID.isNotEmpty());
-                sendValueTreeToParent ({
-                    IDs::MESSAGE, {{ IDs::type, "result" }, { IDs::fileOrID, fileOrID }, { IDs::numFailures, getNumFailures (results) }}
-                });
-            }
-        }
-
-        sendValueTreeToParent ({
-            IDs::MESSAGE, {{ IDs::type, "complete" }}
-        });
-    }
-};
-
-//==============================================================================
-class ValidatorParentProcess    : public ChildProcessCoordinator
-{
-public:
-    ValidatorParentProcess() = default;
-
-    // Callback which can be set to log any calls sent to the child
-    std::function<void (const String&)> logCallback;
-
-    // Callback which can be set to be notified of a lost connection
-    std::function<void()> connectionLostCallback;
-
-    //==============================================================================
-    // Callback which can be set to be informed when validation starts
-    std::function<void (const String&)> validationStartedCallback;
-
-    // Callback which can be set to be informed when a log message is posted
-    std::function<void (const String&)> logMessageCallback;
-
-    // Callback which can be set to be informed when a validation completes
-    std::function<void (const String&, int)> validationCompleteCallback;
-
-    // Callback which can be set to be informed when all validations have been completed
+    std::function<void (juce::String)> validationStarted;
+    std::function<void (juce::String, uint32_t /*exitCode*/)> validationEnded;
+    std::function<void(const String&)> outputGenerated;
     std::function<void()> completeCallback;
 
     //==============================================================================
-    Result launchInProcess()
+    /** Triggers validation of a plugin. */
+    void validate (juce::String pluginToValidate)
     {
-        validatorChildProcess = std::make_unique<ValidatorChildProcess>();
-        validatorChildProcess->setParentProcess (this);
-
-        return Result::ok();
+        if (validateInProcess)
+        {
+            asyncValidator = std::make_unique<AsyncValidator> (pluginToValidate, options,
+                                                               validationStarted,
+                                                               validationEnded,
+                                                               outputGenerated);
+        }
+        else
+        {
+            childProcessValidator = std::make_unique<ChildProcessValidator> (pluginToValidate, options,
+                                                                             validationStarted,
+                                                                             validationEnded,
+                                                                             outputGenerated);
+        }
     }
 
-    Result launch()
+    bool isRunning() const
     {
-        // Make sure we send 0 as the streamFlags args or the pipe can hang during DBG messages
-        const bool ok = launchWorkerProcess (File::getSpecialLocation (File::currentExecutableFile),
-                                             validatorCommandLineUID, 2000, 0);
+        if (asyncValidator)             return ! asyncValidator->hasFinished();
+        if (childProcessValidator)      return ! childProcessValidator->hasFinished();
 
-        if (! connectionWaiter.wait (5000))
-            return Result::fail ("Error: Child took too long to launch");
-
-        return ok ? Result::ok() : Result::fail ("Error: Child failed to launch");
+        return false;
     }
 
     //==============================================================================
-    void handleMessageFromWorker (const MemoryBlock& mb) override
+    void timerCallback() override
     {
-        auto v = memoryBlockToValueTree (mb);
-
-        if (v.hasType (IDs::MESSAGE))
+        if (pluginsToValidate.isEmpty())
         {
-            const auto type = v[IDs::type].toString();
+            if (isRunning())
+                return;
 
-            if (logMessageCallback && type == "log")
-                logMessageCallback (v[IDs::text].toString());
+            asyncValidator.reset();
+            childProcessValidator.reset();
 
-            if (validationCompleteCallback && type == "result")
-                validationCompleteCallback (v[IDs::fileOrID].toString(), v[IDs::numFailures]);
-
-            if (validationStartedCallback && type == "started")
-                validationStartedCallback (v[IDs::fileOrID].toString());
-
-            if (completeCallback && type == "complete")
+            if (completeCallback)
                 completeCallback();
 
-            if (type == "connected")
-                connectionWaiter.signal();
-        }
-
-        logMessage ("Received: " + toXmlString (v));
-    }
-
-    // This gets called if the child process dies.
-    void handleConnectionLost() override
-    {
-        logMessage ("Connection lost to child process!");
-
-        if (connectionLostCallback)
-            connectionLostCallback();
-    }
-
-    //==============================================================================
-    /** Triggers validation of a set of files or IDs. */
-    void validate (const StringArray& fileOrIDsToValidate, PluginTests::Options options)
-    {
-        auto v = createPluginsTree (options);
-
-        for (auto fileOrID : fileOrIDsToValidate)
-        {
-            jassert (fileOrID.isNotEmpty());
-            v.appendChild ({ IDs::PLUGIN, {{ IDs::fileOrID, fileOrID.trimCharactersAtEnd ("\\/") }} }, nullptr);
-        }
-
-        sendValueTreeToChild (v);
-    }
-
-    /** Triggers validation of a set of PluginDescriptions. */
-    void validate (const Array<PluginDescription>& pluginsToValidate, PluginTests::Options options)
-    {
-        auto v = createPluginsTree (options);
-
-        for (auto pd : pluginsToValidate)
-            if (auto xml = std::unique_ptr<XmlElement> (pd.createXml()))
-                v.appendChild ({ IDs::PLUGIN, {{ IDs::pluginDescription, Base64::toBase64 (xml->toString()) }} }, nullptr);
-
-        sendValueTreeToChild (v);
-    }
-
-private:
-    WaitableEvent connectionWaiter;
-    std::unique_ptr<ValidatorChildProcess> validatorChildProcess;
-
-    static ValueTree createPluginsTree (PluginTests::Options options)
-    {
-        ValueTree v (IDs::PLUGINS);
-        v.setProperty (IDs::strictnessLevel, options.strictnessLevel, nullptr);
-        v.setProperty (IDs::randomSeed, options.randomSeed, nullptr);
-        v.setProperty (IDs::timeoutMs, options.timeoutMs, nullptr);
-        v.setProperty (IDs::verbose, options.verbose, nullptr);
-        v.setProperty (IDs::numRepeats, options.numRepeats, nullptr);
-        v.setProperty (IDs::randomiseTestOrder, options.randomiseTestOrder, nullptr);
-        v.setProperty (IDs::dataFile, options.dataFile.getFullPathName(), nullptr);
-        v.setProperty (IDs::outputDir, options.outputDir.getFullPathName(), nullptr);
-        v.setProperty (IDs::withGUI, options.withGUI, nullptr);
-        v.setProperty (IDs::disabledTests, options.disabledTests.joinIntoString ("\n"), nullptr);
-        v.setProperty (IDs::sampleRates, juce::VariantConverter<std::vector<double>>::toVar (options.sampleRates), nullptr);
-        v.setProperty (IDs::blockSizes, juce::VariantConverter<std::vector<int>>::toVar (options.blockSizes), nullptr);
-
-        return v;
-    }
-
-    void sendValueTreeToChild (const ValueTree& v)
-    {
-        if (validatorChildProcess)
-        {
-            validatorChildProcess->handleMessageFromCoordinator (valueTreeToMemoryBlock (v));
+            stopTimer();
             return;
         }
 
-        logMessage ("Sending: " + toXmlString (v));
+        if (isRunning())
+            return;
 
-        if (! sendMessageToWorker (valueTreeToMemoryBlock (v)))
-            logMessage ("...failed");
-    }
-
-    void logMessage (const String& s)
-    {
-        if (logCallback)
-            logCallback (s);
+        const auto next = pluginsToValidate[0];
+        pluginsToValidate.remove (0);
+        validate (next);
     }
 };
 
@@ -705,25 +306,28 @@ Validator::~Validator() {}
 
 bool Validator::isConnected() const
 {
-    return parentProcess != nullptr;
+    return groupValidator != nullptr;
 }
 
 bool Validator::validate (const StringArray& fileOrIDsToValidate, PluginTests::Options options)
 {
-    if (! ensureConnection())
-        return false;
-
-    parentProcess->validate (fileOrIDsToValidate, options);
+    sendChangeMessage();
+    groupValidator = std::make_unique<GroupValidator> (fileOrIDsToValidate, options, launchInProcess,
+                                                       [this] (juce::String id) { listeners.call (&Listener::validationStarted, id); },
+                                                       [this] (juce::String id, uint32_t exitCode) { listeners.call (&Listener::itemComplete, id, exitCode); },
+                                                       [this] (const String& m) { listeners.call (&Listener::logMessage, m); },
+                                                       [this] { listeners.call (&Listener::allItemsComplete); triggerAsyncUpdate(); });
     return true;
 }
 
 bool Validator::validate (const Array<PluginDescription>& pluginsToValidate, PluginTests::Options options)
 {
-    if (! ensureConnection())
-        return false;
+    StringArray fileOrIDsToValidate;
 
-    parentProcess->validate (pluginsToValidate, options);
-    return true;
+    for (auto pd : pluginsToValidate)
+        fileOrIDsToValidate.add (pd.fileOrIdentifier);
+
+    return validate (fileOrIDsToValidate, options);
 }
 
 void Validator::setValidateInProcess (bool useSameProcess)
@@ -732,92 +336,101 @@ void Validator::setValidateInProcess (bool useSameProcess)
 }
 
 //==============================================================================
-void Validator::logMessage (const String& m)
-{
-    listeners.call (&Listener::logMessage, m);
-}
-
-bool Validator::ensureConnection()
-{
-    if (! parentProcess)
-    {
-        sendChangeMessage();
-        parentProcess = std::make_unique<ValidatorParentProcess>();
-
-       #if LOG_PIPE_COMMUNICATION
-        parentProcess->logCallback = [this] (const String& m) { logMessage (m); };
-       #endif
-        parentProcess->connectionLostCallback = [this]
-            {
-                listeners.call (&Listener::connectionLost);
-                triggerAsyncUpdate();
-            };
-
-        parentProcess->validationStartedCallback    = [this] (const String& id) { listeners.call (&Listener::validationStarted, id); };
-        parentProcess->logMessageCallback           = [this] (const String& m) { listeners.call (&Listener::logMessage, m); };
-        parentProcess->validationCompleteCallback   = [this] (const String& id, int numFailures) { listeners.call (&Listener::itemComplete, id, numFailures); };
-        parentProcess->completeCallback             = [this] { listeners.call (&Listener::allItemsComplete); triggerAsyncUpdate(); };
-
-        const auto result = launchInProcess ? parentProcess->launchInProcess()
-                                            : parentProcess->launch();
-
-        if (result.failed())
-        {
-            logMessage (result.getErrorMessage());
-            return false;
-        }
-
-        logMessage (String (ProjectInfo::projectName) + " v" + ProjectInfo::versionString
-                    + " - " + SystemStats::getJUCEVersion());
-
-        return true;
-    }
-
-    return true;
-}
-
 void Validator::handleAsyncUpdate()
 {
-    parentProcess.reset();
+    groupValidator.reset();
     sendChangeMessage();
 }
 
 
 //==============================================================================
-#if JUCE_MAC
-static void killWithoutMercy (int)
-{
-    kill (getpid(), SIGKILL);
-}
-
-static void setupSignalHandling()
-{
-    const int signals[] = { SIGFPE, SIGILL, SIGSEGV, SIGBUS, SIGABRT };
-
-    for (int i = 0; i < numElementsInArray (signals); ++i)
-    {
-        ::signal (signals[i], killWithoutMercy);
-        ::siginterrupt (signals[i], 1);
-    }
-}
-#endif
-
 //==============================================================================
-bool invokeChildProcessValidator (const String& commandLine)
+ChildProcessValidator::ChildProcessValidator (const juce::String& fileOrID_, PluginTests::Options options_,
+                                              std::function<void (juce::String)> validationStarted_,
+                                              std::function<void (juce::String, uint32_t /*exitCode*/)> validationEnded_,
+                                              std::function<void (const String&)> outputGenerated_)
+    : fileOrID (fileOrID_),
+      options (options_),
+      validationStarted (std::move (validationStarted_)),
+      validationEnded (std::move (validationEnded_)),
+      outputGenerated (std::move (outputGenerated_))
 {
-   #if JUCE_MAC
-    setupSignalHandling();
-   #endif
+    const auto started = childProcess.start (createCommandLine (fileOrID, options));
 
-    auto child = std::make_unique<ValidatorChildProcess>();
+    if (started && validationStarted)
+        validationStarted (fileOrID);
 
-    if (child->initialiseFromCommandLine (commandLine, validatorCommandLineUID))
+    startTimerHz (60);
+}
+
+bool ChildProcessValidator::hasFinished() const
+{
+    return ! childProcess.isRunning();
+}
+
+void ChildProcessValidator::timerCallback()
+{
+    // Flush the output from the process
+    for (;;)
     {
-        childInitialised();
-        child->setConnected (true);
-        child.release(); // allow the child object to stay alive - it'll handle its own deletion.
-        return true;
+        constexpr int numBytesToRead = 2048;
+        char buffer[numBytesToRead];
+
+        if (const auto numBytesRead = childProcess.readProcessOutput (buffer, numBytesToRead);
+            numBytesRead > 0)
+        {
+            std::string msg (buffer, (size_t) numBytesRead);
+
+            if (outputGenerated)
+                outputGenerated (msg);
+        }
+        else
+        {
+            break;
+        }
     }
 
-    return false;
+    if (! childProcess.isRunning())
+    {
+        stopTimer();
+
+        if (validationEnded)
+            validationEnded (fileOrID, childProcess.getExitCode());
+    }
+}
+
+AsyncValidator::AsyncValidator (const juce::String& fileOrID_, PluginTests::Options options_,
+                                std::function<void (juce::String)> validationStarted_,
+                                std::function<void (juce::String, uint32_t /*exitCode*/)> validationEnded_,
+                                std::function<void (const String&)> outputGenerated_)
+    : fileOrID (fileOrID_),
+      options (options_),
+      validationStarted (std::move (validationStarted_)),
+      validationEnded (std::move (validationEnded_)),
+      outputGenerated (std::move (outputGenerated_))
+{
+    thread = std::thread ([this] { run(); });
+}
+
+AsyncValidator::~AsyncValidator()
+{
+    thread.join();
+}
+
+bool AsyncValidator::hasFinished() const
+{
+    return ! isRunning;
+}
+
+void AsyncValidator::run()
+{
+    if (validationStarted)
+        validationStarted (fileOrID);
+
+    const auto numFailues = getNumFailures (validate (fileOrID, options, outputGenerated));
+
+    if (validationEnded)
+        validationEnded (fileOrID, numFailues > 0 ? 1 : 0);
+
+    isRunning = false;
 }

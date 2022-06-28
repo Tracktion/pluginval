@@ -23,20 +23,21 @@ struct CommandLineValidator : private ChangeListener,
     CommandLineValidator();
     ~CommandLineValidator() override;
 
-    void validate (const StringArray& fileOrIDs, PluginTests::Options, bool validateInProcess);
+    void validate (const juce::String&, PluginTests::Options);
 
 private:
+    std::unique_ptr<AsyncValidator> asyncValidator;
+
     Validator validator;
     String currentID;
-    std::atomic<int> numFailures { 0 };
+    std::atomic<uint32_t> numFailures { 0 };
 
     void changeListenerCallback (ChangeBroadcaster*) override;
 
     void validationStarted (const String&) override;
     void logMessage (const String& m) override;
-    void itemComplete (const String&, int numItemFailures) override;
+    void itemComplete (const String&, uint32_t exitCode) override;
     void allItemsComplete() override;
-    void connectionLost() override;
 };
 
 //==============================================================================
@@ -44,3 +45,8 @@ void performCommandLine (CommandLineValidator&, const String& commandLine);
 bool shouldPerformCommandLine (const String& commandLine);
 
 enum { commandLineNotPerformed = 0x72346231 };
+
+//==============================================================================
+std::pair<juce::String, PluginTests::Options> parseCommandLine (const juce::String&);
+std::pair<juce::String, PluginTests::Options> parseCommandLine (const juce::ArgumentList&);
+juce::StringArray createCommandLine (juce::String fileOrID, PluginTests::Options);

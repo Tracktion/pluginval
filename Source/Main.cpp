@@ -31,15 +31,6 @@ public:
         return *propertiesFile;
     }
 
-    void initialiseChildFileLogger()
-    {
-       #if LOG_PIPE_CHILD_COMMUNICATION
-        fileLogger = std::make_unique<FileLogger> (getPropertiesFileOptions().getDefaultFile().getSiblingFile ("child_log.txt"),
-                                                   getApplicationName() + " v" + getApplicationVersion(), 1024 * 1024);
-        Logger::setCurrentLogger (fileLogger.get());
-       #endif
-    }
-
     //==============================================================================
     const String getApplicationName() override       { return ProjectInfo::projectName; }
     const String getApplicationVersion() override    { return ProjectInfo::versionString; }
@@ -49,8 +40,8 @@ public:
     void initialise (const String& commandLine) override
     {
        #if JUCE_DEBUG
-        UnitTestRunner testRunner;
-        testRunner.runTestsInCategory ("pluginval");
+//ddd        UnitTestRunner testRunner;
+//        testRunner.runTestsInCategory ("pluginval");
        #endif
 
         if (shouldPerformCommandLine (commandLine))
@@ -58,9 +49,6 @@ public:
             triggerAsyncUpdate();
             return;
         }
-
-        if (invokeChildProcessValidator (commandLine))
-            return;
 
         validator = std::make_unique<Validator>();
         propertiesFile.reset (getPropertiesFile());
@@ -188,9 +176,4 @@ PropertiesFile& getAppPreferences()
 {
     auto app = dynamic_cast<PluginValidatorApplication*> (PluginValidatorApplication::getInstance());
     return app->getAppPreferences();
-}
-
-void childInitialised()
-{
-    dynamic_cast<PluginValidatorApplication*> (PluginValidatorApplication::getInstance())->initialiseChildFileLogger();
 }

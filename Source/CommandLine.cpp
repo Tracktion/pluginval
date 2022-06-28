@@ -16,6 +16,12 @@
 #include "Validator.h"
 #include "CrashHandler.h"
 
+#if JUCE_MAC
+ #include <signal.h>
+ #include <sys/types.h>
+ #include <unistd.h>
+#endif
+
 
 //==============================================================================
 static void exitWithError (const String& error)
@@ -33,6 +39,26 @@ static void hideDockIcon()
 }
 
 //==============================================================================
+#if JUCE_MAC
+static void killWithoutMercy (int)
+{
+    kill (getpid(), SIGKILL);
+}
+
+static void setupSignalHandling()
+{
+    const int signals[] = { SIGFPE, SIGILL, SIGSEGV, SIGBUS, SIGABRT };
+
+    for (int i = 0; i < numElementsInArray (signals); ++i)
+    {
+        ::signal (signals[i], killWithoutMercy);
+        ::siginterrupt (signals[i], 1);
+    }
+}
+#endif
+
+
+//==============================================================================
 static String& getCurrentID()
 {
     static String currentID;
@@ -48,6 +74,10 @@ static void setCurrentID (const String& currentID)
 //==============================================================================
 CommandLineValidator::CommandLineValidator()
 {
+   #if JUCE_MAC
+    setupSignalHandling();
+   #endif
+
     validator.addChangeListener (this);
     validator.addListener (this);
 }
@@ -56,10 +86,18 @@ CommandLineValidator::~CommandLineValidator()
 {
 }
 
-void CommandLineValidator::validate (const StringArray& fileOrIDs, PluginTests::Options options, bool validateInProcess)
+void CommandLineValidator::validate (const juce::String& fileOrID, PluginTests::Options options)
 {
-    validator.setValidateInProcess (validateInProcess);
-    validator.validate (fileOrIDs, options);
+    asyncValidator = std::make_unique<AsyncValidator> (fileOrID, options,
+                                                       [this, fileOrID] (auto id) { logMessage ("Started validating: " + id); },
+                                                       [] (auto, uint32_t exitCode)
+                                                       {
+                                                           if (exitCode > 0)
+                                                               exitWithError ("*** FAILED");
+                                                           else
+                                                               JUCEApplication::getInstance()->quit();
+                                                       },
+                                                       [this] (auto m) { logMessage (m); });
 }
 
 void CommandLineValidator::changeListenerCallback (ChangeBroadcaster*)
@@ -80,16 +118,16 @@ void CommandLineValidator::logMessage (const String& m)
     std::cout << m << "\n";
 }
 
-void CommandLineValidator::itemComplete (const String& id, int numItemFailures)
+void CommandLineValidator::itemComplete (const String& id, uint32_t exitCode)
 {
     logMessage ("\nFinished validating: " + id);
 
-    if (numItemFailures == 0)
+    if (exitCode == 0)
         logMessage ("ALL TESTS PASSED");
     else
-        logMessage ("*** FAILED: " + String (numItemFailures) + " TESTS");
+        logMessage ("*** FAILED WITH EXIT CODE: " + String (exitCode));
 
-    numFailures += numItemFailures;
+    numFailures += exitCode;
     setCurrentID (String());
     currentID = String();
 }
@@ -97,19 +135,10 @@ void CommandLineValidator::itemComplete (const String& id, int numItemFailures)
 void CommandLineValidator::allItemsComplete()
 {
     if (numFailures > 0)
-        exitWithError ("*** FAILED: " + String (numFailures) + " TESTS");
+        exitWithError ("*** FAILED: " + String (numFailures) + " VALIDATIONS");
     else
         JUCEApplication::getInstance()->quit();
 }
-
-void CommandLineValidator::connectionLost()
-{
-    if (currentID.isNotEmpty())
-        exitWithError ("\n*** FAILED: VALIDATION CRASHED WHILST VALIDATING " + currentID + getCrashLog());
-    else
-        exitWithError ("\n*** FAILED: VALIDATION CRASHED" + getCrashLog());
-}
-
 
 //==============================================================================
 namespace
@@ -210,14 +239,21 @@ namespace
         return output;
     }
 
-    StringArray getDisabledTest (const ArgumentList& args)
+    StringArray getDisabledTests (const ArgumentList& args)
     {
-        const File disabledTestsFile (getOptionValue (args, "--disabled-tests", {}, "Missing disabled-tests path argument!").toString());
+        const auto value = getOptionValue (args, "--disabled-tests", {}, "Missing disabled-tests path argument!").toString();
 
-        StringArray disabledTests;
-        disabledTestsFile.readLines (disabledTests);
+        if (juce::File::isAbsolutePath (value))
+        {
+            const juce::File disabledTestsFile (value);
 
-        return disabledTests;
+            juce::StringArray disabledTests;
+            disabledTestsFile.readLines (disabledTests);
+
+            return disabledTests;
+        }
+
+        return juce::StringArray::fromTokens (value, ",", "");
     }
 }
 
@@ -307,8 +343,8 @@ static String getHelpMessage()
          << "  Validate plugins to test compatibility with hosts and verify plugin API conformance" << newLine << newLine
          << "Usage: "
          << newLine
-         << "  --validate [list]" << newLine
-         << "    Validates the files (or IDs for AUs)." << newLine
+         << "  --validate [pathToPlugin]" << newLine
+         << "    Validates the plugin at the given path." << newLine
          << "  --strictness-level [1-10]" << newLine
          << "    Sets the strictness level to use. A minimum level of 5 (also the default) is recomended for compatibility. Higher levels include longer, more thorough tests such as fuzzing." << newLine
          << "  --random-seed [hex or int]" << newLine
@@ -357,54 +393,6 @@ static String getVersionText()
     return String (ProjectInfo::projectName) + " - " + ProjectInfo::versionString;
 }
 
-static void validate (CommandLineValidator& validator, const ArgumentList& args)
-{
-    const int startIndex = args.indexOfOption ("--validate");
-
-    if (startIndex == -1)
-    {
-        jassertfalse;
-        return;
-    }
-
-    StringArray fileOrIDs;
-
-    for (int i = startIndex + 1; i < args.size(); ++i)
-    {
-        const auto& arg = args[i];
-
-        if (arg.isLongOption() || arg.isShortOption())
-            break;
-
-        if (arg.text.contains ("~") || arg.text.contains ("."))
-            fileOrIDs.add (File (arg.text).getFullPathName());
-        else
-            fileOrIDs.add (arg.text);
-    }
-
-    if (! fileOrIDs.isEmpty())
-    {
-        const bool validateInProcess = args.containsOption ("--validate-in-process");
-        PluginTests::Options options;
-        options.strictnessLevel = getStrictnessLevel (args);
-        options.randomSeed = getRandomSeed (args);
-        options.timeoutMs = getTimeout (args);
-        options.verbose = args.containsOption ("--verbose");
-        options.numRepeats = getNumRepeats (args);
-        options.randomiseTestOrder = args.containsOption ("--randomise");
-        options.dataFile = getDataFile (args);
-        options.outputDir = getOutputDir (args);
-        options.withGUI = ! args.containsOption ("--skip-gui-tests");
-        options.disabledTests = getDisabledTest (args);
-        options.sampleRates = getSampleRates (args);
-        options.blockSizes = getBlockSizes (args);
-
-        validator.validate (fileOrIDs,
-                            options,
-                            validateInProcess);
-    }
-}
-
 static int getNumTestFailures (UnitTestRunner& testRunner)
 {
     int numFailures = 0;
@@ -437,7 +425,11 @@ static void performCommandLine (CommandLineValidator& validator, const ArgumentL
     cli.addCommand ({ "--validate",
                       "--validate [list]",
                       "Validates the files (or IDs for AUs).", String(),
-                      [&validator] (const auto& validatorArgs) { validate (validator, validatorArgs); }});
+                      [&validator] (const auto& validatorArgs)
+                      {
+                          auto [fileOrIDToValidate, options] = parseCommandLine (validatorArgs);
+                          validator.validate (fileOrIDToValidate, options);
+                      }});
     cli.addCommand ({ "--run-tests",
                       "--run-tests",
                       "Runs the internal unit tests.", String(),
@@ -477,6 +469,97 @@ bool shouldPerformCommandLine (const String& commandLine)
     return shouldPerformCommandLine (ArgumentList (File::getSpecialLocation (File::currentExecutableFile).getFullPathName(), commandLine));
 }
 
+//==============================================================================
+//==============================================================================
+std::pair<juce::String, PluginTests::Options> parseCommandLine (const juce::ArgumentList& args)
+{
+    auto fileOrID = args.getValueForOption ("--validate|-v");
+
+    if (fileOrID.contains ("~") || fileOrID.contains ("."))
+        fileOrID = juce::File (fileOrID).getFullPathName();
+
+    PluginTests::Options options;
+    options.strictnessLevel     = getStrictnessLevel (args);
+    options.randomSeed          = getRandomSeed (args);
+    options.timeoutMs           = getTimeout (args);
+    options.verbose             = args.containsOption ("--verbose");
+    options.numRepeats          = getNumRepeats (args);
+    options.randomiseTestOrder  = args.containsOption ("--randomise");
+    options.dataFile            = getDataFile (args);
+    options.outputDir           = getOutputDir (args);
+    options.withGUI             = ! args.containsOption ("--skip-gui-tests");
+    options.disabledTests       = getDisabledTests (args);
+    options.sampleRates         = getSampleRates (args);
+    options.blockSizes          = getBlockSizes (args);
+
+    return { args.arguments.getLast().text, options };
+}
+
+std::pair<juce::String, PluginTests::Options> parseCommandLine (const String& cmd)
+{
+    return parseCommandLine (juce::ArgumentList (juce::File::getSpecialLocation (juce::File::currentExecutableFile).getFullPathName(),
+                                                 cmd));
+}
+
+juce::StringArray createCommandLine (juce::String fileOrID, PluginTests::Options options)
+{
+    juce::StringArray args (juce::File::getSpecialLocation (juce::File::currentExecutableFile).getFullPathName());
+    const PluginTests::Options defaults;
+
+    if (options.strictnessLevel != defaults.strictnessLevel)
+        args.addArray ({ "--strictness-level", juce::String (options.strictnessLevel) });
+
+    if (options.randomSeed != defaults.randomSeed)
+        args.addArray ({ "--random-seed", juce::String (options.randomSeed) });
+
+    if (options.timeoutMs != defaults.timeoutMs)
+        args.addArray ({ "--timeout-ms", juce::String (options.timeoutMs) });
+
+    if (options.verbose)
+        args.add ("--verbose");
+
+    if (! options.withGUI)
+        args.add ("--skip-gui-tests");
+
+    if (options.numRepeats != defaults.numRepeats)
+        args.addArray ({ "--repeat", juce::String (options.numRepeats) });
+
+    if (options.randomiseTestOrder)
+        args.add ("--randomise");
+
+    if (options.dataFile != defaults.dataFile)
+        args.addArray ({ "--data-file", options.dataFile.getFullPathName() });
+
+    if (options.outputDir != defaults.outputDir)
+        args.addArray ({ "--output-dir", options.outputDir.getFullPathName() });
+
+    if (options.disabledTests != defaults.disabledTests)
+        args.addArray ({ "--disabled-tests", options.disabledTests.joinIntoString (",") });
+
+    if (! options.sampleRates.empty())
+    {
+        juce::StringArray sampleRates;
+
+        for (auto rate : options.sampleRates)
+            sampleRates.add (juce::String (rate));
+
+        args.addArray ({ "--sample-rates", sampleRates.joinIntoString (",") });
+    }
+
+    if (! options.blockSizes.empty())
+    {
+        juce::StringArray blockSizes;
+
+        for (auto size : options.blockSizes)
+            blockSizes.add (juce::String (size));
+
+        args.addArray ({ "--block-sizes", blockSizes.joinIntoString (",") });
+    }
+
+    args.addArray ({ "--validate", fileOrID });
+
+    return args;
+}
 
 //==============================================================================
 //==============================================================================

@@ -50,6 +50,7 @@ PluginTests::PluginTests (const String& fileOrIdentifier, Options opts)
       fileOrID (fileOrIdentifier),
       options (opts)
 {
+    jassert (fileOrIdentifier.isNotEmpty());
     jassert (isPositiveAndNotGreaterThan (options.strictnessLevel, 10));
     formatManager.addDefaultFormats();
 }
@@ -84,6 +85,9 @@ void PluginTests::resetTimeout()
 
 void PluginTests::runTest()
 {
+    // This has to be called on a background thread to keep the message thread free
+    jassert (! juce::MessageManager::existsAndIsCurrentThread());
+
     logMessage ("Validation started: " + Time::getCurrentTime().toString (true, true) + "\n");
     logMessage ("Strictness level: " + String (options.strictnessLevel));
 

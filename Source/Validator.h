@@ -14,50 +14,11 @@
 
 #pragma once
 
+#include <thread>
 #include <JuceHeader.h>
 #include "PluginTests.h"
 
-#ifndef LOG_PIPE_COMMUNICATION
- #define LOG_PIPE_COMMUNICATION 0
-#endif
-
-#ifndef LOG_PIPE_CHILD_COMMUNICATION
- #define LOG_PIPE_CHILD_COMMUNICATION 0
-#endif
-
-namespace juce
-{
-template <typename T>
-struct VariantConverter<std::vector<T>>
-{
-    static std::vector<T> fromVar (const var& v)
-    {
-        jassert (v.isString());
-
-        std::vector<T> vc;
-
-        for (auto token : StringArray::fromTokens (v.toString(), ",", ""))
-            vc.push_back (static_cast<T> (var (token)));
-
-        return vc;
-    }
-
-    static var toVar (const std::vector<T>& vc)
-    {
-        if (vc.empty())
-            return "";
-
-        String text { vc.front() };
-        std::for_each (std::next (vc.begin()), vc.end(), [&] (const T& t) { text << ',' << t; });
-        return text;
-    }
-};
-}// namespace juce
-
-// Defined in Main.cpp, used to create the file logger as early as possible
-void childInitialised();
-
-class ValidatorParentProcess;
+class GroupValidator;
 
 //==============================================================================
 /**
@@ -97,9 +58,8 @@ public:
 
         virtual void validationStarted (const String& idString) = 0;
         virtual void logMessage (const String&) = 0;
-        virtual void itemComplete (const String& idString, int numFailures) = 0;
+        virtual void itemComplete (const String& idString, uint32_t exitCode) = 0;
         virtual void allItemsComplete() = 0;
-        virtual void connectionLost() {}
     };
 
     void addListener (Listener* l)          { listeners.add (l); }
@@ -107,19 +67,62 @@ public:
 
 private:
     //==============================================================================
-    std::unique_ptr<ValidatorParentProcess> parentProcess;
+    std::unique_ptr<GroupValidator> groupValidator;
     ListenerList<Listener> listeners;
     bool launchInProcess = false;
 
     void logMessage (const String&);
-    bool ensureConnection();
 
     void handleAsyncUpdate() override;
 };
 
+
 //==============================================================================
-/*  The JUCEApplication::initialise method calls this function to allow the
-    child process to launch when the command line parameters indicate that we're
-    being asked to run as a child process.
-*/
-bool invokeChildProcessValidator (const String& commandLine);
+//==============================================================================
+class ChildProcessValidator : private juce::Timer
+{
+public:
+    ChildProcessValidator (const juce::String& fileOrIdToValidate, PluginTests::Options,
+                           std::function<void (juce::String)> validationStarted,
+                           std::function<void (juce::String, uint32_t /*exitCode*/)> validationEnded,
+                           std::function<void(const String&)> outputGenerated);
+
+    bool hasFinished() const;
+
+private:
+    const juce::String fileOrID;
+    PluginTests::Options options;
+    ChildProcess childProcess;
+
+    std::function<void (juce::String)> validationStarted;
+    std::function<void (juce::String, uint32_t)> validationEnded;
+    std::function<void(const String&)> outputGenerated;
+
+    void timerCallback() override;
+};
+
+//==============================================================================
+class AsyncValidator
+{
+public:
+    AsyncValidator (const juce::String& fileOrIdToValidate, PluginTests::Options,
+                    std::function<void (juce::String)> validationStarted,
+                    std::function<void (juce::String, uint32_t /*exitCode*/)> validationEnded,
+                    std::function<void (const String&)> outputGenerated);
+    ~AsyncValidator();
+
+    bool hasFinished() const;
+
+private:
+    const juce::String fileOrID;
+    PluginTests::Options options;
+
+    std::thread thread;
+    std::atomic<bool> isRunning { true };
+
+    std::function<void (juce::String)> validationStarted;
+    std::function<void (juce::String, uint32_t)> validationEnded;
+    std::function<void (const String&)> outputGenerated;
+
+    void run();
+};

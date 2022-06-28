@@ -91,7 +91,7 @@ private:
     {
     }
 
-    void itemComplete (const String&, int) override
+    void itemComplete (const String&, uint32_t) override
     {
     }
 
@@ -194,20 +194,21 @@ private:
         std::cout << m << "\n";
     }
 
-    void itemComplete (const String& id, int numFailures) override
+    void itemComplete (const String& id, uint32_t exitCode) override
     {
         logMessage ("\nFinished validating: " + id);
 
-        if (numFailures == 0)
+        if (exitCode == 0)
             logMessage ("ALL TESTS PASSED");
         else
-            logMessage ("*** FAILED: " + String (numFailures) + " TESTS");
+            logMessage ("*** FAILED WITH EXIT CODE: " + String (exitCode));
 
         currentID = String();
     }
 
     void allItemsComplete() override
     {
+        logMessage ("\nFinished batch validation");
     }
 };
 
