@@ -30,7 +30,7 @@ jobs:
           echo "APP_DIR=${{ env.BUILD_DIR }}/${{ env.BINARY_NAME }}_artefacts/${{ env.BUILD_TYPE }}" >> $GITHUB_ENV
           echo "ZIP_FILE_NAME=${{ env.BINARY_NAME }}-${{ matrix.name }}.zip" >> $GITHUB_ENV
       
-      - name: Install dependencies
+      - name: Install dependencies (Linux)
         if: ${{ matrix.name == 'Linux' }}
         run: |
           sudo add-apt-repository ppa:ubuntu-toolchain-r/test
@@ -72,6 +72,10 @@ jobs:
           ls -ahl
           ${{ matrix.binary }} --run-tests
           
+      - name: Codesign (MacOS)
+        if: ${{ matrix.name == 'MacOS' }}
+        run: codesign --force -s ${{ secrets.DEVELOPER_ID_APPLICATION}} -v ${{ env.APP_DIR }}/${{ matrix.binary}} --deep --strict --options=runtime --timestamp
+        
       - name: "Notarize (MacOS)"
         if: ${{ matrix.name == 'MacOS' }}
         uses: devbotsxyz/xcode-notarize@v1
