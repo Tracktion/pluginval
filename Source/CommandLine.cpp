@@ -59,27 +59,12 @@ static void setupSignalHandling()
 
 
 //==============================================================================
-static String& getCurrentID()
-{
-    static String currentID;
-    return currentID;
-}
-
-static void setCurrentID (const String& currentID)
-{
-    getCurrentID() = currentID;
-}
-
-//==============================================================================
 //==============================================================================
 CommandLineValidator::CommandLineValidator()
 {
    #if JUCE_MAC
     setupSignalHandling();
    #endif
-
-    validator.addChangeListener (this);
-    validator.addListener (this);
 }
 
 CommandLineValidator::~CommandLineValidator()
@@ -88,58 +73,26 @@ CommandLineValidator::~CommandLineValidator()
 
 void CommandLineValidator::validate (const juce::String& fileOrID, PluginTests::Options options)
 {
-    asyncValidator = std::make_unique<AsyncValidator> (fileOrID, options,
-                                                       [this, fileOrID] (auto id) { logMessage ("Started validating: " + id); },
-                                                       [] (auto, uint32_t exitCode)
-                                                       {
-                                                           if (exitCode > 0)
-                                                               exitWithError ("*** FAILED");
-                                                           else
-                                                               JUCEApplication::getInstance()->quit();
-                                                       },
-                                                       [this] (auto m) { logMessage (m); });
+    validator = std::make_unique<ValidationPass> (fileOrID, options, ValidationType::inProcess,
+                                                  [] (auto id)
+                                                  {
+                                                      std::cout << "Started validating: " << id;
+                                                  },
+                                                  [] (auto, uint32_t exitCode)
+                                                  {
+                                                      if (exitCode > 0)
+                                                          exitWithError ("*** FAILED");
+                                                      else
+                                                          JUCEApplication::getInstance()->quit();
+                                                  },
+                                                  [] (auto m)
+                                                  {
+                                                      std::cout << m;
+                                                  });
 }
 
-void CommandLineValidator::changeListenerCallback (ChangeBroadcaster*)
-{
-    if (! validator.isConnected() && currentID.isNotEmpty())
-        exitWithError ("\n*** FAILED: VALIDATION CRASHED" + getCrashLog());
-}
 
-void CommandLineValidator::validationStarted (const String& id)
-{
-    setCurrentID (id);
-    currentID = id;
-    logMessage ("Started validating: " + id);
-}
-
-void CommandLineValidator::logMessage (const String& m)
-{
-    std::cout << m << "\n";
-}
-
-void CommandLineValidator::itemComplete (const String& id, uint32_t exitCode)
-{
-    logMessage ("\nFinished validating: " + id);
-
-    if (exitCode == 0)
-        logMessage ("ALL TESTS PASSED");
-    else
-        logMessage ("*** FAILED WITH EXIT CODE: " + String (exitCode));
-
-    numFailures += exitCode;
-    setCurrentID (String());
-    currentID = String();
-}
-
-void CommandLineValidator::allItemsComplete()
-{
-    if (numFailures > 0)
-        exitWithError ("*** FAILED: " + String (numFailures) + " VALIDATIONS");
-    else
-        JUCEApplication::getInstance()->quit();
-}
-
+//==============================================================================
 //==============================================================================
 namespace
 {

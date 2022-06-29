@@ -14,12 +14,53 @@
 
 #pragma once
 
-#include <thread>
 #include <JuceHeader.h>
 #include "PluginTests.h"
 
-class GroupValidator;
+class ChildProcessValidator;
+class AsyncValidator;
+class MultiValidator;
 
+//==============================================================================
+//==============================================================================
+/** Enum to determine the type of validation to run. */
+enum class ValidationType
+{
+    inProcess,      /**< Runs the validation in the calling process. */
+    childProcess    /**< Runs the validation in the a separate process. */
+};
+
+//==============================================================================
+/**
+    A single, asyncronouse validation pass for a specific plugin.
+*/
+class ValidationPass
+{
+public:
+    //==============================================================================
+    /** Starts a validation process with a set of options and callbacks.
+        The validation will be async so either use the validationEnded callback or
+        poll hasFinished() to find out when the validation has completed.
+    */
+    ValidationPass (const juce::String& fileOrIdToValidate, PluginTests::Options, ValidationType,
+                    std::function<void (juce::String)> validationStarted,
+                    std::function<void (juce::String, uint32_t /*exitCode*/)> validationEnded,
+                    std::function<void(const String&)> outputGenerated);
+
+    /** Destructor. */
+    ~ValidationPass();
+
+    /** Returns true when the validation pass has ended. */
+    bool hasFinished() const;
+
+private:
+    //==============================================================================
+    std::unique_ptr<ChildProcessValidator> childProcessValidator;
+    std::unique_ptr<AsyncValidator> asyncValidator;
+};
+
+
+//==============================================================================
 //==============================================================================
 /**
     Manages validation calls via a separate process and provides a listener
@@ -67,7 +108,7 @@ public:
 
 private:
     //==============================================================================
-    std::unique_ptr<GroupValidator> groupValidator;
+    std::unique_ptr<MultiValidator> multiValidator;
     ListenerList<Listener> listeners;
     bool launchInProcess = false;
 
@@ -79,58 +120,58 @@ private:
 
 //==============================================================================
 //==============================================================================
-class ChildProcessValidator
-{
-public:
-    ChildProcessValidator (const juce::String& fileOrIdToValidate, PluginTests::Options,
-                           std::function<void (juce::String)> validationStarted,
-                           std::function<void (juce::String, uint32_t /*exitCode*/)> validationEnded,
-                           std::function<void(const String&)> outputGenerated);
-    ~ChildProcessValidator();
-
-    bool hasFinished() const;
-
-private:
-    JUCE_DECLARE_WEAK_REFERENCEABLE (ChildProcessValidator)
-
-    const juce::String fileOrID;
-    PluginTests::Options options;
-
-    ChildProcess childProcess;
-    std::thread thread;
-    std::atomic<bool> isRunning { true };
-
-    std::function<void (juce::String)> validationStarted;
-    std::function<void (juce::String, uint32_t)> validationEnded;
-    std::function<void(const String&)> outputGenerated;
-
-    void run();
-};
-
-//==============================================================================
-class AsyncValidator
-{
-public:
-    AsyncValidator (const juce::String& fileOrIdToValidate, PluginTests::Options,
-                    std::function<void (juce::String)> validationStarted,
-                    std::function<void (juce::String, uint32_t /*exitCode*/)> validationEnded,
-                    std::function<void (const String&)> outputGenerated);
-    ~AsyncValidator();
-
-    bool hasFinished() const;
-
-private:
-    JUCE_DECLARE_WEAK_REFERENCEABLE (AsyncValidator)
-
-    const juce::String fileOrID;
-    PluginTests::Options options;
-
-    std::thread thread;
-    std::atomic<bool> isRunning { true };
-
-    std::function<void (juce::String)> validationStarted;
-    std::function<void (juce::String, uint32_t)> validationEnded;
-    std::function<void (const String&)> outputGenerated;
-
-    void run();
-};
+//dddclass ChildProcessValidator
+//{
+//public:
+//    ChildProcessValidator (const juce::String& fileOrIdToValidate, PluginTests::Options,
+//                           std::function<void (juce::String)> validationStarted,
+//                           std::function<void (juce::String, uint32_t /*exitCode*/)> validationEnded,
+//                           std::function<void(const String&)> outputGenerated);
+//    ~ChildProcessValidator();
+//
+//    bool hasFinished() const;
+//
+//private:
+//    JUCE_DECLARE_WEAK_REFERENCEABLE (ChildProcessValidator)
+//
+//    const juce::String fileOrID;
+//    PluginTests::Options options;
+//
+//    ChildProcess childProcess;
+//    std::thread thread;
+//    std::atomic<bool> isRunning { true };
+//
+//    std::function<void (juce::String)> validationStarted;
+//    std::function<void (juce::String, uint32_t)> validationEnded;
+//    std::function<void(const String&)> outputGenerated;
+//
+//    void run();
+//};
+//
+////==============================================================================
+//class AsyncValidator
+//{
+//public:
+//    AsyncValidator (const juce::String& fileOrIdToValidate, PluginTests::Options,
+//                    std::function<void (juce::String)> validationStarted,
+//                    std::function<void (juce::String, uint32_t /*exitCode*/)> validationEnded,
+//                    std::function<void (const String&)> outputGenerated);
+//    ~AsyncValidator();
+//
+//    bool hasFinished() const;
+//
+//private:
+//    JUCE_DECLARE_WEAK_REFERENCEABLE (AsyncValidator)
+//
+//    const juce::String fileOrID;
+//    PluginTests::Options options;
+//
+//    std::thread thread;
+//    std::atomic<bool> isRunning { true };
+//
+//    std::function<void (juce::String)> validationStarted;
+//    std::function<void (juce::String, uint32_t)> validationEnded;
+//    std::function<void (const String&)> outputGenerated;
+//
+//    void run();
+//};

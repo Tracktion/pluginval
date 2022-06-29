@@ -17,7 +17,7 @@
 #include "CrashHandler.h"
 #include "CommandLine.h"
 #include <numeric>
-
+#include <thread>
 
 //==============================================================================
 struct PluginsUnitTestRunner    : public UnitTestRunner,
@@ -210,10 +210,228 @@ inline int getNumFailures (Array<UnitTestRunner::TestResult> results)
 
 //==============================================================================
 //==============================================================================
-class GroupValidator    : public juce::Timer
+class ChildProcessValidator
 {
 public:
-    GroupValidator (juce::StringArray fileOrIDsToValidate,
+    //==============================================================================
+    ChildProcessValidator (const juce::String& fileOrID_, PluginTests::Options options_,
+                           std::function<void (juce::String)> validationStarted_,
+                           std::function<void (juce::String, uint32_t /*exitCode*/)> validationEnded_,
+                           std::function<void (const String&)> outputGenerated_)
+        : fileOrID (fileOrID_),
+          options (options_),
+          validationStarted (std::move (validationStarted_)),
+          validationEnded (std::move (validationEnded_)),
+          outputGenerated (std::move (outputGenerated_))
+    {
+        WeakReference<ChildProcessValidator> wr (this);
+        outputGenerated = [wr, originalCallback = std::move (outputGenerated_)] (const String& m)
+        {
+            juce::MessageManager::callAsync ([wr, m, &originalCallback]
+                                             {
+                                                 if (wr != nullptr && originalCallback)
+                                                     originalCallback (m);
+                                             });
+        };
+
+        thread = std::thread ([this] { run(); });
+    }
+
+    ~ChildProcessValidator()
+    {
+        thread.join();
+    }
+
+    bool hasFinished() const
+    {
+        return ! isRunning;
+    }
+
+private:
+    //==============================================================================
+    JUCE_DECLARE_WEAK_REFERENCEABLE (ChildProcessValidator)
+
+    const juce::String fileOrID;
+    PluginTests::Options options;
+
+    ChildProcess childProcess;
+    std::thread thread;
+    std::atomic<bool> isRunning { true };
+
+    std::function<void (juce::String)> validationStarted;
+    std::function<void (juce::String, uint32_t)> validationEnded;
+    std::function<void(const String&)> outputGenerated;
+
+    //==============================================================================
+    void run()
+    {
+        isRunning = childProcess.start (createCommandLine (fileOrID, options));
+
+        if (! isRunning)
+            return;
+
+        juce::MessageManager::callAsync ([this, wr = WeakReference<ChildProcessValidator> (this)]
+                                         {
+                                             if (wr != nullptr && validationStarted)
+                                                 validationStarted (fileOrID);
+                                         });
+
+
+        // Flush the output from the process
+        for (;;)
+        {
+            constexpr int numBytesToRead = 2048;
+            char buffer[numBytesToRead];
+
+            if (const auto numBytesRead = childProcess.readProcessOutput (buffer, numBytesToRead);
+                numBytesRead > 0)
+            {
+                std::string msg (buffer, (size_t) numBytesRead);
+
+                if (outputGenerated)
+                    outputGenerated (msg);
+            }
+
+            if (! childProcess.isRunning())
+                break;
+
+            using namespace std::literals;
+            std::this_thread::sleep_for (100ms);
+        }
+
+        juce::MessageManager::callAsync ([this, wr = WeakReference<ChildProcessValidator> (this), exitCode = childProcess.getExitCode()]
+                                         {
+                                             if (wr != nullptr)
+                                             {
+                                                 if (validationEnded)
+                                                     validationEnded (fileOrID, exitCode);
+
+                                                 isRunning = false;
+                                             }
+                                         });
+
+        isRunning = false;
+    }
+};
+
+
+//==============================================================================
+//==============================================================================
+class AsyncValidator
+{
+public:
+    //==============================================================================
+    AsyncValidator (const juce::String& fileOrID_, PluginTests::Options options_,
+                    std::function<void (juce::String)> validationStarted_,
+                    std::function<void (juce::String, uint32_t /*exitCode*/)> validationEnded_,
+                    std::function<void (const String&)> outputGenerated_)
+        : fileOrID (fileOrID_),
+          options (options_),
+          validationStarted (std::move (validationStarted_)),
+          validationEnded (std::move (validationEnded_))
+    {
+        WeakReference<AsyncValidator> wr (this);
+        outputGenerated = [wr, originalCallback = std::move (outputGenerated_)] (const String& m)
+        {
+            juce::MessageManager::callAsync ([wr, m, &originalCallback]
+                                             {
+                                                 if (wr != nullptr && originalCallback)
+                                                     originalCallback (m);
+                                             });
+        };
+
+        thread = std::thread ([this] { run(); });
+    }
+
+    ~AsyncValidator()
+    {
+        thread.join();
+    }
+
+    bool hasFinished() const
+    {
+        return ! isRunning;
+    }
+
+private:
+    //==============================================================================
+    JUCE_DECLARE_WEAK_REFERENCEABLE (AsyncValidator)
+
+    const juce::String fileOrID;
+    PluginTests::Options options;
+
+    std::thread thread;
+    std::atomic<bool> isRunning { true };
+
+    std::function<void (juce::String)> validationStarted;
+    std::function<void (juce::String, uint32_t)> validationEnded;
+    std::function<void (const String&)> outputGenerated;
+
+    //==============================================================================
+    void run()
+    {
+        juce::MessageManager::callAsync ([this, wr = WeakReference<AsyncValidator> (this)]
+                                         {
+                                             if (wr != nullptr && validationStarted)
+                                                 validationStarted (fileOrID);
+                                         });
+
+        const auto numFailues = getNumFailures (validate (fileOrID, options, outputGenerated));
+
+        juce::MessageManager::callAsync ([this, wr = WeakReference<AsyncValidator> (this), numFailues]
+                                         {
+                                             if (wr != nullptr)
+                                             {
+                                                 if (validationEnded)
+                                                     validationEnded (fileOrID, numFailues > 0 ? 1 : 0);
+
+                                                 isRunning = false;
+                                             }
+                                         });
+    }
+};
+
+
+//==============================================================================
+//==============================================================================
+ValidationPass::ValidationPass (const juce::String& fileOrIdToValidate, PluginTests::Options opts, ValidationType vt,
+                                std::function<void (juce::String)> validationStarted,
+                                std::function<void (juce::String, uint32_t)> validationEnded,
+                                std::function<void(const String&)> outputGenerated)
+{
+    if (vt == ValidationType::inProcess)
+    {
+        asyncValidator = std::make_unique<AsyncValidator> (fileOrIdToValidate, opts,
+                                                           std::move (validationStarted),
+                                                           std::move (validationEnded),
+                                                           std::move (outputGenerated));
+    }
+    else if (vt == ValidationType::childProcess)
+    {
+        childProcessValidator = std::make_unique<ChildProcessValidator> (fileOrIdToValidate, opts,
+                                                                         std::move (validationStarted),
+                                                                         std::move (validationEnded),
+                                                                         std::move (outputGenerated));
+    }
+}
+
+ValidationPass::~ValidationPass()
+{
+}
+
+bool ValidationPass::hasFinished() const
+{
+    return asyncValidator ? asyncValidator->hasFinished()
+                          : childProcessValidator->hasFinished();
+}
+
+
+//==============================================================================
+//==============================================================================
+class MultiValidator    : public juce::Timer
+{
+public:
+    MultiValidator (juce::StringArray fileOrIDsToValidate,
                     PluginTests::Options options_,
                     bool validateInProcess_,
                     std::function<void (juce::String)> validationStarted_,
@@ -306,13 +524,13 @@ Validator::~Validator() {}
 
 bool Validator::isConnected() const
 {
-    return groupValidator != nullptr;
+    return multiValidator != nullptr;
 }
 
 bool Validator::validate (const StringArray& fileOrIDsToValidate, PluginTests::Options options)
 {
     sendChangeMessage();
-    groupValidator = std::make_unique<GroupValidator> (fileOrIDsToValidate, options, launchInProcess,
+    multiValidator = std::make_unique<MultiValidator> (fileOrIDsToValidate, options, launchInProcess,
                                                        [this] (juce::String id) { listeners.call (&Listener::validationStarted, id); },
                                                        [this] (juce::String id, uint32_t exitCode) { listeners.call (&Listener::itemComplete, id, exitCode); },
                                                        [this] (const String& m) { listeners.call (&Listener::logMessage, m); },
@@ -338,146 +556,69 @@ void Validator::setValidateInProcess (bool useSameProcess)
 //==============================================================================
 void Validator::handleAsyncUpdate()
 {
-    groupValidator.reset();
+    multiValidator.reset();
     sendChangeMessage();
 }
 
 
+
+
+
+
 //==============================================================================
 //==============================================================================
-ChildProcessValidator::ChildProcessValidator (const juce::String& fileOrID_, PluginTests::Options options_,
-                                              std::function<void (juce::String)> validationStarted_,
-                                              std::function<void (juce::String, uint32_t /*exitCode*/)> validationEnded_,
-                                              std::function<void (const String&)> outputGenerated_)
-    : fileOrID (fileOrID_),
-      options (options_),
-      validationStarted (std::move (validationStarted_)),
-      validationEnded (std::move (validationEnded_)),
-      outputGenerated (std::move (outputGenerated_))
-{
-    WeakReference<ChildProcessValidator> wr (this);
-    outputGenerated = [wr, originalCallback = std::move (outputGenerated_)] (const String& m)
-    {
-        juce::MessageManager::callAsync ([wr, m, &originalCallback]
-                                         {
-                                             if (wr != nullptr && originalCallback)
-                                                 originalCallback (m);
-                                         });
-    };
+//dddclass ChildProcessValidator
+//{
+//public:
+//    ChildProcessValidator (const juce::String& fileOrIdToValidate, PluginTests::Options,
+//                           std::function<void (juce::String)> validationStarted,
+//                           std::function<void (juce::String, uint32_t /*exitCode*/)> validationEnded,
+//                           std::function<void(const String&)> outputGenerated);
+//    ~ChildProcessValidator();
+//
+//    bool hasFinished() const;
+//
+//private:
+//    JUCE_DECLARE_WEAK_REFERENCEABLE (ChildProcessValidator)
+//
+//    const juce::String fileOrID;
+//    PluginTests::Options options;
+//
+//    ChildProcess childProcess;
+//    std::thread thread;
+//    std::atomic<bool> isRunning { true };
+//
+//    std::function<void (juce::String)> validationStarted;
+//    std::function<void (juce::String, uint32_t)> validationEnded;
+//    std::function<void(const String&)> outputGenerated;
+//
+//    void run();
+//};
 
-    thread = std::thread ([this] { run(); });
-}
-
-ChildProcessValidator::~ChildProcessValidator()
-{
-    thread.join();
-}
-
-bool ChildProcessValidator::hasFinished() const
-{
-    return ! isRunning;
-}
-
-void ChildProcessValidator::run()
-{
-    isRunning = childProcess.start (createCommandLine (fileOrID, options));
-
-    if (! isRunning)
-        return;
-
-    juce::MessageManager::callAsync ([this, wr = WeakReference<ChildProcessValidator> (this)]
-                                     {
-                                         if (wr != nullptr && validationStarted)
-                                             validationStarted (fileOrID);
-                                     });
-
-
-    // Flush the output from the process
-    for (;;)
-    {
-        constexpr int numBytesToRead = 2048;
-        char buffer[numBytesToRead];
-
-        if (const auto numBytesRead = childProcess.readProcessOutput (buffer, numBytesToRead);
-            numBytesRead > 0)
-        {
-            std::string msg (buffer, (size_t) numBytesRead);
-
-            if (outputGenerated)
-                outputGenerated (msg);
-        }
-
-        if (! childProcess.isRunning())
-            break;
-
-        using namespace std::literals;
-        std::this_thread::sleep_for (100ms);
-    }
-
-    juce::MessageManager::callAsync ([this, wr = WeakReference<ChildProcessValidator> (this), exitCode = childProcess.getExitCode()]
-                                     {
-                                         if (wr != nullptr)
-                                         {
-                                             if (validationEnded)
-                                                 validationEnded (fileOrID, exitCode);
-
-                                             isRunning = false;
-                                         }
-                                     });
-
-    isRunning = false;
-}
-
-AsyncValidator::AsyncValidator (const juce::String& fileOrID_, PluginTests::Options options_,
-                                std::function<void (juce::String)> validationStarted_,
-                                std::function<void (juce::String, uint32_t /*exitCode*/)> validationEnded_,
-                                std::function<void (const String&)> outputGenerated_)
-    : fileOrID (fileOrID_),
-      options (options_),
-      validationStarted (std::move (validationStarted_)),
-      validationEnded (std::move (validationEnded_))
-{
-    WeakReference<AsyncValidator> wr (this);
-    outputGenerated = [wr, originalCallback = std::move (outputGenerated_)] (const String& m)
-    {
-        juce::MessageManager::callAsync ([wr, m, &originalCallback]
-                                         {
-                                             if (wr != nullptr && originalCallback)
-                                                 originalCallback (m);
-                                         });
-    };
-
-    thread = std::thread ([this] { run(); });
-}
-
-AsyncValidator::~AsyncValidator()
-{
-    thread.join();
-}
-
-bool AsyncValidator::hasFinished() const
-{
-    return ! isRunning;
-}
-
-void AsyncValidator::run()
-{
-    juce::MessageManager::callAsync ([this, wr = WeakReference<AsyncValidator> (this)]
-                                     {
-                                         if (wr != nullptr && validationStarted)
-                                             validationStarted (fileOrID);
-                                     });
-
-    const auto numFailues = getNumFailures (validate (fileOrID, options, outputGenerated));
-
-    juce::MessageManager::callAsync ([this, wr = WeakReference<AsyncValidator> (this), numFailues]
-                                     {
-                                         if (wr != nullptr)
-                                         {
-                                             if (validationEnded)
-                                                 validationEnded (fileOrID, numFailues > 0 ? 1 : 0);
-
-                                             isRunning = false;
-                                         }
-                                     });
-}
+//==============================================================================
+//dddclass AsyncValidator
+//{
+//public:
+//    AsyncValidator (const juce::String& fileOrIdToValidate, PluginTests::Options,
+//                    std::function<void (juce::String)> validationStarted,
+//                    std::function<void (juce::String, uint32_t /*exitCode*/)> validationEnded,
+//                    std::function<void (const String&)> outputGenerated);
+//    ~AsyncValidator();
+//
+//    bool hasFinished() const;
+//
+//private:
+//    JUCE_DECLARE_WEAK_REFERENCEABLE (AsyncValidator)
+//
+//    const juce::String fileOrID;
+//    PluginTests::Options options;
+//
+//    std::thread thread;
+//    std::atomic<bool> isRunning { true };
+//
+//    std::function<void (juce::String)> validationStarted;
+//    std::function<void (juce::String, uint32_t)> validationEnded;
+//    std::function<void (const String&)> outputGenerated;
+//
+//    void run();
+//};
