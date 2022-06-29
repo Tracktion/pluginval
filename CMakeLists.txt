@@ -1,6 +1,7 @@
 cmake_minimum_required(VERSION 3.15)
 
-project(pluginval VERSION 0.3.0)
+file(READ VERSION CURRENT_VERSION)
+project(pluginval VERSION ${CURRENT_VERSION})
 
 if (APPLE)
     # Target OS versions down to 10.11
@@ -73,7 +74,8 @@ target_compile_definitions(pluginval PRIVATE
     JUCER_ENABLE_GPL_MODE=1
     JUCE_DISPLAY_SPLASH_SCREEN=0
     JUCE_MODAL_LOOPS_PERMITTED=1
-    JUCE_REPORT_APP_USAGE=0)
+    JUCE_REPORT_APP_USAGE=0
+    VERSION="${CURRENT_VERSION}")
 
 target_link_libraries(pluginval PRIVATE
     juce::juce_audio_devices
