@@ -20,9 +20,9 @@ If you are a plugin user looking to report a problem with a plugin to the develo
 
 ### Installation
 
-The easiest way to get started with pluginval is to grab a pre-compiled binaries from the [Releases page](https://github.com/Tracktion/pluginval/releases).
+The easiest way to get started with pluginval is to grab pre-compiled binaries from the [Releases page](https://github.com/Tracktion/pluginval/releases).
 
-Once you need to [debug a failed validation](https://github.com/Tracktion/pluginval/blob/develop/docs/Debugging%20a%20failed%20validation.md#quick-debugging) you'll probably want to build locally in DEBUG:
+Once you need to [debug a failed validation](https://github.com/Tracktion/pluginval/blob/develop/docs/Debugging%20a%20failed%20validation.md#quick-debugging) you'll probably want to build locally in Debug:
 
 ```
 git submodule update --init # grab JUCE 
