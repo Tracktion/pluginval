@@ -91,6 +91,8 @@ public:
     bool hasFinished() const;
 
 private:
+    JUCE_DECLARE_WEAK_REFERENCEABLE (ChildProcessValidator)
+
     const juce::String fileOrID;
     PluginTests::Options options;
 
@@ -118,6 +120,8 @@ public:
     bool hasFinished() const;
 
 private:
+    JUCE_DECLARE_WEAK_REFERENCEABLE (AsyncValidator)
+
     const juce::String fileOrID;
     PluginTests::Options options;
 

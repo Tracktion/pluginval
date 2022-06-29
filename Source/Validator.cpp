@@ -355,6 +355,16 @@ ChildProcessValidator::ChildProcessValidator (const juce::String& fileOrID_, Plu
       validationEnded (std::move (validationEnded_)),
       outputGenerated (std::move (outputGenerated_))
 {
+    WeakReference<ChildProcessValidator> wr (this);
+    outputGenerated = [wr, originalCallback = std::move (outputGenerated_)] (const String& m)
+    {
+        juce::MessageManager::callAsync ([wr, m, &originalCallback]
+                                         {
+                                             if (wr != nullptr && originalCallback)
+                                                 originalCallback (m);
+                                         });
+    };
+
     thread = std::thread ([this] { run(); });
 }
 
@@ -375,8 +385,12 @@ void ChildProcessValidator::run()
     if (! isRunning)
         return;
 
-    if (validationStarted)
-        validationStarted (fileOrID);
+    juce::MessageManager::callAsync ([this, wr = WeakReference<ChildProcessValidator> (this)]
+                                     {
+                                         if (wr != nullptr && validationStarted)
+                                             validationStarted (fileOrID);
+                                     });
+
 
     // Flush the output from the process
     for (;;)
@@ -400,8 +414,16 @@ void ChildProcessValidator::run()
         std::this_thread::sleep_for (100ms);
     }
 
-    if (validationEnded)
-        validationEnded (fileOrID, childProcess.getExitCode());
+    juce::MessageManager::callAsync ([this, wr = WeakReference<ChildProcessValidator> (this), exitCode = childProcess.getExitCode()]
+                                     {
+                                         if (wr != nullptr)
+                                         {
+                                             if (validationEnded)
+                                                 validationEnded (fileOrID, exitCode);
+
+                                             isRunning = false;
+                                         }
+                                     });
 
     isRunning = false;
 }
@@ -413,9 +435,18 @@ AsyncValidator::AsyncValidator (const juce::String& fileOrID_, PluginTests::Opti
     : fileOrID (fileOrID_),
       options (options_),
       validationStarted (std::move (validationStarted_)),
-      validationEnded (std::move (validationEnded_)),
-      outputGenerated (std::move (outputGenerated_))
+      validationEnded (std::move (validationEnded_))
 {
+    WeakReference<AsyncValidator> wr (this);
+    outputGenerated = [wr, originalCallback = std::move (outputGenerated_)] (const String& m)
+    {
+        juce::MessageManager::callAsync ([wr, m, &originalCallback]
+                                         {
+                                             if (wr != nullptr && originalCallback)
+                                                 originalCallback (m);
+                                         });
+    };
+
     thread = std::thread ([this] { run(); });
 }
 
@@ -431,13 +462,22 @@ bool AsyncValidator::hasFinished() const
 
 void AsyncValidator::run()
 {
-    if (validationStarted)
-        validationStarted (fileOrID);
+    juce::MessageManager::callAsync ([this, wr = WeakReference<AsyncValidator> (this)]
+                                     {
+                                         if (wr != nullptr && validationStarted)
+                                             validationStarted (fileOrID);
+                                     });
 
     const auto numFailues = getNumFailures (validate (fileOrID, options, outputGenerated));
 
-    if (validationEnded)
-        validationEnded (fileOrID, numFailues > 0 ? 1 : 0);
+    juce::MessageManager::callAsync ([this, wr = WeakReference<AsyncValidator> (this), numFailues]
+                                     {
+                                         if (wr != nullptr)
+                                         {
+                                             if (validationEnded)
+                                                 validationEnded (fileOrID, numFailues > 0 ? 1 : 0);
 
-    isRunning = false;
+                                             isRunning = false;
+                                         }
+                                     });
 }
