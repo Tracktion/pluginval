@@ -34,7 +34,7 @@ jobs:
           VERSION=$(cat VERSION)
           echo "VERSION=$VERSION" >> $GITHUB_ENV
           echo "APP_DIR=${{ env.BUILD_DIR }}/${{ env.BINARY_NAME }}_artefacts/${{ env.BUILD_TYPE }}" >> $GITHUB_ENV
-          echo "ZIP_FILE_NAME=${{ env.BINARY_NAME }}-${{ env.VERSION}}-${{ matrix.name }}.zip" >> $GITHUB_ENV
+          echo "ZIP_FILE_NAME=${{ env.BINARY_NAME }}-${{ matrix.name }}.zip" >> $GITHUB_ENV
       
       - name: Install dependencies (Linux)
         if: ${{ matrix.name == 'Linux' }}
@@ -102,19 +102,15 @@ jobs:
           name: ${{ env.ZIP_FILE_NAME }}
           path: ${{ env.APP_DIR }}/${{ env.ZIP_FILE_NAME }}
       
-      - name: Upload CHANGELIST.md
-        uses: actions/upload-artifact@v3
-        if: ${{ matrix.name == 'Linux' }}
-        with:
-          name: CHANGELIST.md
-          path: ./CHANGELIST.md
-
   # Create release for tagged refs
   deploy:
     if: startsWith(github.ref, 'refs/tags/')
     needs: build
     runs-on: ubuntu-latest
     steps:
+      
+      - uses: actions/checkout@v3
+                
       - name: Get Artifacts
         uses: actions/download-artifact@v3
         with:
@@ -138,6 +134,6 @@ jobs:
           draft: true
           files: |
             CHANGELIST.md/*
-            pluginval_Linux.zip/*
-            pluginval_macOS.zip/*
-            pluginval_Windows.zip/*
+            pluginval-Linux.zip/*
+            pluginval-MacOS.zip/*
+            pluginval-Windows.zip/*
