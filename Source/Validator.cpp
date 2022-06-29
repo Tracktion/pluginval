@@ -433,14 +433,14 @@ class MultiValidator    : public juce::Timer
 public:
     MultiValidator (juce::StringArray fileOrIDsToValidate,
                     PluginTests::Options options_,
-                    bool validateInProcess_,
+                    ValidationType validationType_,
                     std::function<void (juce::String)> validationStarted_,
                     std::function<void (juce::String, uint32_t /*exitCode*/)> validationEnded_,
                     std::function<void(const String&)> outputGenerated_,
                     std::function<void()> allCompleteCallback_)
         : pluginsToValidate (std::move (fileOrIDsToValidate)),
           options (std::move (options_)),
-          validateInProcess (validateInProcess_),
+          validationType (validationType_),
           validationStarted (std::move (validationStarted_)),
           validationEnded (std::move (validationEnded_)),
           outputGenerated (std::move (outputGenerated_)),
@@ -453,10 +453,9 @@ public:
 private:
     juce::StringArray pluginsToValidate;
     const PluginTests::Options options;
-    const bool validateInProcess;
+    const ValidationType validationType;
 
-    std::unique_ptr<AsyncValidator> asyncValidator;
-    std::unique_ptr<ChildProcessValidator> childProcessValidator;
+    std::unique_ptr<ValidationPass> validationPass;
 
     std::function<void (juce::String)> validationStarted;
     std::function<void (juce::String, uint32_t /*exitCode*/)> validationEnded;
@@ -464,31 +463,10 @@ private:
     std::function<void()> completeCallback;
 
     //==============================================================================
-    /** Triggers validation of a plugin. */
-    void validate (juce::String pluginToValidate)
-    {
-        if (validateInProcess)
-        {
-            asyncValidator = std::make_unique<AsyncValidator> (pluginToValidate, options,
-                                                               validationStarted,
-                                                               validationEnded,
-                                                               outputGenerated);
-        }
-        else
-        {
-            childProcessValidator = std::make_unique<ChildProcessValidator> (pluginToValidate, options,
-                                                                             validationStarted,
-                                                                             validationEnded,
-                                                                             outputGenerated);
-        }
-    }
-
     bool isRunning() const
     {
-        if (asyncValidator)             return ! asyncValidator->hasFinished();
-        if (childProcessValidator)      return ! childProcessValidator->hasFinished();
-
-        return false;
+        return validationPass ? ! validationPass->hasFinished()
+                              : false;
     }
 
     //==============================================================================
@@ -499,8 +477,7 @@ private:
             if (isRunning())
                 return;
 
-            asyncValidator.reset();
-            childProcessValidator.reset();
+            validationPass.reset();
 
             if (completeCallback)
                 completeCallback();
@@ -512,9 +489,11 @@ private:
         if (isRunning())
             return;
 
-        const auto next = pluginsToValidate[0];
+        validationPass = std::make_unique<ValidationPass> (pluginsToValidate[0], options, validationType,
+                                                           validationStarted,
+                                                           validationEnded,
+                                                           outputGenerated);
         pluginsToValidate.remove (0);
-        validate (next);
     }
 };
 
@@ -530,7 +509,7 @@ bool Validator::isConnected() const
 bool Validator::validate (const StringArray& fileOrIDsToValidate, PluginTests::Options options)
 {
     sendChangeMessage();
-    multiValidator = std::make_unique<MultiValidator> (fileOrIDsToValidate, options, launchInProcess,
+    multiValidator = std::make_unique<MultiValidator> (fileOrIDsToValidate, options, launchInProcess ? ValidationType::inProcess : ValidationType::childProcess,
                                                        [this] (juce::String id) { listeners.call (&Listener::validationStarted, id); },
                                                        [this] (juce::String id, uint32_t exitCode) { listeners.call (&Listener::itemComplete, id, exitCode); },
                                                        [this] (const String& m) { listeners.call (&Listener::logMessage, m); },
@@ -559,66 +538,3 @@ void Validator::handleAsyncUpdate()
     multiValidator.reset();
     sendChangeMessage();
 }
-
-
-
-
-
-
-//==============================================================================
-//==============================================================================
-//dddclass ChildProcessValidator
-//{
-//public:
-//    ChildProcessValidator (const juce::String& fileOrIdToValidate, PluginTests::Options,
-//                           std::function<void (juce::String)> validationStarted,
-//                           std::function<void (juce::String, uint32_t /*exitCode*/)> validationEnded,
-//                           std::function<void(const String&)> outputGenerated);
-//    ~ChildProcessValidator();
-//
-//    bool hasFinished() const;
-//
-//private:
-//    JUCE_DECLARE_WEAK_REFERENCEABLE (ChildProcessValidator)
-//
-//    const juce::String fileOrID;
-//    PluginTests::Options options;
-//
-//    ChildProcess childProcess;
-//    std::thread thread;
-//    std::atomic<bool> isRunning { true };
-//
-//    std::function<void (juce::String)> validationStarted;
-//    std::function<void (juce::String, uint32_t)> validationEnded;
-//    std::function<void(const String&)> outputGenerated;
-//
-//    void run();
-//};
-
-//==============================================================================
-//dddclass AsyncValidator
-//{
-//public:
-//    AsyncValidator (const juce::String& fileOrIdToValidate, PluginTests::Options,
-//                    std::function<void (juce::String)> validationStarted,
-//                    std::function<void (juce::String, uint32_t /*exitCode*/)> validationEnded,
-//                    std::function<void (const String&)> outputGenerated);
-//    ~AsyncValidator();
-//
-//    bool hasFinished() const;
-//
-//private:
-//    JUCE_DECLARE_WEAK_REFERENCEABLE (AsyncValidator)
-//
-//    const juce::String fileOrID;
-//    PluginTests::Options options;
-//
-//    std::thread thread;
-//    std::atomic<bool> isRunning { true };
-//
-//    std::function<void (juce::String)> validationStarted;
-//    std::function<void (juce::String, uint32_t)> validationEnded;
-//    std::function<void (const String&)> outputGenerated;
-//
-//    void run();
-//};
