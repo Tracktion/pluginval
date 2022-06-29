@@ -258,21 +258,6 @@ namespace
 }
 
 //==============================================================================
-static String parseCommandLineArgs (String commandLine)
-{
-    if (commandLine.contains ("strictnessLevel"))
-    {
-        std::cout << "!!! WARNING:\n\t\"strictnessLevel\" is deprecated and will be removed in a future version.\n"
-                  << "\tPlease use --strictness-level instead\n\n";
-    }
-
-    return commandLine.replace ("strictnessLevel", "strictness-level")
-                      .replace ("-NSDocumentRevisionsDebugMode YES", "")
-                      .trim();
-}
-
-
-//==============================================================================
 struct Option
 {
     const char* name;
@@ -290,7 +275,6 @@ static Option possibleOptions[] =
     { "--random-seed",          true    },
     { "--timeout-ms",           true    },
     { "--verbose",              true    },
-    { "--validate-in-process",  false   },
     { "--skip-gui-tests",       false   },
     { "--data-file",            true    },
     { "--output-dir",           true    },
@@ -345,6 +329,7 @@ static String getHelpMessage()
          << newLine
          << "  --validate [pathToPlugin]" << newLine
          << "    Validates the plugin at the given path." << newLine
+         << "    N.B. the --validate flag is optional if the path is the last argument. This enables you to validate a plugin with simply \"pluginval path_to_plugin\"." << newLine
          << "  --strictness-level [1-10]" << newLine
          << "    Sets the strictness level to use. A minimum level of 5 (also the default) is recomended for compatibility. Higher levels include longer, more thorough tests such as fuzzing." << newLine
          << "  --random-seed [hex or int]" << newLine
@@ -354,8 +339,6 @@ static String getHelpMessage()
          << "    By default this is 30s but can be set to -1 to never timeout." << newLine
          << "  --verbose" << newLine
          << "    If specified, outputs additional logging information. It can be useful to turn this off when building with CI to avoid huge log files." << newLine
-         << "  --validate-in-process" << newLine
-         << "    If specified, validates the list in the calling process. This can be useful for debugging or when using the command line." << newLine
          << "  --skip-gui-tests" << newLine
          << "    If specified, avoids tests that create GUI windows, which can cause problems on headless CI systems." << newLine
          << "  --repeat [num repeats]" << newLine
@@ -415,6 +398,50 @@ static void runUnitTests()
 }
 
 //==============================================================================
+static ArgumentList createCommandLineArgs (String commandLine)
+{
+    if (commandLine.contains ("strictnessLevel"))
+    {
+        std::cout << "!!! WARNING:\n\t\"strictnessLevel\" is deprecated and will be removed in a future version.\n"
+                  << "\tPlease use --strictness-level instead\n\n";
+    }
+
+    commandLine = commandLine.replace ("strictnessLevel", "strictness-level")
+                             .replace ("-NSDocumentRevisionsDebugMode YES", "")
+                             .trim();
+
+    const auto exe = File::getSpecialLocation (File::currentExecutableFile);
+
+    StringArray args;
+    args.addTokens (commandLine, true);
+    args = mergeEnvironmentVariables (args);
+    args.trim();
+
+    for (auto& s : args)
+        s = s.unquoted();
+
+    // If only a plugin path is supplied as the last arg, add an implicit --validate
+    // option for it so the rest of the CLI works
+    ArgumentList argList (exe.getFullPathName(), args);
+
+    if (argList.size() > 0)
+    {
+        if (! (argList.containsOption ("--validate"))
+                || argList.containsOption ("--help|-h")
+                || argList.containsOption ("--version")
+                || argList.containsOption ("--run-tests"))
+        {
+            if (auto fileToValidate = argList.arguments.getLast().resolveAsFile();
+                fileToValidate != exe)
+            {
+                argList.arguments.insert (argList.arguments.size() - 1, { "--validate" });
+            }
+        }
+    }
+
+    return argList;
+}
+
 static void performCommandLine (CommandLineValidator& validator, const ArgumentList& args)
 {
     hideDockIcon();
@@ -423,8 +450,8 @@ static void performCommandLine (CommandLineValidator& validator, const ArgumentL
     cli.addVersionCommand ("--version", getVersionText());
     cli.addHelpCommand ("--help|-h", getHelpMessage(), true);
     cli.addCommand ({ "--validate",
-                      "--validate [list]",
-                      "Validates the files (or IDs for AUs).", String(),
+                      "--validate [pathToPlugin]",
+                      "Validates the file (or IDs for AUs).", String(),
                       [&validator] (const auto& validatorArgs)
                       {
                           auto [fileOrIDToValidate, options] = parseCommandLine (validatorArgs);
@@ -442,8 +469,15 @@ static void performCommandLine (CommandLineValidator& validator, const ArgumentL
         JUCEApplication::getInstance()->quit();
 }
 
-static bool shouldPerformCommandLine (const ArgumentList& args)
+//==============================================================================
+void performCommandLine (CommandLineValidator& validator, const String& commandLine)
 {
+    performCommandLine (validator, createCommandLineArgs (commandLine));
+}
+
+bool shouldPerformCommandLine (const String& commandLine)
+{
+    const auto args = createCommandLineArgs (commandLine);
     return args.containsOption ("--help|-h")
         || args.containsOption ("--version")
         || args.containsOption ("--validate")
@@ -451,29 +485,10 @@ static bool shouldPerformCommandLine (const ArgumentList& args)
 }
 
 //==============================================================================
-void performCommandLine (CommandLineValidator& validator, const String& commandLine)
-{
-    StringArray args;
-    args.addTokens (parseCommandLineArgs (commandLine), true);
-    args = mergeEnvironmentVariables (args);
-    args.trim();
-
-    for (auto& s : args)
-        s = s.unquoted();
-
-    performCommandLine (validator, ArgumentList (File::getSpecialLocation (File::currentExecutableFile).getFullPathName(), args));
-}
-
-bool shouldPerformCommandLine (const String& commandLine)
-{
-    return shouldPerformCommandLine (ArgumentList (File::getSpecialLocation (File::currentExecutableFile).getFullPathName(), commandLine));
-}
-
-//==============================================================================
 //==============================================================================
 std::pair<juce::String, PluginTests::Options> parseCommandLine (const juce::ArgumentList& args)
 {
-    auto fileOrID = args.getValueForOption ("--validate|-v");
+    auto fileOrID = args.getValueForOption ("--validate");
 
     if (fileOrID.contains ("~") || fileOrID.contains ("."))
         fileOrID = juce::File (fileOrID).getFullPathName();
@@ -497,8 +512,7 @@ std::pair<juce::String, PluginTests::Options> parseCommandLine (const juce::Argu
 
 std::pair<juce::String, PluginTests::Options> parseCommandLine (const String& cmd)
 {
-    return parseCommandLine (juce::ArgumentList (juce::File::getSpecialLocation (juce::File::currentExecutableFile).getFullPathName(),
-                                                 cmd));
+    return parseCommandLine (createCommandLineArgs (cmd));
 }
 
 juce::StringArray createCommandLine (juce::String fileOrID, PluginTests::Options options)
