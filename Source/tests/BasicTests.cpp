@@ -665,3 +665,64 @@ struct ParameterThreadSafetyTest    : public PluginTest
 };
 
 static ParameterThreadSafetyTest parameterThreadSafetyTest;
+
+
+//==============================================================================
+/** Runs auval on the plugin if it's an Audio Unit.
+ */
+struct AUvalTest    : public PluginTest
+{
+    AUvalTest()
+        : PluginTest ("auval", 5)
+    {
+    }
+
+    void runTest (PluginTests& ut, AudioPluginInstance& instance) override
+    {
+        const auto desc = instance.getPluginDescription();
+
+        if (desc.pluginFormatName != "AudioUnit")
+            return;
+
+        // Use -stress on strictness levels greater than 5
+        const auto cmd = juce::String ("auval -strict STRESS -v ").replace ("STRESS", ut.getOptions().strictnessLevel > 5 ? "-stress" : "")
+                            + desc.fileOrIdentifier.fromLastOccurrenceOf ("/", false, false).replace (",", " ");
+
+        juce::ChildProcess cp;
+        const auto started = cp.start (cmd);
+        ut.expect (started);
+
+        if (! started)
+            return;
+
+        for (;;)
+        {
+            for (;;)
+            {
+                char buffer[2048];
+
+                if (const auto numBytesRead = cp.readProcessOutput (buffer, sizeof (buffer));
+                    numBytesRead > 0)
+                {
+                    std::string msg (buffer, (size_t) numBytesRead);
+                    ut.logVerboseMessage (msg);
+                }
+                else
+                {
+                    break;
+                }
+            }
+
+            if (! cp.isRunning())
+                break;
+
+            using namespace std::literals;
+            std::this_thread::sleep_for (100ms);
+        }
+
+        ut.expect (cp.getExitCode() == 0);
+        ut.logMessage ("auval exited with code: " + juce::String (cp.getExitCode()));
+    }
+};
+
+static AUvalTest auvalTest;
