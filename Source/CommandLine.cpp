@@ -379,10 +379,12 @@ static ArgumentList createCommandLineArgs (String commandLine)
 
     if (argList.size() > 0)
     {
-        if (! (argList.containsOption ("--validate"))
-                || argList.containsOption ("--help|-h")
-                || argList.containsOption ("--version")
-                || argList.containsOption ("--run-tests"))
+        const bool hasValidateOrOtherCommand = argList.containsOption ("--validate")
+                                                || argList.containsOption ("--help|-h")
+                                                || argList.containsOption ("--version")
+                                                || argList.containsOption ("--run-tests");
+
+        if (! hasValidateOrOtherCommand)
         {
             if (auto fileToValidate = argList.arguments.getLast().resolveAsFile();
                 fileToValidate != exe)
