@@ -16,7 +16,7 @@ jobs:
           - name: Linux
             os: ubuntu-22.04
             binary: ./pluginval
-          - name: MacOS
+          - name: macOS
             os: macos-12
             binary: pluginval.app/Contents/MacOS/pluginval
           - name: Windows
@@ -45,7 +45,7 @@ jobs:
 
       # Import certificates
       - uses: apple-actions/import-codesign-certs@v1
-        if: ${{ matrix.name == 'MacOS' }}
+        if: ${{ matrix.name == 'macOS' }}
         with:
           p12-file-base64: ${{ secrets.DEV_CERT_APP }}
           p12-password: ${{ secrets.CERT_PASSWORD }}
@@ -74,20 +74,20 @@ jobs:
           ls -ahl
           ${{ matrix.binary }} --run-tests
           
-      - name: Codesign (MacOS)
-        if: ${{ matrix.name == 'MacOS' }}
+      - name: Codesign (macOS)
+        if: ${{ matrix.name == 'macOS' }}
         run: codesign --force -s "${{ secrets.DEVELOPER_ID_APPLICATION}}" -v ${{ env.APP_DIR }}/${{ matrix.binary}} --deep --strict --options=runtime --timestamp
         
-      - name: "Notarize (MacOS)"
-        if: ${{ matrix.name == 'MacOS' }}
+      - name: "Notarize (macOS)"
+        if: ${{ matrix.name == 'macOS' }}
         uses: devbotsxyz/xcode-notarize@v1
         with:
           product-path: ${{ env.APP_DIR }}/pluginval.app
           appstore-connect-username: ${{ secrets.NOTARIZATION_USERNAME }}
           appstore-connect-password: ${{ secrets.NOTARIZATION_PASSWORD }}
           
-      - name: "Staple (MacOS)"
-        if: ${{ matrix.name == 'MacOS' }}
+      - name: "Staple (macOS)"
+        if: ${{ matrix.name == 'macOS' }}
         uses: devbotsxyz/xcode-staple@v1
         with:
           product-path: ${{ env.APP_DIR }}/pluginval.app
@@ -135,5 +135,5 @@ jobs:
           files: |
             CHANGELIST.md/*
             pluginval-Linux.zip/*
-            pluginval-MacOS.zip/*
+            pluginval-macOS.zip/*
             pluginval-Windows.zip/*
