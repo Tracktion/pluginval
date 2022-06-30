@@ -41,6 +41,8 @@ public:
     /** Starts a validation process with a set of options and callbacks.
         The validation will be async so either use the validationEnded callback or
         poll hasFinished() to find out when the validation has completed.
+
+        N.B. outputGenerated will be called from a background thread.
     */
     ValidationPass (const juce::String& fileOrIdToValidate, PluginTests::Options, ValidationType,
                     std::function<void (juce::String)> validationStarted,

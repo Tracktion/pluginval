@@ -39,16 +39,16 @@ public:
     //==============================================================================
     void initialise (const String& commandLine) override
     {
-       #if JUCE_DEBUG
-        UnitTestRunner testRunner;
-        testRunner.runTestsInCategory ("pluginval");
-       #endif
-
         if (shouldPerformCommandLine (commandLine))
         {
             triggerAsyncUpdate();
             return;
         }
+
+       #if JUCE_DEBUG
+        UnitTestRunner testRunner;
+        testRunner.runTestsInCategory ("pluginval");
+       #endif
 
         validator = std::make_unique<Validator>();
         propertiesFile.reset (getPropertiesFile());

@@ -63,7 +63,7 @@ struct PluginsUnitTestRunner    : public UnitTestRunner,
             if (outputStream)
                 *outputStream << message << "\n";
 
-            callback (message);
+            callback (message + "\n");
         }
     }
 
@@ -224,16 +224,6 @@ public:
           validationEnded (std::move (validationEnded_)),
           outputGenerated (std::move (outputGenerated_))
     {
-        WeakReference<ChildProcessValidator> wr (this);
-        outputGenerated = [wr, originalCallback = std::move (outputGenerated_)] (const String& m)
-        {
-            juce::MessageManager::callAsync ([wr, m, &originalCallback]
-                                             {
-                                                 if (wr != nullptr && originalCallback)
-                                                     originalCallback (m);
-                                             });
-        };
-
         thread = std::thread ([this] { run(); });
     }
 
@@ -280,16 +270,22 @@ private:
         // Flush the output from the process
         for (;;)
         {
-            constexpr int numBytesToRead = 2048;
-            char buffer[numBytesToRead];
-
-            if (const auto numBytesRead = childProcess.readProcessOutput (buffer, numBytesToRead);
-                numBytesRead > 0)
+            for (;;)
             {
-                std::string msg (buffer, (size_t) numBytesRead);
+                char buffer[2048];
 
-                if (outputGenerated)
-                    outputGenerated (msg);
+                if (const auto numBytesRead = childProcess.readProcessOutput (buffer, sizeof (buffer));
+                    numBytesRead > 0)
+                {
+                    std::string msg (buffer, (size_t) numBytesRead);
+
+                    if (outputGenerated)
+                        outputGenerated (msg);
+                }
+                else
+                {
+                    break;
+                }
             }
 
             if (! childProcess.isRunning())
@@ -309,8 +305,6 @@ private:
                                                  isRunning = false;
                                              }
                                          });
-
-        isRunning = false;
     }
 };
 
@@ -328,18 +322,9 @@ public:
         : fileOrID (fileOrID_),
           options (options_),
           validationStarted (std::move (validationStarted_)),
-          validationEnded (std::move (validationEnded_))
+          validationEnded (std::move (validationEnded_)),
+          outputGenerated (std::move (outputGenerated_))
     {
-        WeakReference<AsyncValidator> wr (this);
-        outputGenerated = [wr, originalCallback = std::move (outputGenerated_)] (const String& m)
-        {
-            juce::MessageManager::callAsync ([wr, m, &originalCallback]
-                                             {
-                                                 if (wr != nullptr && originalCallback)
-                                                     originalCallback (m);
-                                             });
-        };
-
         thread = std::thread ([this] { run(); });
     }
 

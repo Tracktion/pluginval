@@ -76,7 +76,7 @@ void CommandLineValidator::validate (const juce::String& fileOrID, PluginTests::
     validator = std::make_unique<ValidationPass> (fileOrID, options, ValidationType::inProcess,
                                                   [] (auto id)
                                                   {
-                                                      std::cout << "Started validating: " << id;
+                                                      std::cout << "Started validating: " << id << std::flush;
                                                   },
                                                   [] (auto, uint32_t exitCode)
                                                   {
@@ -87,7 +87,7 @@ void CommandLineValidator::validate (const juce::String& fileOrID, PluginTests::
                                                   },
                                                   [] (auto m)
                                                   {
-                                                      std::cout << m;
+                                                      std::cout << m << std::flush;
                                                   });
 }
 
