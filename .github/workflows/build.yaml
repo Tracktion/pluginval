@@ -85,7 +85,7 @@ jobs:
         
       - name: "Notarize (macOS)"
         if: ${{ matrix.name == 'macOS' }}
-        uses: sudara/xcode-notarize@v1
+        uses: sudara/xcode-notarize@main
         with:
           product-path: ${{ env.APP_DIR }}/pluginval.app
           appstore-connect-username: ${{ secrets.NOTARIZATION_USERNAME }}
