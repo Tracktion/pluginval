@@ -1,10 +1,7 @@
 # pluginval
-master: [![Build Status](https://travis-ci.org/Tracktion/pluginval.svg?branch=master)](https://travis-ci.org/Tracktion/pluginval)
-[![Build Status](https://dev.azure.com/TracktionDev/pluginval/_apis/build/status/Tracktion.pluginval?branchName=master)](https://dev.azure.com/TracktionDev/pluginval/_build/latest?definitionId=1?branchName=master)
 
-develop: [![Build Status](https://travis-ci.org/Tracktion/pluginval.svg?branch=develop)](https://travis-ci.org/Tracktion/pluginval)
-[![Build Status](https://dev.azure.com/TracktionDev/pluginval/_apis/build/status/Tracktion.pluginval?branchName=develop)](https://dev.azure.com/TracktionDev/pluginval/_build/latest?definitionId=1?branchName=develop)
-# pluginval
+master: ![master](https://github.com/Tracktion/pluginval/actions/workflows/build.yml/badge.svg?branch=master)
+develop: ![develop](https://github.com/Tracktion/pluginval/actions/workflows/build.yml/badge.svg?branch=develop)
 
 pluginval is a cross-platform plugin validator and tester application. It is designed to be used by both plugin and host developers to ensure stability and compatibility between plugins and hosts.
 
@@ -20,7 +17,7 @@ If you are a plugin user looking to report a problem with a plugin to the develo
 
 ### Installation
 
-The easiest way to get started with pluginval is to grab pre-compiled binaries from the [Releases page](https://github.com/Tracktion/pluginval/releases).
+The easiest way to get started with pluginval is to grab pre-compiled binaries from the [Releases page](https://github.com/Tracktion/pluginval/releases). Note that these are compiled with support for testing VST2. 
 
 Once you need to [debug a failed validation](https://github.com/Tracktion/pluginval/blob/develop/docs/Debugging%20a%20failed%20validation.md#quick-debugging) you'll probably want to build locally in Debug:
 
@@ -40,9 +37,11 @@ You can find the chocolatey package of pluginval [here](https://chocolatey.org/p
 
 ##### N.B. Enabling VST2 Testing:
 
+The [pre-compiled binaries](https://github.com/Tracktion/pluginval/releases) are built with VST2 support. 
+
 The VST2 SDK is no longer included in JUCE so VST2 support isn't available out from a fresh clone. 
 
-To enable VST2 testing, set the `VST2_SDK_DIR` environment variable to point to the VST2 source directory on your system.
+To enable VST2 testing locally, set the `VST2_SDK_DIR` environment variable to point to the VST2 source directory on your system.
 
 ```
 VST2_SDK_DIR=Builds/Debug/pluginval_artefacts/ cmake -B Builds/Debug .
