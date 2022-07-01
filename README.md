@@ -20,7 +20,7 @@ If you are a plugin user looking to report a problem with a plugin to the develo
 
 ### Installation
 
-The easiest way to get started with pluginval is to grab pre-compiled binaries from the [Releases page](https://github.com/Tracktion/pluginval/releases).
+The easiest way to get started with pluginval is to grab pre-compiled binaries from the [Releases page](https://github.com/Tracktion/pluginval/releases). Note that these are compiled with support for testing VST2. 
 
 Once you need to [debug a failed validation](https://github.com/Tracktion/pluginval/blob/develop/docs/Debugging%20a%20failed%20validation.md#quick-debugging) you'll probably want to build locally in Debug:
 
@@ -40,9 +40,11 @@ You can find the chocolatey package of pluginval [here](https://chocolatey.org/p
 
 ##### N.B. Enabling VST2 Testing:
 
+The [pre-compiled binaries](https://github.com/Tracktion/pluginval/releases) are built with VST2 support. 
+
 The VST2 SDK is no longer included in JUCE so VST2 support isn't available out from a fresh clone. 
 
-To enable VST2 testing, set the `VST2_SDK_DIR` environment variable to point to the VST2 source directory on your system.
+To enable VST2 testing locally, set the `VST2_SDK_DIR` environment variable to point to the VST2 source directory on your system.
 
 ```
 VST2_SDK_DIR=Builds/Debug/pluginval_artefacts/ cmake -B Builds/Debug .
