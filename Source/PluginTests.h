@@ -38,6 +38,7 @@ struct PluginTests : public UnitTest
         StringArray disabledTests;          /**< List of disabled tests. */
         std::vector<double> sampleRates;    /**< List of sample rates. */
         std::vector<int> blockSizes;        /**< List of block sizes. */
+        File vst3Validator;                 /**< File to use as the VST3 validator app. */
     };
 
     /** Creates a set of tests for a fileOrIdentifier. */

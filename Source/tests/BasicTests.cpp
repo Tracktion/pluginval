@@ -727,3 +727,74 @@ struct AUvalTest    : public PluginTest
 };
 
 static AUvalTest auvalTest;
+
+//==============================================================================
+/** Runs Steinberg's validator on the plugin if it's a VST3.
+ */
+struct VST3validator    : public PluginTest
+{
+    VST3validator()
+        : PluginTest ("vst3 validator", 5)
+    {
+    }
+
+    void runTest (PluginTests& ut, AudioPluginInstance& instance) override
+    {
+        const auto desc = instance.getPluginDescription();
+
+        if (desc.pluginFormatName != "VST3")
+            return;
+
+        auto vst3Validator = ut.getOptions().vst3Validator;
+
+        if (vst3Validator == File())
+        {
+            ut.logMessage ("INFO: Skipping vst3 validator as validator path hasn't been set");
+            return;
+        }
+
+        juce::StringArray cmd (vst3Validator.getFullPathName());
+
+        if (ut.getOptions().strictnessLevel > 5)
+            cmd.add ("-e");
+
+        cmd.add (desc.fileOrIdentifier);
+
+        juce::ChildProcess cp;
+        const auto started = cp.start (cmd);
+        ut.expect (started, "VST3 validator app has been set but is unable to start");
+
+        if (! started)
+            return;
+
+        for (;;)
+        {
+            for (;;)
+            {
+                char buffer[2048];
+
+                if (const auto numBytesRead = cp.readProcessOutput (buffer, sizeof (buffer));
+                    numBytesRead > 0)
+                {
+                    std::string msg (buffer, (size_t) numBytesRead);
+                    ut.logVerboseMessage (msg);
+                }
+                else
+                {
+                    break;
+                }
+            }
+
+            if (! cp.isRunning())
+                break;
+
+            using namespace std::literals;
+            std::this_thread::sleep_for (100ms);
+        }
+
+        ut.expect (cp.getExitCode() == 0);
+        ut.logMessage ("vst3 validator exited with code: " + juce::String (cp.getExitCode()));
+    }
+};
+
+static VST3validator vst3validator;

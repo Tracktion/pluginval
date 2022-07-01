@@ -235,6 +235,7 @@ static Option possibleOptions[] =
     { "--randomise",            false   },
     { "--sample-rates",         true    },
     { "--block-sizes",          true    },
+    { "--vst3validator",        true    },
 };
 
 static StringArray mergeEnvironmentVariables (StringArray args, std::function<String (const String& name, const String& defaultValue)> environmentVariableProvider = [] (const String& name, const String& defaultValue) { return SystemStats::getEnvironmentVariable (name, defaultValue); })
@@ -308,6 +309,8 @@ static String getHelpMessage()
          << "    If specified, sets the list of sample rates at which tests will be executed (default=44100,48000,96000)" << newLine
          << "  --block-sizes [list of comma separated block sizes]" << newLine
          << "    If specified, sets the list of block sizes at which tests will be executed (default=64,128,256,512,1024)" << newLine
+         << "  --vst3validator [pathToValidator]" << newLine
+         << "    If specified, this will run the VST3 validator as part of the test process." << newLine
          << "  --version" << newLine
          << "    Print pluginval version." << newLine
          << newLine
@@ -387,7 +390,7 @@ static ArgumentList createCommandLineArgs (String commandLine)
         if (! hasValidateOrOtherCommand)
         {
             if (auto fileToValidate = argList.arguments.getLast().resolveAsFile();
-                fileToValidate != exe)
+                fileToValidate != exe && ! argList.containsOption (fileToValidate.getFullPathName()))
             {
                 argList.arguments.insert (argList.arguments.size() - 1, { "--validate" });
             }
@@ -461,6 +464,7 @@ std::pair<juce::String, PluginTests::Options> parseCommandLine (const juce::Argu
     options.disabledTests       = getDisabledTests (args);
     options.sampleRates         = getSampleRates (args);
     options.blockSizes          = getBlockSizes (args);
+    options.vst3Validator       = getOptionValue (args, "--vst3validator", "", "Expected a path for the --vst3validator option");
 
     return { args.arguments.getLast().text, options };
 }
@@ -524,6 +528,9 @@ juce::StringArray createCommandLine (juce::String fileOrID, PluginTests::Options
 
         args.addArray ({ "--block-sizes", blockSizes.joinIntoString (",") });
     }
+
+    if (options.vst3Validator != juce::File())
+        args.addArray ({ "--vst3validator", options.vst3Validator.getFullPathName().quoted() });
 
     args.addArray ({ "--validate", fileOrID });
 

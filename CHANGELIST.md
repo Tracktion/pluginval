@@ -2,6 +2,7 @@
 
 ### 0.4.0
 - Added running auval as a test for Audio Units on macOS (levels 5 and up)
+- Added running VST3's validator as a test for VST3s (levels 5 and up)
 
 ### 0.2.9
 - Fixed support for macOS from 10.11 and Windows without the runtime DLLs

@@ -104,6 +104,15 @@ namespace
         return { 64, 128, 256, 512, 1024 };
     }
 
+    void setVST3Validator (juce::File f)
+    {
+        getAppPreferences().setValue ("vst3validator", f.getFullPathName());
+    }
+
+    juce::File getVST3Validator()
+    {
+        return getAppPreferences().getValue ("vst3validator", String());
+    }
 
     PluginTests::Options getTestOptions()
     {
@@ -117,6 +126,7 @@ namespace
         options.outputDir = getOutputDir();
         options.sampleRates = getSampleRates();
         options.blockSizes = getBlockSizes();
+        options.vst3Validator = getVST3Validator();
 
         return options;
     }
@@ -198,6 +208,34 @@ namespace
 
                                                                           if (fc.browseForDirectory())
                                                                               getAppPreferences().setValue ("outputDir", fc.getResult().getFullPathName());
+                                                                      }
+                                                                  }));
+    }
+
+    void showVST3ValidatorDialog()
+    {
+        String message = TRANS("Set the location of the VST3 validator app");
+        auto app = getVST3Validator();
+
+        if (app.getFullPathName().isNotEmpty())
+            message << "\n\n" << app.getFullPathName().quoted();
+        else
+            message << "\n\n" << "\"None set\"";
+
+        std::shared_ptr<AlertWindow> aw (LookAndFeel::getDefaultLookAndFeel().createAlertWindow (TRANS("Set VST3 validator"), message,
+                                                                                                 TRANS("Choose"), TRANS("Cancel"), TRANS("Don't use VST3 validator"),
+                                                                                                 AlertWindow::QuestionIcon, 3, nullptr));
+        aw->enterModalState (true, ModalCallbackFunction::create ([aw] (int res)
+                                                                  {
+                                                                      if (res == 3)
+                                                                          setVST3Validator ({});
+
+                                                                      if (res == 1)
+                                                                      {
+                                                                          FileChooser fc (TRANS("Choose VST3 validator"), {});
+
+                                                                          if (fc.browseForFileToOpen())
+                                                                              setVST3Validator (fc.getResult().getFullPathName());
                                                                       }
                                                                   }));
     }
@@ -297,6 +335,7 @@ MainComponent::MainComponent (Validator& v)
                 numRepeats,
                 randomise,
                 chooseOutputDir,
+                showVST3Validator,
                 showSettingsDir
             };
 
@@ -308,6 +347,7 @@ MainComponent::MainComponent (Validator& v)
             m.addItem (numRepeats, TRANS("Num repeats (123)").replace ("123", String (getNumRepeats())));
             m.addItem (randomise, TRANS("Randomise tests"), true, getRandomiseTests());
             m.addItem (chooseOutputDir, TRANS("Choose a location for log files"));
+            m.addItem (showVST3Validator, TRANS("Set the location of the VST3 validator"));
             m.addSeparator();
             m.addItem (showSettingsDir, TRANS("Show settings folder"));
             m.showMenuAsync (PopupMenu::Options().withTargetComponent (&optionsButton),
@@ -341,6 +381,10 @@ MainComponent::MainComponent (Validator& v)
                                  else if (res == chooseOutputDir)
                                  {
                                      showOutputDirDialog();
+                                 }
+                                 else if (res == showVST3Validator)
+                                 {
+                                     showVST3ValidatorDialog();
                                  }
                                  else if (res == showSettingsDir)
                                  {
