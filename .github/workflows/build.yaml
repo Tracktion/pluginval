@@ -78,7 +78,7 @@ jobs:
           
       - name: Codesign (macOS)
         if: ${{ matrix.name == 'macOS' }}
-        run: codesign --force -s "${{ secrets.DEVELOPER_ID_APPLICATION}}" -v ${{ env.APP_DIR }}/${{ matrix.binary}} --deep --strict --options=runtime --timestamp
+        run: codesign --force -s "${{ secrets.DEVELOPER_ID_APPLICATION}}" -v ${{ env.APP_DIR }}/pluginval.app --deep --strict --options=runtime --timestamp
         
       - name: "Notarize (macOS)"
         if: ${{ matrix.name == 'macOS' }}
