@@ -82,11 +82,12 @@ jobs:
         
       - name: "Notarize (macOS)"
         if: ${{ matrix.name == 'macOS' }}
-        uses: devbotsxyz/xcode-notarize@v1
+        uses: sudara/xcode-notarize@v1
         with:
           product-path: ${{ env.APP_DIR }}/pluginval.app
           appstore-connect-username: ${{ secrets.NOTARIZATION_USERNAME }}
           appstore-connect-password: ${{ secrets.NOTARIZATION_PASSWORD }}
+          number-of-status-check-attempts: 20
           
       - name: "Staple (macOS)"
         if: ${{ matrix.name == 'macOS' }}
