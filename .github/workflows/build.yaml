@@ -20,7 +20,7 @@ jobs:
             binary: ./pluginval
           - name: macOS
             os: macos-12
-            binary: pluginval.app/Contents/MacOS/pluginval
+            binary: pluginval.app
           - name: Windows
             os: windows-latest
             binary: ./pluginval.exe
@@ -93,7 +93,7 @@ jobs:
         if: ${{ matrix.name == 'macOS' }}
         uses: devbotsxyz/xcode-staple@v1
         with:
-          product-path: ${{ env.APP_DIR }}/pluginval.app
+          product-path: ${{ env.APP_DIR }}/${{ matrix.binary }}
       
       - name: Create zip files
         working-directory: ${{ env.APP_DIR }}
