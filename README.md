@@ -1,7 +1,8 @@
 # pluginval
 
-master: ![master](https://github.com/Tracktion/pluginval/actions/workflows/build.yml/badge.svg?branch=master)
-develop: ![develop](https://github.com/Tracktion/pluginval/actions/workflows/build.yml/badge.svg?branch=develop)
+master: ![master](https://github.com/Tracktion/pluginval/workflows/Build/badge.svg?branch=master) 
+
+develop: ![develop](https://github.com/Tracktion/pluginval/workflows/Build/badge.svg?branch=develop)
 
 pluginval is a cross-platform plugin validator and tester application. It is designed to be used by both plugin and host developers to ensure stability and compatibility between plugins and hosts.
 
