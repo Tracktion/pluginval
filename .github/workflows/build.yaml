@@ -11,6 +11,7 @@ env:
 
 jobs:
   build:
+    name: Pluginval Build
     strategy:
       fail-fast: false
       matrix:
@@ -40,6 +41,8 @@ jobs:
           echo "VERSION=$VERSION" >> $GITHUB_ENV
           echo "APP_DIR=${{ env.BUILD_DIR }}/${{ env.BINARY_NAME }}_artefacts/${{ env.BUILD_TYPE }}" >> $GITHUB_ENV
           echo "ZIP_FILE_NAME=${{ env.BINARY_NAME }}-${{ matrix.name }}.zip" >> $GITHUB_ENV
+          echo "JUCE_SHA1=$(git rev-parse HEAD:modules/juce)" >> $GITHUB_ENV
+          echo "PLUGIN_BUILD_DIR=/modules/juce/Builds" >> $GITHUB_ENV
       
       - name: Install dependencies (Linux)
         if: ${{ matrix.name == 'Linux' }}
@@ -65,10 +68,10 @@ jobs:
           CERT_PASSWORD: ${{ secrets.CERT_PASSWORD }}
           DEV_CERT_APP: ${{ secrets.DEV_CERT_APP }}
 
-      - name: ccache
+      - name: Pluginval ccache
         uses: hendrikmuhs/ccache-action@v1.2
         with:
-          key: ${{ matrix.name }}-${{ env.BUILD_TYPE }}
+          key: v1-${{ matrix.name }}-${{ env.BUILD_TYPE }}
 
       - name: Configure
         shell: bash
@@ -85,6 +88,17 @@ jobs:
           pwd
           ls -ahl
           ${{ matrix.test-binary }} --run-tests
+          
+      - name: Build JUCE example plugins
+        working-directory: modules/juce
+        shell: bash
+        run: |
+          cmake -B Builds -DJUCE_BUILD_EXAMPLES=ON -DCMAKE_BUILD_TYPE=Debug -DCMAKE_C_COMPILER_LAUNCHER=ccache -DCMAKE_CXX_COMPILER_LAUNCHER=ccache .
+          cmake --build Builds --target ArpeggiatorPlugin_All --target AudioPluginDemo_All --target DSPModulePluginDemo_All --target GainPlugin_All --target MIDILogger_All --target MultiOutSynthPlugin_All --target NoiseGatePlugin_All --target SamplerPlugin_All --target SurroundPlugin_All
+      
+      - name: Validate JUCE VST3
+        continue-on-error: true
+        run: ${{ env.APP_DIR }}/${{ matrix.test-binary }} --strictness-level 10 --verbose ${{ env.PLUGIN_BUILD_DIR }}/examples/Plugins/DSPModulePluginDemo_artefacts/Debug/VST3/DSPModulePluginDemo.vst3
           
       - name: Codesign (macOS)
         if: ${{ matrix.name == 'macOS' }}
