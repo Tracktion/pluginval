@@ -19,21 +19,21 @@ In these examples the following is assumed:
 ```sh
 $ curl -L "https://github.com/Tracktion/pluginval/releases/latest/download/pluginval_macOS.zip" -o pluginval.zip
 $ unzip pluginval
-$ pluginval.app/Contents/MacOS/pluginval --validate-in-process --output-dir "./bin" --validate "<path_to_plugin>" || exit 1
+$ pluginval.app/Contents/MacOS/pluginval --validate-in-process --output-dir "./bin" "<path_to_plugin>" || exit 1
 ```
 
 ##### Linux
 ```sh
 $ curl -L "https://github.com/Tracktion/pluginval/releases/latest/download/pluginval_Linux.zip" -o pluginval.zip
 $ unzip pluginval
-$ ./pluginval --validate-in-process --output-dir "./bin" --validate "<path_to_plugin>" || exit 1
+$ ./pluginval --validate-in-process --output-dir "./bin" "<path_to_plugin>" || exit 1
 ```
 
 ##### Windows
 ```sh
 > powershell -Command "[Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12; Invoke-WebRequest https://github.com/Tracktion/pluginval/releases/latest/download/pluginval_Windows.zip -OutFile pluginval.zip"
 > powershell -Command "Expand-Archive pluginval.zip -DestinationPath ."
-> pluginval.exe --validate-in-process --output-dir "./bin" --validate "<path_to_plugin>"
+> pluginval.exe --validate-in-process --output-dir "./bin" "<path_to_plugin>"
 > if %ERRORLEVEL% neq 0 exit /b 1
 ```
 

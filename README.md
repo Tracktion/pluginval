@@ -61,14 +61,14 @@ This is great if you want to add validation as part of your CI process and be no
 
 ###### Basic usage is as follows:
 ```
-./pluginval --strictnessLevel 5 --validate <path_to_plugin>
+./pluginval --strictness-level 5 <path_to_plugin>
 ```
 This will run all the tests up to level 5 on the plugin at the specified path.
 Output will be fed to the console.
 If all the tests pass cleanly, `pluginval` will return with an exit code of `0`. If any tests fail, the exit code will be `1`.
 This means you can check the exit code on your various CI and mark builds a failing if all tests don't pass.
 
-`strictnessLevel` is optional but can be between 1 & 10 with 5 being generally recognised as the lowest level for host compatibility. Lower levels are generally quick tests, mainly checking call coverage for crashes. Higher levels contain tests which take longer to run such as parameter fuzz tests and multiple state restoration.
+`strictness-level` is optional but can be between 1 & 10 with 5 being generally recognised as the lowest level for host compatibility. Lower levels are generally quick tests, mainly checking call coverage for crashes. Higher levels contain tests which take longer to run such as parameter fuzz tests and multiple state restoration.
 
 ###### You can also list all the options with:
 ```
