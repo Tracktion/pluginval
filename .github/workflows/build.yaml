@@ -89,25 +89,19 @@ jobs:
       - name: Codesign (macOS)
         if: ${{ matrix.name == 'macOS' }}
         run: codesign --force -s "${{ secrets.DEVELOPER_ID_APPLICATION}}" -v ${{ env.APP_DIR }}/${{ matrix.app }} --deep --strict --options=runtime --timestamp
-        
-      - name: "Notarize (macOS)"
+      
+      - name: "Notarize and staple (macOS)"
         if: ${{ matrix.name == 'macOS' }}
-        uses: sudara/xcode-notarize@main
-        with:
-          product-path: ${{ env.APP_DIR }}/pluginval.app
-          appstore-connect-username: ${{ secrets.NOTARIZATION_USERNAME }}
-          appstore-connect-password: ${{ secrets.NOTARIZATION_PASSWORD }}
-          number-of-status-check-attempts: 20
-          
-      - name: "Staple (macOS)"
-        if: ${{ matrix.name == 'macOS' }}
-        uses: devbotsxyz/xcode-staple@v1
-        with:
-          product-path: ${{ env.APP_DIR }}/pluginval.app
+        working-directory: ${{ env.APP_DIR }}
+        run: |
+          7z a -tzip ${{ env.ZIP_FILE_NAME }} ${{ matrix.app }}
+          xcrun notarytool submit ${{ env.ZIP_FILE_NAME }} --apple-id ${{ secrets.NOTARIZATION_USERNAME }} --password ${{ secrets.NOTARIZATION_PASSWORD }} --team-id ${{ secrets.TEAM_ID }} --wait
+          xcrun stapler staple ${{ matrix.app }}
+          rm ${{ env.ZIP_FILE_NAME }}
       
       - name: Create zip files
         working-directory: ${{ env.APP_DIR }}
-        run: cmake -E tar cfv ${{ env.ZIP_FILE_NAME }} --format=zip ${{ matrix.app }}
+        run: 7z a -aoa -tzip ${{ env.ZIP_FILE_NAME }} ${{ matrix.app }}
       
       - name: Upload zip files
         uses: actions/upload-artifact@v3
