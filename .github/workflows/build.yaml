@@ -98,7 +98,7 @@ jobs:
       
       - name: Validate JUCE VST3
         continue-on-error: true
-        run: ${{ env.APP_DIR }}/${{ matrix.test-binary }} --strictness-level 10 --verbose ${{ env.PLUGIN_BUILD_DIR }}/examples/Plugins/DSPModulePluginDemo_artefacts/VST3/DSPModulePluginDemo.vst3
+        run: ${{ env.APP_DIR }}/${{ matrix.test-binary }} --strictness-level 10 --verbose --validate ${{ env.PLUGIN_BUILD_DIR }}/examples/Plugins/DSPModulePluginDemo_artefacts/Debug/VST3/DSPModulePluginDemo.vst3
           
       - name: Codesign (macOS)
         if: ${{ matrix.name == 'macOS' }}
