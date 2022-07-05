@@ -94,11 +94,11 @@ jobs:
         shell: bash
         run: |
           cmake -B Builds -DJUCE_BUILD_EXAMPLES=ON -DCMAKE_BUILD_TYPE=Debug -DCMAKE_C_COMPILER_LAUNCHER=ccache -DCMAKE_CXX_COMPILER_LAUNCHER=ccache .
-          cmake --build Builds --target ArpeggiatorPlugin_All --target AudioPluginDemo_All --target DSPModulePluginDemo_All --target GainPlugin_All --target MIDILogger_All --target MultiOutSynthPlugin_All --target NoiseGatePlugin_All --target SamplerPlugin_All --target SurroundPlugin_All
+          cmake --build Builds --target DSPModulePluginDemo_VST3 # https://gist.github.com/sudara/05be084efa371f4e43e21eb19ce04c50
       
       - name: Validate JUCE VST3
         continue-on-error: true
-        run: ${{ env.APP_DIR }}/${{ matrix.test-binary }} --strictness-level 10 --verbose ${{ env.PLUGIN_BUILD_DIR }}/examples/Plugins/DSPModulePluginDemo_artefacts/Debug/VST3/DSPModulePluginDemo.vst3
+        run: ${{ env.APP_DIR }}/${{ matrix.test-binary }} --strictness-level 10 --verbose ${{ env.PLUGIN_BUILD_DIR }}/examples/Plugins/DSPModulePluginDemo_artefacts/VST3/DSPModulePluginDemo.vst3
           
       - name: Codesign (macOS)
         if: ${{ matrix.name == 'macOS' }}
