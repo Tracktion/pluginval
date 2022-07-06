@@ -390,7 +390,7 @@ static ArgumentList createCommandLineArgs (String commandLine)
         if (! hasValidateOrOtherCommand)
         {
             if (auto fileToValidate = argList.arguments.getLast().resolveAsFile();
-                fileToValidate != exe && ! argList.containsOption (fileToValidate.getFullPathName()))
+                fileToValidate != exe)
             {
                 argList.arguments.insert (argList.arguments.size() - 1, { "--validate" });
             }
