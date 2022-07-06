@@ -44,6 +44,9 @@ jobs:
           echo "ZIP_FILE_NAME=${{ env.BINARY_NAME }}-${{ matrix.name }}.zip" >> $GITHUB_ENV
           echo "JUCE_SHA1=$(git rev-parse HEAD:modules/juce)" >> $GITHUB_ENV
           echo "PLUGIN_BUILD_DIR=modules/juce/Builds" >> $GITHUB_ENV
+          
+          # This needs to be absolute to make action/cache happy
+          echo "PLUGIN_CACHE_PATH='${{ github.workspace }}/modules/juce/Builds/examples/Plugins'" >> $GITHUB_ENV
       
       - name: Install dependencies (Linux)
         if: ${{ matrix.name == 'Linux' }}
@@ -66,9 +69,6 @@ jobs:
         with:
           p12-file-base64: ${{ secrets.DEV_CERT_APP }}
           p12-password: ${{ secrets.CERT_PASSWORD }}
-        env:
-          CERT_PASSWORD: ${{ secrets.CERT_PASSWORD }}
-          DEV_CERT_APP: ${{ secrets.DEV_CERT_APP }}
 
       - name: ccache
         uses: hendrikmuhs/ccache-action@v1.2
@@ -91,11 +91,11 @@ jobs:
           ls -ahl
           ${{ matrix.test-binary }} --run-tests
 
-      - name: Restore JUCE example plugin cache
+      - name: Cache JUCE example plugin binaries
         id: cache-plugins
         uses: actions/cache@v3
         with: 
-          path: ${{ env.PLUGIN_BUILD_DIR }}/examples/Plugins
+          path: ${{ env.PLUGIN_CACHE_PATH }}
           key: ${{ runner.os }}-${{ env.JUCE_SHA1 }}
           
       - name: Build JUCE example plugins
@@ -107,10 +107,21 @@ jobs:
           cmake --build Builds --target ArpeggiatorPlugin_All --target AudioPluginDemo_All --target DSPModulePluginDemo_All --target GainPlugin_All --target MIDILogger_All --target MultiOutSynthPlugin_All --target NoiseGatePlugin_All --target SamplerPlugin_All --target SurroundPlugin_All # https://gist.github.com/sudara/05be084efa371f4e43e21eb19ce04c50
       
       - name: Validate JUCE VST3
-        continue-on-error: true # Still cache the JUCE binaries even if validation fails
+        continue-on-error: true # Cache the JUCE binaries even if validation fails
         shell: bash
-        run: ${{ env.APP_DIR }}/${{ matrix.test-binary }} --strictness-level 10 --verbose --validate ${{ env.PLUGIN_BUILD_DIR }}/examples/Plugins/DSPModulePluginDemo_artefacts/Debug/VST3/DSPModulePluginDemo.vst3
-          
+        if: ${{ matrix.name != 'macOS' }}
+        run: |
+          ${{ env.APP_DIR }}/${{ matrix.test-binary }} --strictness-level 10 --validate ${{ env.PLUGIN_CACHE_PATH }}/DSPModulePluginDemo_artefacts/Debug/VST3/DSPModulePluginDemo.vst3
+          ${{ env.APP_DIR }}/${{ matrix.test-binary }} --strictness-level 10 --validate ${{ env.PLUGIN_CACHE_PATH }}/MultiOutSynthPlugin_artefacts/Debug/VST3/MultiOutSynthPlugin.vst3
+
+      - name: Validate JUCE AU
+        continue-on-error: true # Cache the JUCE binaries even if validation fails
+        shell: bash
+        if: ${{ matrix.name == 'macOS' }}
+        run: |
+          ${{ env.APP_DIR }}/${{ matrix.test-binary }} --strictness-level 10 --validate ${{ env.PLUGIN_CACHE_PATH }}/DSPModulePluginDemo_artefacts/Debug/AU/DSPModulePluginDemo.component
+          ${{ env.APP_DIR }}/${{ matrix.test-binary }} --strictness-level 10 --validate ${{ env.PLUGIN_CACHE_PATH }}/MultiOutSynthPlugin_artefacts/Debug/AU/MultiOutSynthPlugin.component
+    
       - name: Codesign (macOS)
         if: ${{ matrix.name == 'macOS' }}
         run: codesign --force -s "${{ secrets.DEVELOPER_ID_APPLICATION}}" -v ${{ env.APP_DIR }}/${{ matrix.app }} --deep --strict --options=runtime --timestamp
