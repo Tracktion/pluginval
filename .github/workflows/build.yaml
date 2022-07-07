@@ -96,21 +96,25 @@ jobs:
         uses: actions/cache@v3
         with: 
           path: ${{ env.PLUGIN_CACHE_PATH }}
-          key: ${{ runner.os }}-${{ env.JUCE_SHA1 }}
+          # Increment the version if you want to break the cache manually
+          key: v1-${{ runner.os }}-${{ env.JUCE_SHA1 }}
           
       - name: Build JUCE example plugins
         if: steps.cache-plugins.outputs.cache-hit != 'true'
         working-directory: modules/juce
         shell: bash
         run: |
-          cmake -B Builds -DJUCE_BUILD_EXAMPLES=ON -DCMAKE_BUILD_TYPE=Debug -DCMAKE_C_COMPILER_LAUNCHER=ccache -DCMAKE_CXX_COMPILER_LAUNCHER=ccache .
-          cmake --build Builds --target ArpeggiatorPlugin_All --target AudioPluginDemo_All --target DSPModulePluginDemo_All --target GainPlugin_All --target MIDILogger_All --target MultiOutSynthPlugin_All --target NoiseGatePlugin_All --target SamplerPlugin_All --target SurroundPlugin_All # https://gist.github.com/sudara/05be084efa371f4e43e21eb19ce04c50
+          cmake -B Builds -DJUCE_COPY_PLUGIN_AFTER_BUILD=ON -DJUCE_BUILD_EXAMPLES=ON -DCMAKE_BUILD_TYPE=Debug -DCMAKE_C_COMPILER_LAUNCHER=ccache -DCMAKE_CXX_COMPILER_LAUNCHER=ccache .
+          # Full list of targets https://gist.github.com/sudara/05be084efa371f4e43e21eb19ce04c50
+          # Be sure to manually break the cache in the previous step if you want to add/remove plugins
+          cmake --build Builds --target DSPModulePluginDemo_VST3 --target DSPModulePluginDemo_AU --target MultiOutSynthPlugin_VST3 --target MultiOutSynthPlugin_AU
       
       - name: Validate JUCE VST3
         continue-on-error: true # Cache the JUCE binaries even if validation fails
         shell: bash
         if: ${{ matrix.name != 'macOS' }}
         run: |
+          # Paths must be single quoted for bash not to escape the Windows backslash character \ used in absolute paths 
           ${{ env.APP_DIR }}/${{ matrix.test-binary }} --strictness-level 10 --validate '${{ env.PLUGIN_CACHE_PATH }}/DSPModulePluginDemo_artefacts/Debug/VST3/DSPModulePluginDemo.vst3'
           ${{ env.APP_DIR }}/${{ matrix.test-binary }} --strictness-level 10 --validate '${{ env.PLUGIN_CACHE_PATH }}/MultiOutSynthPlugin_artefacts/Debug/VST3/MultiOutSynthPlugin.vst3'
 
