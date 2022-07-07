@@ -104,7 +104,7 @@ jobs:
         working-directory: modules/juce
         shell: bash
         run: |
-          cmake -B Builds -DJUCE_COPY_PLUGIN_AFTER_BUILD=ON -DJUCE_BUILD_EXAMPLES=ON -DCMAKE_BUILD_TYPE=Debug -DCMAKE_C_COMPILER_LAUNCHER=ccache -DCMAKE_CXX_COMPILER_LAUNCHER=ccache .
+          cmake -B Builds -DJUCE_BUILD_EXAMPLES=ON -DCMAKE_BUILD_TYPE=Debug -DCMAKE_C_COMPILER_LAUNCHER=ccache -DCMAKE_CXX_COMPILER_LAUNCHER=ccache .
           # Full list of targets https://gist.github.com/sudara/05be084efa371f4e43e21eb19ce04c50
           # Be sure to manually break the cache in the previous step if you want to add/remove plugins
           cmake --build Builds --target DSPModulePluginDemo_All --target MultiOutSynthPlugin_All
@@ -120,8 +120,12 @@ jobs:
         shell: bash
         if: ${{ matrix.name == 'macOS' }}
         run: |
-          # We're relying on COPY_PLUGIN_AFTER_BUILD to code sign our .component, placing it in ~/Library/Audio
-          ${{ env.APP_DIR }}/${{ matrix.test-binary }} --strictness-level 10 --validate ${{ env.PLUGIN_CACHE_PATH }}/DSPModulePluginDemo_artefacts/Debug/AU/DSPModulePluginDemo.component
+          # We place it in ~/Library/Audio to be picked up as valid by macOS
+          # This has to be done again, as most of the time we read from the plugin cache (vs. build)
+          cp -R ${{ env.PLUGIN_CACHE_PATH }}/DSPModulePluginDemo_artefacts/Debug/AU/DSPModulePluginDemo.component ~/Library/Audio/Plug-Ins/Components/
+          killall -9 AudioComponentRegistrar # kick the AU registrar
+          sleep 1 # give it time to get back up
+          ${{ env.APP_DIR }}/${{ matrix.test-binary }} --strictness-level 10 --validate  ~/Library/Audio/Plug-Ins/Components/DSPModulePluginDemo.component
     
       - name: Codesign (macOS)
         if: ${{ matrix.name == 'macOS' }}
