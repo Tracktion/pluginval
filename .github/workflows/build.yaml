@@ -122,9 +122,10 @@ jobs:
         run: |
           # We place it in ~/Library/Audio to be picked up as valid by macOS
           # This has to be done again, as most of the time we read from the plugin cache (vs. build)
-          mkdir -p ~/Library/Audio/Plug-Ins/Components/ && cp -R ${{ env.PLUGIN_CACHE_PATH }}/DSPModulePluginDemo_artefacts/Debug/AU/DSPModulePluginDemo.component ~/Library/Audio/Plug-Ins/Components/
+          which auval
+          mkdir -p ~/Library/Audio/Plug-Ins/Components/
+          cp -R ${{ env.PLUGIN_CACHE_PATH }}/DSPModulePluginDemo_artefacts/Debug/AU/DSPModulePluginDemo.component ~/Library/Audio/Plug-Ins/Components/
           killall -9 AudioComponentRegistrar # kick the AU registrar
-          sleep 1 # give it time to get back up
           ${{ env.APP_DIR }}/${{ matrix.test-binary }} --strictness-level 10 --validate  ~/Library/Audio/Plug-Ins/Components/DSPModulePluginDemo.component
     
       - name: Codesign (macOS)
