@@ -73,7 +73,7 @@ jobs:
       - name: ccache
         uses: hendrikmuhs/ccache-action@v1.2
         with:
-          key: v1-${{ matrix.name }}-${{ env.BUILD_TYPE }}
+          key: v2-${{ matrix.name }}-${{ env.BUILD_TYPE }}
 
       - name: Configure
         shell: bash
@@ -97,34 +97,31 @@ jobs:
         with: 
           path: ${{ env.PLUGIN_CACHE_PATH }}
           # Increment the version in the key below to manually break plugin cache
-          key: v2-${{ runner.os }}-${{ env.JUCE_SHA1 }}
+          key: v5-${{ runner.os }}-${{ env.JUCE_SHA1 }}
           
       - name: Build JUCE example plugins
         if: steps.cache-plugins.outputs.cache-hit != 'true'
         working-directory: modules/juce
         shell: bash
         run: |
-          cmake -B Builds -DJUCE_COPY_PLUGIN_AFTER_BUILD=ON -DJUCE_BUILD_EXAMPLES=ON -DCMAKE_BUILD_TYPE=Release -DCMAKE_C_COMPILER_LAUNCHER=ccache -DCMAKE_CXX_COMPILER_LAUNCHER=ccache .
+          cmake -B Builds -DJUCE_COPY_PLUGIN_AFTER_BUILD=ON -DJUCE_BUILD_EXAMPLES=ON -DCMAKE_BUILD_TYPE=Debug -DCMAKE_C_COMPILER_LAUNCHER=ccache -DCMAKE_CXX_COMPILER_LAUNCHER=ccache .
           # Full list of targets https://gist.github.com/sudara/05be084efa371f4e43e21eb19ce04c50
           # Be sure to manually break the cache in the previous step if you want to add/remove plugins
           cmake --build Builds --target DSPModulePluginDemo_All --target MultiOutSynthPlugin_All
       
-      - name: Validate JUCE VST3
-        continue-on-error: true # Cache JUCE binaries even if their validation fails
+      - name: Validate JUCE Plugin examples (VST3)
         shell: bash
-        if: ${{ matrix.name != 'macOS' }}
         run: |
           # Paths must be single quoted for bash not to escape the Windows backslash character \ used in absolute paths 
           ${{ env.APP_DIR }}/${{ matrix.test-binary }} --strictness-level 10 --validate '${{ env.PLUGIN_CACHE_PATH }}/DSPModulePluginDemo_artefacts/Debug/VST3/DSPModulePluginDemo.vst3'
           ${{ env.APP_DIR }}/${{ matrix.test-binary }} --strictness-level 10 --validate '${{ env.PLUGIN_CACHE_PATH }}/MultiOutSynthPlugin_artefacts/Debug/VST3/MultiOutSynthPlugin.vst3'
 
-      - name: Validate JUCE AU
-        continue-on-error: true # Cache JUCE binaries even if their validation fails
+      - name: Validate JUCE Plugin examples (AU)
         shell: bash
         if: ${{ matrix.name == 'macOS' }}
         run: |
+          # We're relying on COPY_PLUGIN_AFTER_BUILD to code sign our .component, placing it in ~/Library/Audio
           ${{ env.APP_DIR }}/${{ matrix.test-binary }} --strictness-level 10 --validate ${{ env.PLUGIN_CACHE_PATH }}/DSPModulePluginDemo_artefacts/Debug/AU/DSPModulePluginDemo.component
-          ${{ env.APP_DIR }}/${{ matrix.test-binary }} --strictness-level 10 --validate ${{ env.PLUGIN_CACHE_PATH }}/MultiOutSynthPlugin_artefacts/Debug/AU/MultiOutSynthPlugin.component
     
       - name: Codesign (macOS)
         if: ${{ matrix.name == 'macOS' }}
