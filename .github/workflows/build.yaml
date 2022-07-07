@@ -46,7 +46,7 @@ jobs:
           echo "PLUGIN_BUILD_DIR=modules/juce/Builds" >> $GITHUB_ENV
           
           # This needs to be absolute to make action/cache happy
-          echo "PLUGIN_CACHE_PATH='${{ github.workspace }}/modules/juce/Builds/examples/Plugins'" >> $GITHUB_ENV
+          echo "PLUGIN_CACHE_PATH=${{ github.workspace }}/modules/juce/Builds/examples/Plugins" >> $GITHUB_ENV
       
       - name: Install dependencies (Linux)
         if: ${{ matrix.name == 'Linux' }}
@@ -111,8 +111,8 @@ jobs:
         shell: bash
         if: ${{ matrix.name != 'macOS' }}
         run: |
-          ${{ env.APP_DIR }}/${{ matrix.test-binary }} --strictness-level 10 --validate ${{ env.PLUGIN_CACHE_PATH }}/DSPModulePluginDemo_artefacts/Debug/VST3/DSPModulePluginDemo.vst3
-          ${{ env.APP_DIR }}/${{ matrix.test-binary }} --strictness-level 10 --validate ${{ env.PLUGIN_CACHE_PATH }}/MultiOutSynthPlugin_artefacts/Debug/VST3/MultiOutSynthPlugin.vst3
+          ${{ env.APP_DIR }}/${{ matrix.test-binary }} --strictness-level 10 --validate '${{ env.PLUGIN_CACHE_PATH }}/DSPModulePluginDemo_artefacts/Debug/VST3/DSPModulePluginDemo.vst3'
+          ${{ env.APP_DIR }}/${{ matrix.test-binary }} --strictness-level 10 --validate '${{ env.PLUGIN_CACHE_PATH }}/MultiOutSynthPlugin_artefacts/Debug/VST3/MultiOutSynthPlugin.vst3'
 
       - name: Validate JUCE AU
         continue-on-error: true # Cache the JUCE binaries even if validation fails
