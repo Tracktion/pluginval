@@ -721,8 +721,12 @@ struct AUvalTest    : public PluginTest
             std::this_thread::sleep_for (100ms);
         }
 
-        ut.expect (cp.getExitCode() == 0);
+        const auto exitedCleanly = cp.getExitCode() == 0;
+        ut.expect (exitedCleanly);
         ut.logMessage ("auval exited with code: " + juce::String (cp.getExitCode()));
+
+        if (! exitedCleanly && ! ut.getOptions().verbose)
+            ut.logMessage ("Use the --verbose option to see the full auval log for more detail");
     }
 };
 
