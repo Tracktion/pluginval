@@ -696,6 +696,8 @@ struct AUvalTest    : public PluginTest
         if (! started)
             return;
 
+        juce::MemoryOutputStream outputBuffer;
+
         for (;;)
         {
             for (;;)
@@ -707,6 +709,7 @@ struct AUvalTest    : public PluginTest
                 {
                     std::string msg (buffer, (size_t) numBytesRead);
                     ut.logVerboseMessage (msg);
+                    outputBuffer << juce::String (msg);
                 }
                 else
                 {
@@ -726,7 +729,7 @@ struct AUvalTest    : public PluginTest
         ut.logMessage ("auval exited with code: " + juce::String (cp.getExitCode()));
 
         if (! exitedCleanly && ! ut.getOptions().verbose)
-            ut.logMessage ("Use the --verbose option to see the full auval log for more detail");
+            ut.logMessage (outputBuffer.toString());
     }
 };
 
