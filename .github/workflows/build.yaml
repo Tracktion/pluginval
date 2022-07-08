@@ -107,7 +107,7 @@ jobs:
           cmake -B Builds -DJUCE_BUILD_EXAMPLES=ON -DCMAKE_BUILD_TYPE=Release -DCMAKE_C_COMPILER_LAUNCHER=ccache -DCMAKE_CXX_COMPILER_LAUNCHER=ccache .
           # Full list of targets https://gist.github.com/sudara/05be084efa371f4e43e21eb19ce04c50
           # Be sure to manually break the cache in the previous step if you want to add/remove plugins
-          cmake --build Builds --target DSPModulePluginDemo_All --target MultiOutSynthPlugin_All
+          cmake --build Builds --config Release --target DSPModulePluginDemo_All --target MultiOutSynthPlugin_All
       
       - name: Validate JUCE Plugin examples (VST3)
         shell: bash
