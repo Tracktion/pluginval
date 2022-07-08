@@ -126,7 +126,7 @@ jobs:
           mkdir -p ~/Library/Audio/Plug-Ins/Components/
           cp -R ${{ env.PLUGIN_CACHE_PATH }}/DSPModulePluginDemo_artefacts/Release/AU/DSPModulePluginDemo.component ~/Library/Audio/Plug-Ins/Components/
           killall -9 AudioComponentRegistrar # kick the AU registrar
-          ${{ env.APP_DIR }}/${{ matrix.test-binary }} --strictness-level 10 --verbose --validate  ~/Library/Audio/Plug-Ins/Components/DSPModulePluginDemo.component
+          ${{ env.APP_DIR }}/${{ matrix.test-binary }} --strictness-level 10 --validate  ~/Library/Audio/Plug-Ins/Components/DSPModulePluginDemo.component
     
       - name: Codesign (macOS)
         if: ${{ matrix.name == 'macOS' }}
