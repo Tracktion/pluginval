@@ -208,6 +208,18 @@ namespace
 
         return juce::StringArray::fromTokens (value, ",", "");
     }
+
+    bool isPluginArgument (juce::String arg)
+    {
+        juce::AudioPluginFormatManager formatManager;
+        formatManager.addDefaultFormats();
+
+        for (auto format : formatManager.getFormats())
+            if (format->fileMightContainThisPluginType (arg))
+                return true;
+
+        return false;
+    }
 }
 
 //==============================================================================
@@ -388,13 +400,8 @@ static ArgumentList createCommandLineArgs (String commandLine)
                                                 || argList.containsOption ("--run-tests");
 
         if (! hasValidateOrOtherCommand)
-        {
-            if (auto fileToValidate = argList.arguments.getLast().resolveAsFile();
-                fileToValidate != exe)
-            {
+            if (isPluginArgument (argList.arguments.getLast().text))
                 argList.arguments.insert (argList.arguments.size() - 1, { "--validate" });
-            }
-        }
     }
 
     return argList;

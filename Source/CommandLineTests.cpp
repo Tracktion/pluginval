@@ -78,7 +78,9 @@ struct CommandLineTests : public UnitTest
 
         beginTest ("Implicit validate options");
         {
-            expect (shouldPerformCommandLine ("path_to_file.vst3"));
+            juce::TemporaryFile temp ("path_to_file.vst3");
+            expect (temp.getFile().create());
+            expect (shouldPerformCommandLine (temp.getFile().getFullPathName()));
         }
     }
 };
