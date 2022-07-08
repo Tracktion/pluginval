@@ -123,8 +123,6 @@ jobs:
         run: |
           # We place it in ~/Library/Audio to be picked up as valid by macOS
           # This has to be done again, as most of the time we read from the plugin cache (vs. build)
-          which auval
-          auval
           mkdir -p ~/Library/Audio/Plug-Ins/Components/
           cp -R ${{ env.PLUGIN_CACHE_PATH }}/DSPModulePluginDemo_artefacts/Release/AU/DSPModulePluginDemo.component ~/Library/Audio/Plug-Ins/Components/
           killall -9 AudioComponentRegistrar # kick the AU registrar
