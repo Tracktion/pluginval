@@ -121,8 +121,8 @@ jobs:
         continue-on-error: true
         if: ${{ matrix.name == 'macOS' }}
         run: |
-          # We place it in ~/Library/Audio to be picked up as valid by macOS
-          # This has to be done again, as most of the time we read from the plugin cache (vs. build)
+          # Move to ~/Library/Audio to be picked up as valid by macOS
+          # We can't depend on COPY_PLUGIN_AFTER_BUILD, as most of the time we read binaries from the plugin cache
           mkdir -p ~/Library/Audio/Plug-Ins/Components/
           cp -R ${{ env.PLUGIN_CACHE_PATH }}/DSPModulePluginDemo_artefacts/Release/AU/DSPModulePluginDemo.component ~/Library/Audio/Plug-Ins/Components/
           killall -9 AudioComponentRegistrar # kick the AU registrar
