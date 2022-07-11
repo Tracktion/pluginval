@@ -1,7 +1,7 @@
 name: Build
 on:
-  push:
   workflow_dispatch:
+  push:
 
 env:
   BINARY_NAME: pluginval
@@ -153,11 +153,11 @@ jobs:
       
   # Create release for tagged refs
   deploy:
-    if: startsWith(github.ref, 'refs/tags/')
+    if: contains(github.ref, 'tags/v')
     needs: build
     runs-on: ubuntu-latest
     steps:
-      
+      # Needed to grab CHANGELIST.md
       - uses: actions/checkout@v3
                 
       - name: Get Artifacts
@@ -167,18 +167,12 @@ jobs:
 
       - name: Display structure of downloaded files
         run: ls -la
-    
-      - name: Set tag name variable
-        shell: bash        
-        run: |
-          REF=${GITHUB_REF}
-          echo "TAG_NAME=${REF##*/}" >> $GITHUB_ENV
 
       - name: Create Release
         uses: softprops/action-gh-release@v1
         with:
-          tag_name: ${{ env.TAG_NAME }}
-          name: ${{ env.TAG_NAME }}
+          tag_name: ${{ github.ref }}
+          name: ${{ github.ref }}
           body_path: CHANGELIST.md
           draft: true
           files: |
