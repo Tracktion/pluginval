@@ -1,7 +1,10 @@
 name: Build
 on:
-  push:
   workflow_dispatch:
+  push:
+    branches:
+    tags:
+      - "v*"
 
 env:
   BINARY_NAME: pluginval
