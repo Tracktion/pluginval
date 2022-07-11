@@ -8,9 +8,11 @@ env:
   BUILD_TYPE: Release
   BUILD_DIR: Builds
   GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+  DISPLAY: :0 # Running pluginval GUI on linux needs this
 
 jobs:
   build:
+    name: Pluginval Build
     strategy:
       fail-fast: false
       matrix:
@@ -40,14 +42,20 @@ jobs:
           echo "VERSION=$VERSION" >> $GITHUB_ENV
           echo "APP_DIR=${{ env.BUILD_DIR }}/${{ env.BINARY_NAME }}_artefacts/${{ env.BUILD_TYPE }}" >> $GITHUB_ENV
           echo "ZIP_FILE_NAME=${{ env.BINARY_NAME }}-${{ matrix.name }}.zip" >> $GITHUB_ENV
+          echo "JUCE_SHA1=$(git rev-parse HEAD:modules/juce)" >> $GITHUB_ENV
+          echo "PLUGIN_BUILD_DIR=modules/juce/Builds" >> $GITHUB_ENV
+          
+          # This needs to be absolute to make action/cache happy
+          echo "PLUGIN_CACHE_PATH=${{ github.workspace }}/modules/juce/Builds/examples/Plugins" >> $GITHUB_ENV
       
       - name: Install dependencies (Linux)
         if: ${{ matrix.name == 'Linux' }}
         run: |
           sudo add-apt-repository ppa:ubuntu-toolchain-r/test
           sudo apt-get update
-          sudo apt-get install -y freeglut3-dev g++ libasound2-dev libcurl4-openssl-dev libfreetype6-dev libjack-jackd2-dev libx11-dev libxcomposite-dev libxcursor-dev libxinerama-dev libxrandr-dev mesa-common-dev ladspa-sdk webkit2gtk-4.0 libgtk-3-dev xvfb ccache
-      
+          sudo apt-get install -y freeglut3-dev g++ libasound2-dev libcurl4-openssl-dev libfreetype6-dev libjack-jackd2-dev libx11-dev libxcomposite-dev libxcursor-dev libxinerama-dev libxrandr-dev mesa-common-dev ladspa-sdk webkit2gtk-4.0 libgtk-3-dev xvfb
+          sudo /usr/bin/Xvfb $DISPLAY &
+          
       - name: Make VST2 SDK available
         shell: bash
         run: |
@@ -55,20 +63,17 @@ jobs:
           7z x vstsdk2.4.zip
           echo "VST2_SDK_DIR=${{ github.workspace }}/vstsdk2.4" >> $GITHUB_ENV
 
-      # Import certificates
-      - uses: apple-actions/import-codesign-certs@v1
+      - name: Import Certificates
+        uses: apple-actions/import-codesign-certs@v1
         if: ${{ matrix.name == 'macOS' }}
         with:
           p12-file-base64: ${{ secrets.DEV_CERT_APP }}
           p12-password: ${{ secrets.CERT_PASSWORD }}
-        env:
-          CERT_PASSWORD: ${{ secrets.CERT_PASSWORD }}
-          DEV_CERT_APP: ${{ secrets.DEV_CERT_APP }}
 
       - name: ccache
         uses: hendrikmuhs/ccache-action@v1.2
         with:
-          key: ${{ matrix.name }}-${{ env.BUILD_TYPE }}
+          key: v2-${{ matrix.name }}-${{ env.BUILD_TYPE }}
 
       - name: Configure
         shell: bash
@@ -85,7 +90,44 @@ jobs:
           pwd
           ls -ahl
           ${{ matrix.test-binary }} --run-tests
+
+      - name: Cache JUCE example plugin binaries
+        id: cache-plugins
+        uses: actions/cache@v3
+        with: 
+          path: ${{ env.PLUGIN_CACHE_PATH }}
+          # Increment the version in the key below to manually break plugin cache
+          key: v6-${{ runner.os }}-${{ env.JUCE_SHA1 }}
           
+      - name: Build JUCE example plugins
+        if: steps.cache-plugins.outputs.cache-hit != 'true'
+        working-directory: modules/juce
+        shell: bash
+        run: |
+          cmake -B Builds -DJUCE_BUILD_EXAMPLES=ON -DCMAKE_BUILD_TYPE=Release -DCMAKE_C_COMPILER_LAUNCHER=ccache -DCMAKE_CXX_COMPILER_LAUNCHER=ccache .
+          # Full list of targets https://gist.github.com/sudara/05be084efa371f4e43e21eb19ce04c50
+          # Be sure to manually break the cache in the previous step if you want to add/remove plugins
+          cmake --build Builds --config Release --target DSPModulePluginDemo_All --target MultiOutSynthPlugin_All
+      
+      - name: Validate JUCE Plugin examples (VST3)
+        shell: bash
+        run: |
+          # Paths must be single quoted for bash not to escape the Windows backslash character \ used in absolute paths 
+          ${{ env.APP_DIR }}/${{ matrix.test-binary }} --strictness-level 10 --validate '${{ env.PLUGIN_CACHE_PATH }}/DSPModulePluginDemo_artefacts/Release/VST3/DSPModulePluginDemo.vst3'
+          ${{ env.APP_DIR }}/${{ matrix.test-binary }} --strictness-level 10 --validate '${{ env.PLUGIN_CACHE_PATH }}/MultiOutSynthPlugin_artefacts/Release/VST3/MultiOutSynthPlugin.vst3'
+
+      - name: Validate JUCE Plugin examples (AU)
+        shell: bash
+        continue-on-error: true
+        if: ${{ matrix.name == 'macOS' }}
+        run: |
+          # Move to ~/Library/Audio to be picked up as valid by macOS
+          # We can't depend on COPY_PLUGIN_AFTER_BUILD, as most of the time we read binaries from the plugin cache
+          mkdir -p ~/Library/Audio/Plug-Ins/Components/
+          cp -R ${{ env.PLUGIN_CACHE_PATH }}/DSPModulePluginDemo_artefacts/Release/AU/DSPModulePluginDemo.component ~/Library/Audio/Plug-Ins/Components/
+          killall -9 AudioComponentRegistrar # kick the AU registrar
+          ${{ env.APP_DIR }}/${{ matrix.test-binary }} --strictness-level 10 --validate  ~/Library/Audio/Plug-Ins/Components/DSPModulePluginDemo.component
+    
       - name: Codesign (macOS)
         if: ${{ matrix.name == 'macOS' }}
         run: codesign --force -s "${{ secrets.DEVELOPER_ID_APPLICATION}}" -v ${{ env.APP_DIR }}/${{ matrix.app }} --deep --strict --options=runtime --timestamp
