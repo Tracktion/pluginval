@@ -218,6 +218,15 @@ namespace
             if (format->fileMightContainThisPluginType (arg))
                 return true;
 
+        // The above will check if the file actually exists which isn't really what we want for CLI parsing
+        if (auto f = File::createFileWithoutCheckingPath (arg);
+            f.hasFileExtension (".vst3")
+           #if JUCE_PLUGINHOST_VST
+            || f.hasFileExtension (".dll")
+           #endif
+            )
+           return true;
+
         return false;
     }
 }

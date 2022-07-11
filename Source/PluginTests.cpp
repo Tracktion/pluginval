@@ -93,7 +93,7 @@ void PluginTests::runTest()
 
     if (fileOrID.isNotEmpty())
     {
-        beginTest ("Scan for known types: " + fileOrID);
+        beginTest ("Scan for plugins located in: " + fileOrID);
 
         WaitableEvent completionEvent;
         MessageManager::callAsync ([&, this]() mutable
@@ -103,8 +103,10 @@ void PluginTests::runTest()
                                    });
         completionEvent.wait();
 
-        logMessage ("Num types found: " + String (typesFound.size()));
-        expect (! typesFound.isEmpty(), "No types found");
+        logMessage ("Num plugins found: " + String (typesFound.size()));
+        expect (! typesFound.isEmpty(),
+                "No types found. This usually means the plugin binary is missing or damaged, "
+                "an incompatible format or that it is an AU that isn't found by macOS so can't be created.");
     }
 
     for (auto pd : typesFound)
