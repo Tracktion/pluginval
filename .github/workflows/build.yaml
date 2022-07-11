@@ -41,7 +41,7 @@ jobs:
           VERSION=$(cat VERSION)
           echo "VERSION=$VERSION" >> $GITHUB_ENV
           echo "APP_DIR=${{ env.BUILD_DIR }}/${{ env.BINARY_NAME }}_artefacts/${{ env.BUILD_TYPE }}" >> $GITHUB_ENV
-          echo "ZIP_FILE_NAME=${{ env.BINARY_NAME }}-${{ matrix.name }}.zip" >> $GITHUB_ENV
+          echo "ZIP_FILE_NAME=${{ env.BINARY_NAME }}_${{ matrix.name }}.zip" >> $GITHUB_ENV
           echo "JUCE_SHA1=$(git rev-parse HEAD:modules/juce)" >> $GITHUB_ENV
           echo "PLUGIN_BUILD_DIR=modules/juce/Builds" >> $GITHUB_ENV
           
@@ -171,12 +171,10 @@ jobs:
       - name: Create Release
         uses: softprops/action-gh-release@v1
         with:
-          tag_name: ${{ github.ref }}
-          name: ${{ github.ref }}
           body_path: CHANGELIST.md
           draft: true
           files: |
             CHANGELIST.md/*
-            pluginval-Linux.zip/*
-            pluginval-macOS.zip/*
-            pluginval-Windows.zip/*
+            pluginval_Linux.zip/*
+            pluginval_macOS.zip/*
+            pluginval_Windows.zip/*
