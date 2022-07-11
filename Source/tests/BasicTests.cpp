@@ -258,7 +258,7 @@ static AudioProcessingTest audioProcessingTest;
 struct NonReleasingAudioProcessingTest  : public PluginTest
 {
     NonReleasingAudioProcessingTest()
-        : PluginTest ("Non-releasing audio processing", 4)
+        : PluginTest ("Non-releasing audio processing", 6)
     {
     }
 
@@ -357,6 +357,7 @@ struct AutomationTest  : public PluginTest
         const std::vector<int>& blockSizes = ut.getOptions().blockSizes;
 
         jassert (sampleRates.size() > 0 && blockSizes.size() > 0);
+        callReleaseResourcesOnMessageThreadIfVST3 (instance);
         callPrepareToPlayOnMessageThreadIfVST3 (instance, sampleRates[0], blockSizes[0]);
 
         auto r = ut.getRandom();
