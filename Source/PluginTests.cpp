@@ -50,6 +50,7 @@ PluginTests::PluginTests (const String& fileOrIdentifier, Options opts)
       fileOrID (fileOrIdentifier),
       options (opts)
 {
+    jassert (fileOrIdentifier.isNotEmpty());
     jassert (isPositiveAndNotGreaterThan (options.strictnessLevel, 10));
     formatManager.addDefaultFormats();
 }
@@ -84,12 +85,15 @@ void PluginTests::resetTimeout()
 
 void PluginTests::runTest()
 {
+    // This has to be called on a background thread to keep the message thread free
+    jassert (! juce::MessageManager::existsAndIsCurrentThread());
+
     logMessage ("Validation started: " + Time::getCurrentTime().toString (true, true) + "\n");
     logMessage ("Strictness level: " + String (options.strictnessLevel));
 
     if (fileOrID.isNotEmpty())
     {
-        beginTest ("Scan for known types: " + fileOrID);
+        beginTest ("Scan for plugins located in: " + fileOrID);
 
         WaitableEvent completionEvent;
         MessageManager::callAsync ([&, this]() mutable
@@ -99,8 +103,10 @@ void PluginTests::runTest()
                                    });
         completionEvent.wait();
 
-        logMessage ("Num types found: " + String (typesFound.size()));
-        expect (! typesFound.isEmpty(), "No types found");
+        logMessage ("Num plugins found: " + String (typesFound.size()));
+        expect (! typesFound.isEmpty(),
+                "No types found. This usually means the plugin binary is missing or damaged, "
+                "an incompatible format or that it is an AU that isn't found by macOS so can't be created.");
     }
 
     for (auto pd : typesFound)

@@ -191,6 +191,87 @@ static void deleteEditorOnMessageThread (std::unique_ptr<AudioProcessorEditor> e
 }
 
 //==============================================================================
+//==============================================================================
+inline void callPrepareToPlayOnMessageThreadIfVST3 (AudioPluginInstance& instance,
+                                                    double sampleRate, int blockSize)
+{
+    if (instance.getPluginDescription().pluginFormatName != "VST3"
+        || MessageManager::getInstance()->isThisTheMessageThread())
+    {
+        instance.prepareToPlay (sampleRate, blockSize);
+        return;
+    }
+
+    WaitableEvent waiter;
+    MessageManager::callAsync ([&]
+                               {
+                                   instance.prepareToPlay (sampleRate, blockSize);
+                                   waiter.signal();
+                               });
+    waiter.wait();
+}
+
+inline void callReleaseResourcesOnMessageThreadIfVST3 (AudioPluginInstance& instance)
+{
+    if (instance.getPluginDescription().pluginFormatName != "VST3"
+        || MessageManager::getInstance()->isThisTheMessageThread())
+    {
+        instance.releaseResources();
+        return;
+    }
+
+    WaitableEvent waiter;
+    MessageManager::callAsync ([&]
+                               {
+                                   instance.releaseResources();
+                                   waiter.signal();
+                               });
+    waiter.wait();
+}
+
+inline juce::MemoryBlock callGetStateInformationOnMessageThreadIfVST3 (juce::AudioPluginInstance& instance)
+{
+    MemoryBlock state;
+
+    if (instance.getPluginDescription().pluginFormatName != "VST3"
+        || MessageManager::getInstance()->isThisTheMessageThread())
+    {
+        instance.getStateInformation (state);
+    }
+    else
+    {
+        WaitableEvent waiter;
+        MessageManager::callAsync ([&]
+                                   {
+                                       instance.getStateInformation (state);
+                                       waiter.signal();
+                                   });
+        waiter.wait();
+    }
+
+    return state;
+}
+
+inline void callSetStateInformationOnMessageThreadIfVST3 (juce::AudioPluginInstance& instance, const juce::MemoryBlock& state)
+{
+    if (instance.getPluginDescription().pluginFormatName != "VST3"
+        || MessageManager::getInstance()->isThisTheMessageThread())
+    {
+        instance.setStateInformation (state.getData(), (int) state.getSize());
+    }
+    else
+    {
+        WaitableEvent waiter;
+        MessageManager::callAsync ([&]
+                                   {
+                                       instance.setStateInformation (state.getData(), (int) state.getSize());
+                                       waiter.signal();
+                                   });
+        waiter.wait();
+    }
+}
+
+//==============================================================================
 /** Creates an editor for the plugin on the message thread, shows it on screen and
     deletes it on the message thread upon destruction.
 */
@@ -214,19 +295,19 @@ struct ScopedEditorShower
 //==============================================================================
 struct ScopedPluginDeinitialiser
 {
-    ScopedPluginDeinitialiser (AudioProcessor& ap)
-        : processor (ap), sampleRate (ap.getSampleRate()), blockSize (ap.getBlockSize())
+    ScopedPluginDeinitialiser (AudioPluginInstance& ap)
+        : instance (ap), sampleRate (ap.getSampleRate()), blockSize (ap.getBlockSize())
     {
-        processor.releaseResources();
+        callReleaseResourcesOnMessageThreadIfVST3 (instance);
     }
 
     ~ScopedPluginDeinitialiser()
     {
         if (blockSize != 0 && sampleRate != 0.0)
-            processor.prepareToPlay (sampleRate, blockSize);
+            callPrepareToPlayOnMessageThreadIfVST3 (instance, sampleRate, blockSize);
     }
 
-    AudioProcessor& processor;
+    AudioPluginInstance& instance;
     const double sampleRate;
     const int blockSize;
 };

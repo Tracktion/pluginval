@@ -32,7 +32,6 @@ struct CommandLineTests : public UnitTest
             envVars.set ("VERBOSE", "1");
             envVars.set ("REPEAT", "10");
             envVars.set ("RANDOMISE", "1");
-            envVars.set ("VALIDATE_IN_PROCESS", "1");
             envVars.set ("SKIP_GUI_TESTS", "1");
             envVars.set ("DATA_FILE", "<path_to_file>");
             envVars.set ("OUTPUT_DIR", "<path_to_dir>");
@@ -44,7 +43,6 @@ struct CommandLineTests : public UnitTest
             expect (merged.contains ("--verbose"));
             expect (merged.contains ("--repeat 10"));
             expect (merged.contains ("--randomise"));
-            expect (merged.contains ("--validate-in-process"));
             expect (merged.contains ("--skip-gui-tests"));
             expect (merged.contains ("--data-file <path_to_file>"));
             expect (merged.contains ("--output-dir <path_to_dir>"));
@@ -76,6 +74,13 @@ struct CommandLineTests : public UnitTest
         {
             expectEquals (getRandomSeed (ArgumentList ({}, "--random-seed 0x7f2da1")), (int64) 8334753);
             expectEquals (getRandomSeed (ArgumentList ({}, "--random-seed 0x692bc1f")), (int64) 110279711);
+        }
+
+        beginTest ("Implicit validate options");
+        {
+            juce::TemporaryFile temp ("path_to_file.vst3");
+            expect (temp.getFile().create());
+            expect (shouldPerformCommandLine (temp.getFile().getFullPathName()));
         }
     }
 };

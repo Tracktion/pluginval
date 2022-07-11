@@ -15,7 +15,7 @@
 #include <future>
 #include "TestUtilities.h"
 
-bool logAllocationViolationIfNotAllowed()
+inline bool logAllocationViolationIfNotAllowed()
 {
     auto& ai = getAllocatorInterceptor();
 

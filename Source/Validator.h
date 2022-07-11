@@ -17,45 +17,52 @@
 #include <JuceHeader.h>
 #include "PluginTests.h"
 
-#ifndef LOG_PIPE_COMMUNICATION
- #define LOG_PIPE_COMMUNICATION 0
-#endif
+class ChildProcessValidator;
+class AsyncValidator;
+class MultiValidator;
 
-#ifndef LOG_PIPE_CHILD_COMMUNICATION
- #define LOG_PIPE_CHILD_COMMUNICATION 0
-#endif
-
-namespace juce
+//==============================================================================
+//==============================================================================
+/** Enum to determine the type of validation to run. */
+enum class ValidationType
 {
-template <typename T>
-struct VariantConverter<std::vector<T>>
-{
-    static std::vector<T> fromVar (const var& v)
-    {
-        jassert (v.isString());
-
-        std::vector<T> vc;
-
-        for (auto token : StringArray::fromTokens (v.toString(), ",", ""))
-            vc.push_back (static_cast<T> (var (token)));
-
-        return vc;
-    }
-
-    static var toVar (const std::vector<T>& vc)
-    {
-        if (vc.empty())
-            return "";
-
-        String text { vc.front() };
-        std::for_each (std::next (vc.begin()), vc.end(), [&] (const T& t) { text << ',' << t; });
-        return text;
-    }
+    inProcess,      /**< Runs the validation in the calling process. */
+    childProcess    /**< Runs the validation in the a separate process. */
 };
-}// namespace juce
 
-class ValidatorParentProcess;
+//==============================================================================
+/**
+    A single, asyncronouse validation pass for a specific plugin.
+*/
+class ValidationPass
+{
+public:
+    //==============================================================================
+    /** Starts a validation process with a set of options and callbacks.
+        The validation will be async so either use the validationEnded callback or
+        poll hasFinished() to find out when the validation has completed.
 
+        N.B. outputGenerated will be called from a background thread.
+    */
+    ValidationPass (const juce::String& fileOrIdToValidate, PluginTests::Options, ValidationType,
+                    std::function<void (juce::String)> validationStarted,
+                    std::function<void (juce::String, uint32_t /*exitCode*/)> validationEnded,
+                    std::function<void(const String&)> outputGenerated);
+
+    /** Destructor. */
+    ~ValidationPass();
+
+    /** Returns true when the validation pass has ended. */
+    bool hasFinished() const;
+
+private:
+    //==============================================================================
+    std::unique_ptr<ChildProcessValidator> childProcessValidator;
+    std::unique_ptr<AsyncValidator> asyncValidator;
+};
+
+
+//==============================================================================
 //==============================================================================
 /**
     Manages validation calls via a separate process and provides a listener
@@ -94,9 +101,8 @@ public:
 
         virtual void validationStarted (const String& idString) = 0;
         virtual void logMessage (const String&) = 0;
-        virtual void itemComplete (const String& idString, int numFailures) = 0;
+        virtual void itemComplete (const String& idString, uint32_t exitCode) = 0;
         virtual void allItemsComplete() = 0;
-        virtual void connectionLost() {}
     };
 
     void addListener (Listener* l)          { listeners.add (l); }
@@ -104,19 +110,11 @@ public:
 
 private:
     //==============================================================================
-    std::unique_ptr<ValidatorParentProcess> parentProcess;
+    std::unique_ptr<MultiValidator> multiValidator;
     ListenerList<Listener> listeners;
     bool launchInProcess = false;
 
     void logMessage (const String&);
-    bool ensureConnection();
 
     void handleAsyncUpdate() override;
 };
-
-//==============================================================================
-/*  The JUCEApplication::initialise method calls this function to allow the
-    child process to launch when the command line parameters indicate that we're
-    being asked to run as a child process.
-*/
-bool invokeChildProcessValidator (const String& commandLine);

@@ -27,6 +27,7 @@ obj/
 # Build products
 build/
 *.o
+build_**/
 
 # Other source repository archive directories (protects when importing)
 .hg

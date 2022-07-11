@@ -1,15 +1,14 @@
 cmake_minimum_required(VERSION 3.15)
 
-project(pluginval VERSION 0.3.0)
+file(READ VERSION CURRENT_VERSION)
+project(pluginval VERSION ${CURRENT_VERSION})
 
-# If we are using MSVC we want static runtime linkage
-if (MSVC)
-    set (CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>")
-endif()
-
-# If we are compiling for macOS we want to target OS versions down to 10.11
 if (APPLE)
+    # Target OS versions down to 10.11
     set (CMAKE_OSX_DEPLOYMENT_TARGET "10.11" CACHE INTERNAL "")
+    
+    # Universal Binary
+    set(CMAKE_OSX_ARCHITECTURES arm64 x86_64)
 endif()
 
 # Adds all the module sources so they appear correctly in the IDE
@@ -34,7 +33,7 @@ juce_add_gui_app(pluginval
 
 juce_generate_juce_header(pluginval)
 
-target_compile_features(pluginval PRIVATE cxx_std_14)
+target_compile_features(pluginval PRIVATE cxx_std_17)
 
 set_target_properties(pluginval PROPERTIES
     C_VISIBILITY_PRESET hidden
@@ -75,7 +74,8 @@ target_compile_definitions(pluginval PRIVATE
     JUCER_ENABLE_GPL_MODE=1
     JUCE_DISPLAY_SPLASH_SCREEN=0
     JUCE_MODAL_LOOPS_PERMITTED=1
-    JUCE_REPORT_APP_USAGE=0)
+    JUCE_REPORT_APP_USAGE=0
+    VERSION="${CURRENT_VERSION}")
 
 target_link_libraries(pluginval PRIVATE
     juce::juce_audio_devices

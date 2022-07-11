@@ -15,6 +15,7 @@
 #include "../PluginTests.h"
 #include "../TestUtilities.h"
 #include <future>
+#include <thread>
 
 //==============================================================================
 struct PluginInfoTest   : public PluginTest
@@ -133,13 +134,13 @@ struct EditorWhilstProcessingTest   : public PluginTest
     {
         if (instance.hasEditor())
         {
-            instance.releaseResources();
+            callReleaseResourcesOnMessageThreadIfVST3 (instance);
 
             const std::vector<double>& sampleRates = ut.getOptions().sampleRates;
             const std::vector<int>& blockSizes = ut.getOptions().blockSizes;
 
-            jassert (sampleRates.size()>0 && blockSizes.size()>0);
-            instance.prepareToPlay (sampleRates[0], blockSizes[0]);
+            jassert (sampleRates.size() > 0 && blockSizes.size() > 0);
+            callPrepareToPlayOnMessageThreadIfVST3 (instance, sampleRates[0], blockSizes[0]);
 
             const int numChannelsRequired = jmax (instance.getTotalNumInputChannels(), instance.getTotalNumOutputChannels());
             AudioBuffer<float> ab (numChannelsRequired, instance.getBlockSize());
@@ -193,7 +194,7 @@ struct AudioProcessingTest  : public PluginTest
         const std::vector<int>& blockSizes = ut.getOptions().blockSizes;
 
         jassert (sampleRates.size()>0 && blockSizes.size()>0);
-        instance.prepareToPlay (sampleRates[0], blockSizes[0]);
+        callPrepareToPlayOnMessageThreadIfVST3 (instance, sampleRates[0], blockSizes[0]);
 
         const int numBlocks = 10;
         auto r = ut.getRandom();
@@ -207,9 +208,9 @@ struct AudioProcessingTest  : public PluginTest
                                    .replace ("BS", String (bs), false));
 
                 if (callReleaseResourcesBeforeSampleRateChange)
-                    instance.releaseResources();
+                    callReleaseResourcesOnMessageThreadIfVST3 (instance);
 
-                instance.prepareToPlay (sr, bs);
+                callPrepareToPlayOnMessageThreadIfVST3 (instance, sr, bs);
 
                 const int numChannelsRequired = jmax (instance.getTotalNumInputChannels(), instance.getTotalNumOutputChannels());
                 AudioBuffer<float> ab (numChannelsRequired, bs);
@@ -257,7 +258,7 @@ static AudioProcessingTest audioProcessingTest;
 struct NonReleasingAudioProcessingTest  : public PluginTest
 {
     NonReleasingAudioProcessingTest()
-        : PluginTest ("Non-releasing audio processing", 4)
+        : PluginTest ("Non-releasing audio processing", 6)
     {
     }
 
@@ -283,15 +284,14 @@ struct PluginStateTest  : public PluginTest
         auto r = ut.getRandom();
 
         // Read state
-        MemoryBlock originalState;
-        instance.getStateInformation (originalState);
+        auto originalState = callGetStateInformationOnMessageThreadIfVST3 (instance);
 
         // Set random parameter values
         for (auto parameter : getNonBypassAutomatableParameters (instance))
             parameter->setValue (r.nextFloat());
 
         // Restore original state
-        instance.setStateInformation (originalState.getData(), (int) originalState.getSize());
+        callSetStateInformationOnMessageThreadIfVST3 (instance, originalState);
     }
 };
 
@@ -311,8 +311,7 @@ struct PluginStateTestRestoration   : public PluginTest
         auto r = ut.getRandom();
 
         // Read state
-        MemoryBlock originalState;
-        instance.getStateInformation (originalState);
+        auto originalState = callGetStateInformationOnMessageThreadIfVST3 (instance);
 
         // Check current sum of parameter values
         const float originalParamsSum = getParametersSum (instance);
@@ -322,7 +321,7 @@ struct PluginStateTestRestoration   : public PluginTest
             parameter->setValue (r.nextFloat());
 
         // Restore original state
-        instance.setStateInformation (originalState.getData(), (int) originalState.getSize());
+        callSetStateInformationOnMessageThreadIfVST3 (instance, originalState);
 
         // Check parameter values return to original
         ut.expectWithinAbsoluteError (getParametersSum (instance), originalParamsSum, 0.1f,
@@ -331,8 +330,7 @@ struct PluginStateTestRestoration   : public PluginTest
         if (strictnessLevel >= 8)
         {
             // Read state again and compare to what we set
-            MemoryBlock duplicateState;
-            instance.getStateInformation (duplicateState);
+            auto duplicateState = callGetStateInformationOnMessageThreadIfVST3 (instance);
             ut.expect (duplicateState.matches (originalState.getData(), originalState.getSize()),
                        "Returned state differs from that set by host");
         }
@@ -359,7 +357,8 @@ struct AutomationTest  : public PluginTest
         const std::vector<int>& blockSizes = ut.getOptions().blockSizes;
 
         jassert (sampleRates.size() > 0 && blockSizes.size() > 0);
-        instance.prepareToPlay (sampleRates[0], blockSizes[0]);
+        callReleaseResourcesOnMessageThreadIfVST3 (instance);
+        callPrepareToPlayOnMessageThreadIfVST3 (instance, sampleRates[0], blockSizes[0]);
 
         auto r = ut.getRandom();
 
@@ -373,8 +372,8 @@ struct AutomationTest  : public PluginTest
                                    .replace ("BS", String (bs), false)
                                    .replace ("SB", String (subBlockSize), false));
 
-                instance.releaseResources();
-                instance.prepareToPlay (sr, bs);
+                callReleaseResourcesOnMessageThreadIfVST3 (instance);
+                callPrepareToPlayOnMessageThreadIfVST3 (instance, sr, bs);
 
                 int numSamplesDone = 0;
                 const int numChannelsRequired = jmax (instance.getTotalNumInputChannels(), instance.getTotalNumOutputChannels());
@@ -582,17 +581,16 @@ struct BackgroundThreadStateTest    : public PluginTest
         ScopedEditorShower editor (instance);
 
         auto parameters = getNonBypassAutomatableParameters (instance);
-        MemoryBlock originalState;
 
         // Read state
-        instance.getStateInformation (originalState);
+        auto originalState = callGetStateInformationOnMessageThreadIfVST3 (instance);
 
         // Set random parameter values
         for (auto parameter : parameters)
             parameter->setValue (r.nextFloat());
 
         // Restore original state
-        instance.setStateInformation (originalState.getData(), (int) originalState.getSize());
+        callSetStateInformationOnMessageThreadIfVST3 (instance, originalState);
 
         // Allow for async reaction to state changes
         Thread::sleep (2000);
@@ -634,8 +632,8 @@ struct ParameterThreadSafetyTest    : public PluginTest
                                    });
 
         const int blockSize = 32;
-        instance.releaseResources();
-        instance.prepareToPlay (44100.0, blockSize);
+        callReleaseResourcesOnMessageThreadIfVST3 (instance);
+        callPrepareToPlayOnMessageThreadIfVST3 (instance, 44100.0, blockSize);
 
         const int numChannelsRequired = jmax (instance.getTotalNumInputChannels(), instance.getTotalNumOutputChannels());
         AudioBuffer<float> ab (numChannelsRequired, blockSize);
@@ -669,3 +667,142 @@ struct ParameterThreadSafetyTest    : public PluginTest
 };
 
 static ParameterThreadSafetyTest parameterThreadSafetyTest;
+
+
+//==============================================================================
+/** Runs auval on the plugin if it's an Audio Unit.
+ */
+struct AUvalTest    : public PluginTest
+{
+    AUvalTest()
+        : PluginTest ("auval", 5)
+    {
+    }
+
+    void runTest (PluginTests& ut, AudioPluginInstance& instance) override
+    {
+        const auto desc = instance.getPluginDescription();
+
+        if (desc.pluginFormatName != "AudioUnit")
+            return;
+
+        // Use -stress on strictness levels greater than 5
+        const auto cmd = juce::String ("auval -strict STRESS -v ").replace ("STRESS", ut.getOptions().strictnessLevel > 5 ? "-stress" : "")
+                            + desc.fileOrIdentifier.fromLastOccurrenceOf ("/", false, false).replace (",", " ");
+
+        juce::ChildProcess cp;
+        const auto started = cp.start (cmd);
+        ut.expect (started);
+
+        if (! started)
+            return;
+
+        juce::MemoryOutputStream outputBuffer;
+
+        for (;;)
+        {
+            for (;;)
+            {
+                char buffer[2048];
+
+                if (const auto numBytesRead = cp.readProcessOutput (buffer, sizeof (buffer));
+                    numBytesRead > 0)
+                {
+                    std::string msg (buffer, (size_t) numBytesRead);
+                    ut.logVerboseMessage (msg);
+                    outputBuffer << juce::String (msg);
+                }
+                else
+                {
+                    break;
+                }
+            }
+
+            if (! cp.isRunning())
+                break;
+
+            using namespace std::literals;
+            std::this_thread::sleep_for (100ms);
+        }
+
+        const auto exitedCleanly = cp.getExitCode() == 0;
+        ut.expect (exitedCleanly);
+        ut.logMessage ("auval exited with code: " + juce::String (cp.getExitCode()));
+
+        if (! exitedCleanly && ! ut.getOptions().verbose)
+            ut.logMessage (outputBuffer.toString());
+    }
+};
+
+static AUvalTest auvalTest;
+
+//==============================================================================
+/** Runs Steinberg's validator on the plugin if it's a VST3.
+ */
+struct VST3validator    : public PluginTest
+{
+    VST3validator()
+        : PluginTest ("vst3 validator", 5)
+    {
+    }
+
+    void runTest (PluginTests& ut, AudioPluginInstance& instance) override
+    {
+        const auto desc = instance.getPluginDescription();
+
+        if (desc.pluginFormatName != "VST3")
+            return;
+
+        auto vst3Validator = ut.getOptions().vst3Validator;
+
+        if (vst3Validator == File())
+        {
+            ut.logMessage ("INFO: Skipping vst3 validator as validator path hasn't been set");
+            return;
+        }
+
+        juce::StringArray cmd (vst3Validator.getFullPathName());
+
+        if (ut.getOptions().strictnessLevel > 5)
+            cmd.add ("-e");
+
+        cmd.add (desc.fileOrIdentifier);
+
+        juce::ChildProcess cp;
+        const auto started = cp.start (cmd);
+        ut.expect (started, "VST3 validator app has been set but is unable to start");
+
+        if (! started)
+            return;
+
+        for (;;)
+        {
+            for (;;)
+            {
+                char buffer[2048];
+
+                if (const auto numBytesRead = cp.readProcessOutput (buffer, sizeof (buffer));
+                    numBytesRead > 0)
+                {
+                    std::string msg (buffer, (size_t) numBytesRead);
+                    ut.logVerboseMessage (msg);
+                }
+                else
+                {
+                    break;
+                }
+            }
+
+            if (! cp.isRunning())
+                break;
+
+            using namespace std::literals;
+            std::this_thread::sleep_for (100ms);
+        }
+
+        ut.expect (cp.getExitCode() == 0);
+        ut.logMessage ("vst3 validator exited with code: " + juce::String (cp.getExitCode()));
+    }
+};
+
+static VST3validator vst3validator;
