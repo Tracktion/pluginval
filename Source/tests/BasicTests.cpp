@@ -775,6 +775,8 @@ struct VST3validator    : public PluginTest
         if (! started)
             return;
 
+        juce::MemoryOutputStream outputBuffer;
+
         for (;;)
         {
             for (;;)
@@ -786,6 +788,7 @@ struct VST3validator    : public PluginTest
                 {
                     std::string msg (buffer, (size_t) numBytesRead);
                     ut.logVerboseMessage (msg);
+                    outputBuffer << juce::String (msg);
                 }
                 else
                 {
@@ -800,8 +803,13 @@ struct VST3validator    : public PluginTest
             std::this_thread::sleep_for (100ms);
         }
 
-        ut.expect (cp.getExitCode() == 0);
+        const auto exitedCleanly = cp.getExitCode() == 0;
+        ut.expect (exitedCleanly);
+
         ut.logMessage ("vst3 validator exited with code: " + juce::String (cp.getExitCode()));
+
+        if (! exitedCleanly && ! ut.getOptions().verbose)
+            ut.logMessage (outputBuffer.toString());
     }
 };
 
