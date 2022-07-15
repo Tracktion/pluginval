@@ -15,7 +15,11 @@ endif()
 set_property(GLOBAL PROPERTY USE_FOLDERS YES)
 option(JUCE_ENABLE_MODULE_SOURCE_GROUPS "Enable Module Source Groups" ON)
 
-add_subdirectory(modules/juce)
+option(PLUGINVAL_FETCH_JUCE "Fetch JUCE along with PluginVal" ON)
+
+if(PLUGINVAL_FETCH_JUCE)
+    add_subdirectory(modules/juce)
+endif()
 
 if (DEFINED ENV{VST2_SDK_DIR})
     MESSAGE(STATUS "Building with VST2 SDK: $ENV{VST2_SDK_DIR}")
