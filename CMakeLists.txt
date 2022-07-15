@@ -3,7 +3,9 @@ cmake_minimum_required(VERSION 3.15)
 file(READ VERSION CURRENT_VERSION)
 project(pluginval VERSION ${CURRENT_VERSION})
 
-if (APPLE)
+option(PLUGINVAL_USE_DEFAULT_APPLE_SETTINGS "Use defaults for Apple systems" ON)
+
+if (APPLE AND PLUGINVAL_USE_DEFAULT_APPLE_SETTINGS)
     # Target OS versions down to 10.11
     set (CMAKE_OSX_DEPLOYMENT_TARGET "10.11" CACHE INTERNAL "")
     
