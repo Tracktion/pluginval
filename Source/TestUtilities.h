@@ -192,20 +192,28 @@ static void deleteEditorOnMessageThread (std::unique_ptr<AudioProcessorEditor> e
 
 //==============================================================================
 //==============================================================================
+
+inline void releaseAndPrepare(AudioPluginInstance& instance,
+                           double sampleRate, int blockSize)
+{
+    instance.releaseResources();
+    instance.prepareToPlay(sampleRate, blockSize);
+}
+
 inline void callPrepareToPlayOnMessageThreadIfVST3 (AudioPluginInstance& instance,
                                                     double sampleRate, int blockSize)
 {
     if (instance.getPluginDescription().pluginFormatName != "VST3"
         || MessageManager::getInstance()->isThisTheMessageThread())
     {
-        instance.prepareToPlay (sampleRate, blockSize);
+        releaseAndPrepare (instance, sampleRate, blockSize);
         return;
     }
 
     WaitableEvent waiter;
     MessageManager::callAsync ([&]
                                {
-                                   instance.prepareToPlay (sampleRate, blockSize);
+                                   releaseAndPrepare (instance, sampleRate, blockSize);
                                    waiter.signal();
                                });
     waiter.wait();
