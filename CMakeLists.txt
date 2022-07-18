@@ -7,15 +7,19 @@ if (APPLE)
     # Target OS versions down to 10.11
     set (CMAKE_OSX_DEPLOYMENT_TARGET "10.11" CACHE INTERNAL "")
     
-    # Universal Binary
-    set(CMAKE_OSX_ARCHITECTURES arm64 x86_64)
+    # Uncomment to produce a universal binary
+    # set(CMAKE_OSX_ARCHITECTURES arm64 x86_64)
 endif()
 
 # Adds all the module sources so they appear correctly in the IDE
 set_property(GLOBAL PROPERTY USE_FOLDERS YES)
 option(JUCE_ENABLE_MODULE_SOURCE_GROUPS "Enable Module Source Groups" ON)
 
-add_subdirectory(modules/juce)
+option(PLUGINVAL_FETCH_JUCE "Fetch JUCE along with PluginVal" ON)
+
+if(PLUGINVAL_FETCH_JUCE)
+    add_subdirectory(modules/juce)
+endif()
 
 if (DEFINED ENV{VST2_SDK_DIR})
     MESSAGE(STATUS "Building with VST2 SDK: $ENV{VST2_SDK_DIR}")
