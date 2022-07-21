@@ -95,6 +95,7 @@ void PluginTests::runTest()
     {
         beginTest ("Scan for plugins located in: " + fileOrID);
         WaitableEvent completionEvent;
+
         MessageManager::callAsync ([&, this]() mutable
                                    {
                                        knownPluginList.scanAndAddDragAndDroppedFiles (formatManager, StringArray (fileOrID), typesFound);
