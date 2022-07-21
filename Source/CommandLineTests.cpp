@@ -69,7 +69,6 @@ struct CommandLineTests : public UnitTest
             expectEquals (getOptionValue (args, "--data-file", {}, "Missing data-file path argument!").toString(), String ("/path/to/file"));
             expectEquals (getOptionValue (args, "--output-dir", {}, "Missing output-dir path argument!").toString(), String ("/path/to/dir"));
             expectEquals (getOptionValue (args, "--validate", {}, "Missing validate argument!").toString(), String ("/path/to/plugin"));
-            expectEquals (parseCommandLine (args).first, String ("/path/to/plugin"));
         }
 
         beginTest ("Handles an absolute path to the plugin");
@@ -91,16 +90,16 @@ struct CommandLineTests : public UnitTest
 
         beginTest ("Handles a relative path");
         {
-            const auto currentDir = File::getCurrentWorkingDirectory().getFullPathName();
+            const auto currentDir = File::getCurrentWorkingDirectory();
             const auto args = createCommandLineArgs ("--validate MyPlugin.vst3");
-            expectEquals (parseCommandLine (args).first, currentDir + "/MyPlugin.vst3");
+            expectEquals (parseCommandLine (args).first, currentDir.getChildFile ("MyPlugin.vst3").getFullPathName());
         }
 
-        beginTest ("Handles a quoted relative path to the plugin");
+        beginTest ("Handles a quoted relative path with spaces to the plugin");
         {
-            const auto currentDir = File::getCurrentWorkingDirectory().getFullPathName();
+            const auto currentDir = File::getCurrentWorkingDirectory();
             const auto args = createCommandLineArgs (R"(--validate "My Plugin.vst3")");
-            expectEquals (parseCommandLine (args).first, currentDir + "/My Plugin.vst3");
+            expectEquals (parseCommandLine (args).first, currentDir.getChildFile ("My Plugin.vst3").getFullPathName());
         }
 
         #if !JUCE_WINDOWS
@@ -130,9 +129,9 @@ struct CommandLineTests : public UnitTest
 
         beginTest ("Implicit validate with a relative path");
         {
-            const auto currentDir = File::getCurrentWorkingDirectory().getFullPathName();
+            const auto currentDir = File::getCurrentWorkingDirectory();
             const auto args = createCommandLineArgs ("MyPlugin.vst3");
-            expectEquals (parseCommandLine (args).first, currentDir + "/MyPlugin.vst3");
+            expectEquals (parseCommandLine (args).first, currentDir.getChildFile ("MyPlugin.vst3").getFullPathName());
         }
 
         beginTest ("Doesn't alter component IDs");
