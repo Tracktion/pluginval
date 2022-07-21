@@ -89,7 +89,7 @@ jobs:
         run: |
           pwd
           ls -ahl
-          ${{ matrix.test-binary }} --run-tests --verbose
+          ${{ matrix.test-binary }} --run-tests
 
       - name: Cache JUCE example plugin binaries
         id: cache-plugins
