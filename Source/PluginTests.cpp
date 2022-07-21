@@ -94,7 +94,6 @@ void PluginTests::runTest()
     if (fileOrID.isNotEmpty())
     {
         beginTest ("Scan for plugins located in: " + fileOrID);
-
         WaitableEvent completionEvent;
         MessageManager::callAsync ([&, this]() mutable
                                    {

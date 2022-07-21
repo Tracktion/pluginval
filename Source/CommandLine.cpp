@@ -462,10 +462,18 @@ bool shouldPerformCommandLine (const String& commandLine)
 //==============================================================================
 std::pair<juce::String, PluginTests::Options> parseCommandLine (const juce::ArgumentList& args)
 {
+    // prioritize explicit arguments
     auto fileOrID = args.getValueForOption ("--validate");
 
+    // but let user lazily supply the plugin path as the last arg
+    if (fileOrID.isEmpty())
+        fileOrID = args.arguments.getLast().text;
+
+    // in the case of a path (vs. ID), grab the full path
+    // getCurrentWorkingDirectory is needed to handle relative paths
+    // It preserves absolute paths and first checks for ~ on Mac/Windows
     if (fileOrID.contains ("~") || fileOrID.contains ("."))
-        fileOrID = juce::File (fileOrID).getFullPathName();
+        fileOrID = File::getCurrentWorkingDirectory().getChildFile(fileOrID).getFullPathName();
 
     PluginTests::Options options;
     options.strictnessLevel     = getStrictnessLevel (args);
@@ -482,7 +490,7 @@ std::pair<juce::String, PluginTests::Options> parseCommandLine (const juce::Argu
     options.blockSizes          = getBlockSizes (args);
     options.vst3Validator       = getOptionValue (args, "--vst3validator", "", "Expected a path for the --vst3validator option");
 
-    return { args.arguments.getLast().text, options };
+    return { fileOrID, options };
 }
 
 std::pair<juce::String, PluginTests::Options> parseCommandLine (const String& cmd)
