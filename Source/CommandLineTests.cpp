@@ -22,7 +22,7 @@ struct CommandLineTests : public UnitTest
 
     void runTest() override
     {
-        
+
         beginTest ("Merge environment variables");
         {
             StringPairArray envVars;
@@ -61,13 +61,84 @@ struct CommandLineTests : public UnitTest
 
         beginTest ("Command line parser");
         {
-            ArgumentList args ({}, "--strictness-level 7 --random-seed 1234 --timeout-ms 20000 --repeat 11 --data-file <path_to_file> --output-dir <path_to_dir>");
+            ArgumentList args ({}, "--strictness-level 7 --random-seed 1234 --timeout-ms 20000 --repeat 11 --data-file /path/to/file --output-dir /path/to/dir --validate /path/to/plugin");
             expectEquals (getStrictnessLevel (args), 7);
             expectEquals (getRandomSeed (args), (int64) 1234);
             expectEquals (getTimeout (args), (int64) 20000);
             expectEquals (getNumRepeats (args), 11);
-            expectEquals (getOptionValue (args, "--data-file", {}, "Missing data-file path argument!").toString(), String ("<path_to_file>"));
-            expectEquals (getOptionValue (args, "--output-dir", {}, "Missing output-dir path argument!").toString(), String ("<path_to_dir>"));
+            expectEquals (getOptionValue (args, "--data-file", {}, "Missing data-file path argument!").toString(), String ("/path/to/file"));
+            expectEquals (getOptionValue (args, "--output-dir", {}, "Missing output-dir path argument!").toString(), String ("/path/to/dir"));
+            expectEquals (getOptionValue (args, "--validate", {}, "Missing validate argument!").toString(), String ("/path/to/plugin"));
+        }
+
+        beginTest ("Handles an absolute path to the plugin");
+        {
+            const auto homeDir = File::getSpecialLocation (File::userHomeDirectory).getFullPathName();
+            const auto commandLineString = "--validate " + homeDir + "/path/to/MyPlugin";
+            const auto args = createCommandLineArgs (commandLineString);
+            expectEquals (parseCommandLine (args).first, homeDir + "/path/to/MyPlugin");
+        }
+
+        beginTest ("Handles a quoted absolute path to the plugin");
+        {
+            const auto homeDir = File::getSpecialLocation (File::userHomeDirectory).getFullPathName();
+            const auto pathToQuote = homeDir + "/path/to/MyPlugin";
+            const auto commandLineString = "--validate " + pathToQuote.quoted();
+            const auto args = createCommandLineArgs (commandLineString);
+            expectEquals (parseCommandLine (args).first, homeDir + "/path/to/MyPlugin");
+        }
+
+        beginTest ("Handles a relative path");
+        {
+            const auto currentDir = File::getCurrentWorkingDirectory();
+            const auto args = createCommandLineArgs ("--validate MyPlugin.vst3");
+            expectEquals (parseCommandLine (args).first, currentDir.getChildFile ("MyPlugin.vst3").getFullPathName());
+        }
+
+        beginTest ("Handles a quoted relative path with spaces to the plugin");
+        {
+            const auto currentDir = File::getCurrentWorkingDirectory();
+            const auto args = createCommandLineArgs (R"(--validate "My Plugin.vst3")");
+            expectEquals (parseCommandLine (args).first, currentDir.getChildFile ("My Plugin.vst3").getFullPathName());
+        }
+
+        #if !JUCE_WINDOWS
+
+        beginTest ("Handles a relative path with ./ to the plugin");
+        {
+            const auto currentDir = File::getCurrentWorkingDirectory().getFullPathName();
+            const auto commandLineString = "--validate ./path/to/MyPlugin";
+            const auto args = createCommandLineArgs(commandLineString);
+            expectEquals (parseCommandLine (args).first, currentDir + "/path/to/MyPlugin");
+        }
+
+        beginTest ("Handles a home directory relative path to the plugin");
+        {
+            const auto commandLineString = "--validate ~/path/to/MyPlugin";
+            const auto args = createCommandLineArgs(commandLineString);
+            expectEquals (parseCommandLine (args).first, File::getSpecialLocation (File::userHomeDirectory).getFullPathName() + "/path/to/MyPlugin");
+        }
+
+        beginTest ("Handles quoted strings, spaces, and home directory relative path to the plugin");
+        {
+            const auto commandLineString = R"(--data-file "~/path/to/My File" --output-dir "~/path/to/My Directory" --validate "~/path/to/My Plugin")";
+            const auto args = createCommandLineArgs(commandLineString);
+            expectEquals (parseCommandLine (args).first, File::getSpecialLocation (File::userHomeDirectory).getFullPathName() + "/path/to/My Plugin");
+        }
+        #endif
+
+        beginTest ("Implicit validate with a relative path");
+        {
+            const auto currentDir = File::getCurrentWorkingDirectory();
+            const auto args = createCommandLineArgs ("MyPlugin.vst3");
+            expectEquals (parseCommandLine (args).first, currentDir.getChildFile ("MyPlugin.vst3").getFullPathName());
+        }
+
+        beginTest ("Doesn't alter component IDs");
+        {
+            const auto commandLineString = "--validate MyPluginID";
+            const auto args = createCommandLineArgs(commandLineString);
+            expectEquals (parseCommandLine (args).first, String ("MyPluginID"));
         }
 
         beginTest ("Command line random");
@@ -81,6 +152,14 @@ struct CommandLineTests : public UnitTest
             juce::TemporaryFile temp ("path_to_file.vst3");
             expect (temp.getFile().create());
             expect (shouldPerformCommandLine (temp.getFile().getFullPathName()));
+        }
+
+        beginTest ("Allows for other options after explicit --validate");
+        {
+            const auto currentDir = File::getCurrentWorkingDirectory();
+            const auto args = createCommandLineArgs ("--validate MyPlugin.vst3 --randomise");
+            expectEquals (parseCommandLine (args).first, currentDir.getChildFile ("MyPlugin.vst3").getFullPathName());
+            expect (parseCommandLine(args).second.randomiseTestOrder);
         }
     }
 };

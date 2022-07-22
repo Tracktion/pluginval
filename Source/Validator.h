@@ -32,7 +32,7 @@ enum class ValidationType
 
 //==============================================================================
 /**
-    A single, asyncronouse validation pass for a specific plugin.
+    A single, asynchronous validation pass for a specific plugin.
 */
 class ValidationPass
 {
