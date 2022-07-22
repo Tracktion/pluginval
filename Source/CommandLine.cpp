@@ -462,12 +462,7 @@ bool shouldPerformCommandLine (const String& commandLine)
 //==============================================================================
 std::pair<juce::String, PluginTests::Options> parseCommandLine (const juce::ArgumentList& args)
 {
-    // prioritize explicit arguments
-    auto fileOrID = args.getValueForOption ("--validate");
-
-    // but let user lazily supply the plugin path as the last arg
-    if (fileOrID.isEmpty())
-        fileOrID = args.arguments.getLast().text;
+    auto fileOrID = getOptionValue (args, "--validate", "", "Expected a plugin path for the --validate option").toString();
 
     // in the case of a path (vs. ID), grab the full path
     // getCurrentWorkingDirectory is needed to handle relative paths
