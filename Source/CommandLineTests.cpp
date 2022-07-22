@@ -127,14 +127,6 @@ struct CommandLineTests : public UnitTest
         }
         #endif
 
-        beginTest ("Allows for other options after explicit --validate");
-        {
-            const auto currentDir = File::getCurrentWorkingDirectory();
-            const auto args = createCommandLineArgs ("--validate MyPlugin.vst3 --randomise");
-            expectEquals (parseCommandLine (args).first, currentDir.getChildFile ("MyPlugin.vst3").getFullPathName());
-            expect (parseCommandLine(args).second.randomiseTestOrder);
-        }
-
         beginTest ("Implicit validate with a relative path");
         {
             const auto currentDir = File::getCurrentWorkingDirectory();

@@ -409,25 +409,8 @@ static ArgumentList createCommandLineArgs (String commandLine)
                                                 || argList.containsOption ("--run-tests");
 
         if (! hasValidateOrOtherCommand)
-        {
-            const auto lastArgument = argList.arguments.getLast().text;
-            if (isPluginArgument (lastArgument))
-            {
-              argList.removeOptionIfFound (lastArgument);
-              argList.arguments.insert (argList.arguments.size() - 1, { "--validate=" + lastArgument });
-            }
-
-        }
-        // JUCE console apps only parse long options (--something) when an equal sign is present
-        // So let's shim one in to allow people to omit it for compatibility
-        // As well as make our arguments position independent
-        else if (argList.containsOption ("--validate"))
-        {
-            const auto index = argList.indexOfOption ("--validate");
-            auto& fileOrID = argList.arguments.getReference (index + 1).text;
-            auto& validateOption = argList.arguments.getReference (index);
-            validateOption.text = "--validate=" + fileOrID;
-        }
+            if (isPluginArgument (argList.arguments.getLast().text))
+                argList.arguments.insert (argList.arguments.size() - 1, { "--validate" });
     }
 
     return argList;
@@ -479,7 +462,12 @@ bool shouldPerformCommandLine (const String& commandLine)
 //==============================================================================
 std::pair<juce::String, PluginTests::Options> parseCommandLine (const juce::ArgumentList& args)
 {
+    // prioritize explicit arguments
     auto fileOrID = args.getValueForOption ("--validate");
+
+    // but let user lazily supply the plugin path as the last arg
+    if (fileOrID.isEmpty())
+        fileOrID = args.arguments.getLast().text;
 
     // in the case of a path (vs. ID), grab the full path
     // getCurrentWorkingDirectory is needed to handle relative paths
