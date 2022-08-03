@@ -88,7 +88,7 @@ void PluginTests::runTest()
     // This has to be called on a background thread to keep the message thread free
     jassert (! juce::MessageManager::existsAndIsCurrentThread());
 
-    logMessage ("Validation started: " + Time::getCurrentTime().toString (true, true) + "\n");
+    logVerboseMessage ("Validation started: " + Time::getCurrentTime().toString (true, true) + "\n");
     logMessage ("Strictness level: " + String (options.strictnessLevel));
 
     if (fileOrID.isNotEmpty())
@@ -133,7 +133,7 @@ void PluginTests::testType (const PluginDescription& pd)
         beginTest ("Open plugin (cold)");
         StopwatchTimer sw;
         deletePluginAsync (testOpenPlugin (pd));
-        logMessage ("\nTime taken to open plugin (cold): " + sw.getDescription());
+        logVerboseMessage ("\nTime taken to open plugin (cold): " + sw.getDescription());
     }
 
     {
@@ -142,7 +142,7 @@ void PluginTests::testType (const PluginDescription& pd)
 
         if (auto instance = testOpenPlugin (pd))
         {
-            logMessage ("\nTime taken to open plugin (warm): " + sw.getDescription());
+            logVerboseMessage ("\nTime taken to open plugin (warm): " + sw.getDescription());
             logMessage (String ("Running tests 123 times").replace ("123", String (options.numRepeats)));
 
             // This sleep is here to allow time for plugin async initialisation as in most cases
@@ -198,7 +198,7 @@ void PluginTests::testType (const PluginDescription& pd)
                         t->runTest (*this, *instance);
                     }
 
-                    logMessage ("\nTime taken to run test: " + sw2.getDescription());
+                    logVerboseMessage ("\nTime taken to run test: " + sw2.getDescription());
                 }
             }
 
@@ -206,5 +206,5 @@ void PluginTests::testType (const PluginDescription& pd)
         }
     }
 
-    logMessage ("\nTime taken to run all tests: " + totalTimer.getDescription());
+    logVerboseMessage ("\nTime taken to run all tests: " + totalTimer.getDescription());
 }
