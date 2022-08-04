@@ -88,7 +88,8 @@ void PluginTests::runTest()
     // This has to be called on a background thread to keep the message thread free
     jassert (! juce::MessageManager::existsAndIsCurrentThread());
 
-    logVerboseMessage ("Validation started: " + Time::getCurrentTime().toString (true, true) + "\n");
+    logMessage ("Validation started");
+    logVerboseMessage ("\t" + Time::getCurrentTime().toString (true, true) + "\n");
     logMessage ("Strictness level: " + String (options.strictnessLevel));
 
     if (fileOrID.isNotEmpty())
