@@ -15,7 +15,7 @@
 #include <future>
 #include "TestUtilities.h"
 
-bool logAllocationViolationIfNotAllowed()
+inline bool logAllocationViolationIfNotAllowed()
 {
     auto& ai = getAllocatorInterceptor();
 
@@ -102,6 +102,26 @@ ATTRIBUTE_USED void operator delete[] (void* ptr) noexcept
 
     std::free (ptr);
 }
+
+#if JUCE_CXX14_IS_AVAILABLE
+void operator delete (void* ptr, size_t) noexcept
+{
+    if (! logAllocationViolationIfNotAllowed())
+        if (thowIfRequiredAndReturnShouldLog())
+            std::cerr << "!!! WARNING: Illegal deletion\n";
+
+    std::free (ptr);
+}
+
+void operator delete[] (void* ptr, size_t) noexcept
+{
+    if (! logAllocationViolationIfNotAllowed())
+        if (thowIfRequiredAndReturnShouldLog())
+            std::cerr << "!!! WARNING: Illegal array deletion\n";
+
+    std::free (ptr);
+}
+#endif
 
 //==============================================================================
 std::atomic<AllocatorInterceptor::ViolationBehaviour> AllocatorInterceptor::violationBehaviour (ViolationBehaviour::logToCerr);

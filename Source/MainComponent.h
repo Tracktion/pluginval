@@ -14,7 +14,7 @@
 
 #pragma once
 
-#include "../JuceLibraryCode/JuceHeader.h"
+#include <JuceHeader.h>
 #include "Validator.h"
 #include "CrashHandler.h"
 
@@ -32,7 +32,7 @@ struct ConnectionStatus : public Component,
         validator.addChangeListener (this);
     }
 
-    ~ConnectionStatus()
+    ~ConnectionStatus() override
     {
         validator.removeListener (this);
         validator.removeChangeListener (this);
@@ -51,7 +51,7 @@ struct ConnectionStatus : public Component,
                 case Status::complete:      return Colours::lightgreen;
             }
 
-			return Colours::darkred;
+            return Colours::darkred;
         }());
         g.fillEllipse (r);
 
@@ -91,7 +91,7 @@ private:
     {
     }
 
-    void itemComplete (const String&, int) override
+    void itemComplete (const String&, uint32_t) override
     {
     }
 
@@ -119,7 +119,7 @@ struct ConsoleComponent : public Component,
         editor.setScrollbarThickness (8);
     }
 
-    ~ConsoleComponent()
+    ~ConsoleComponent() override
     {
         validator.removeChangeListener (this);
         validator.removeListener (this);
@@ -162,7 +162,7 @@ private:
 
         for (auto&& m : logMessages)
         {
-            codeDocument.insertText (editor.getCaretPos(), m + "\n");
+            codeDocument.insertText (editor.getCaretPos(), m);
             editor.scrollToKeepCaretOnScreen();
         }
     }
@@ -171,7 +171,7 @@ private:
     {
         if (! validator.isConnected() && currentID.isNotEmpty())
         {
-            logMessage ("\n*** FAILED: VALIDATION CRASHED");
+            logMessage ("\n*** FAILED: VALIDATION CRASHED\n");
             logMessage (getCrashLog());
             currentID = String();
         }
@@ -180,7 +180,7 @@ private:
     void validationStarted (const String& id) override
     {
         currentID = id;
-        logMessage ("Started validating: " + id);
+        logMessage ("Started validating: " + id + "\n");
     }
 
     void logMessage (const String& m) override
@@ -191,23 +191,24 @@ private:
             triggerAsyncUpdate();
         }
 
-        std::cout << m << "\n";
+        std::cout << m;
     }
 
-    void itemComplete (const String& id, int numFailures) override
+    void itemComplete (const String& id, uint32_t exitCode) override
     {
-        logMessage ("\nFinished validating: " + id);
+        logMessage ("\nFinished validating: " + id + "\n");
 
-        if (numFailures == 0)
-            logMessage ("ALL TESTS PASSED");
+        if (exitCode == 0)
+            logMessage ("ALL TESTS PASSED\n");
         else
-            logMessage ("*** FAILED: " + String (numFailures) + " TESTS");
+            logMessage ("*** FAILED WITH EXIT CODE: " + String (exitCode) + "\n");
 
         currentID = String();
     }
 
     void allItemsComplete() override
     {
+        logMessage ("\nFinished batch validation\n");
     }
 };
 
@@ -222,7 +223,7 @@ class MainComponent   : public Component,
 public:
     //==============================================================================
     MainComponent (Validator&);
-    ~MainComponent();
+    ~MainComponent() override;
 
     //==============================================================================
     void paint (Graphics&) override;

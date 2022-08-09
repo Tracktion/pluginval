@@ -16,178 +16,232 @@
 #include "PluginTests.h"
 
 //==============================================================================
-void setStrictnessLevel (int newLevel)
+namespace
 {
-    getAppPreferences().setValue ("strictnessLevel", jlimit (1, 10, newLevel));
-}
+    void setStrictnessLevel (int newLevel)
+    {
+        getAppPreferences().setValue ("strictnessLevel", jlimit (1, 10, newLevel));
+    }
 
-int getStrictnessLevel()
-{
-    return jlimit (1, 10, getAppPreferences().getIntValue ("strictnessLevel", 5));
-}
+    int getStrictnessLevel()
+    {
+        return jlimit (1, 10, getAppPreferences().getIntValue ("strictnessLevel", 5));
+    }
 
-void setRandomSeed (int64 newSeed)
-{
-    getAppPreferences().setValue ("randomSeed", newSeed);
-}
+    void setRandomSeed (int64 newSeed)
+    {
+        getAppPreferences().setValue ("randomSeed", newSeed);
+    }
 
-int64 getRandomSeed()
-{
-    return getAppPreferences().getIntValue ("randomSeed", 0);
-}
+    int64 getRandomSeed()
+    {
+        return getAppPreferences().getIntValue ("randomSeed", 0);
+    }
 
-void setValidateInProcess (bool shouldValidateInProcess)
-{
-    getAppPreferences().setValue ("validateInProcess", shouldValidateInProcess);
-}
+    void setValidateInProcess (bool shouldValidateInProcess)
+    {
+        getAppPreferences().setValue ("validateInProcess", shouldValidateInProcess);
+    }
 
-bool getValidateInProcess()
-{
-    return getAppPreferences().getBoolValue ("validateInProcess", false);
-}
+    bool getValidateInProcess()
+    {
+        return getAppPreferences().getBoolValue ("validateInProcess", false);
+    }
 
-void setTimeoutMs (int64 newTimeout)
-{
-    getAppPreferences().setValue ("timeoutMs", newTimeout);
-}
+    void setTimeoutMs (int64 newTimeout)
+    {
+        getAppPreferences().setValue ("timeoutMs", newTimeout);
+    }
 
-int64 getTimeoutMs()
-{
-    return getAppPreferences().getIntValue ("timeoutMs", 30000);
-}
+    int64 getTimeoutMs()
+    {
+        return getAppPreferences().getIntValue ("timeoutMs", 30000);
+    }
 
-void setVerboseLogging (bool verbose)
-{
-    getAppPreferences().setValue ("verbose", verbose);
-}
+    void setVerboseLogging (bool verbose)
+    {
+        getAppPreferences().setValue ("verbose", verbose);
+    }
 
-bool getVerboseLogging()
-{
-    return getAppPreferences().getBoolValue ("verbose", false);
-}
+    bool getVerboseLogging()
+    {
+        return getAppPreferences().getBoolValue ("verbose", false);
+    }
 
-void setNumRepeats (int numRepeats)
-{
-    if (numRepeats >= 1)
-        getAppPreferences().setValue ("numRepeats", numRepeats);
-}
+    void setNumRepeats (int numRepeats)
+    {
+        if (numRepeats >= 1)
+            getAppPreferences().setValue ("numRepeats", numRepeats);
+    }
 
-int getNumRepeats()
-{
-    return jmax (1, getAppPreferences().getIntValue ("numRepeats", 1));
-}
+    int getNumRepeats()
+    {
+        return jmax (1, getAppPreferences().getIntValue ("numRepeats", 1));
+    }
 
-void setRandomiseTests (bool shouldRandomiseTests)
-{
-    getAppPreferences().setValue ("randomiseTests", shouldRandomiseTests);
-}
+    void setRandomiseTests (bool shouldRandomiseTests)
+    {
+        getAppPreferences().setValue ("randomiseTests", shouldRandomiseTests);
+    }
 
-bool getRandomiseTests()
-{
-    return getAppPreferences().getBoolValue ("randomiseTests", false);
-}
+    bool getRandomiseTests()
+    {
+        return getAppPreferences().getBoolValue ("randomiseTests", false);
+    }
 
-File getOutputDir()
-{
-    return getAppPreferences().getValue ("outputDir", String());
-}
+    File getOutputDir()
+    {
+        return getAppPreferences().getValue ("outputDir", String());
+    }
 
+    std::vector<double> getSampleRates() // from UI no setting of sampleRates yet
+    {
+        return {44100., 48000., 96000. };
+    }
 
-PluginTests::Options getTestOptions()
-{
-    PluginTests::Options options;
-    options.strictnessLevel = getStrictnessLevel();
-    options.randomSeed = getRandomSeed();
-    options.timeoutMs = getTimeoutMs();
-    options.verbose = getVerboseLogging();
-    options.numRepeats = getNumRepeats();
-    options.randomiseTestOrder = getRandomiseTests();
-    options.outputDir = getOutputDir();
+    std::vector<int> getBlockSizes() // from UI no setting of block sizes yet
+    {
+        return { 64, 128, 256, 512, 1024 };
+    }
 
-    return options;
+    void setVST3Validator (juce::File f)
+    {
+        getAppPreferences().setValue ("vst3validator", f.getFullPathName());
+    }
+
+    juce::File getVST3Validator()
+    {
+        return getAppPreferences().getValue ("vst3validator", String());
+    }
+
+    PluginTests::Options getTestOptions()
+    {
+        PluginTests::Options options;
+        options.strictnessLevel = getStrictnessLevel();
+        options.randomSeed = getRandomSeed();
+        options.timeoutMs = getTimeoutMs();
+        options.verbose = getVerboseLogging();
+        options.numRepeats = getNumRepeats();
+        options.randomiseTestOrder = getRandomiseTests();
+        options.outputDir = getOutputDir();
+        options.sampleRates = getSampleRates();
+        options.blockSizes = getBlockSizes();
+        options.vst3Validator = getVST3Validator();
+
+        return options;
+    }
+
+    //==============================================================================
+    void showRandomSeedDialog()
+    {
+        const String message = TRANS("Set the random seed to use for the tests, useful for replicating issues");
+        std::shared_ptr<AlertWindow> aw (LookAndFeel::getDefaultLookAndFeel().createAlertWindow (TRANS("Set Random Seed"), message,
+                                                                                                 TRANS("OK"), TRANS("Cancel"), String(),
+                                                                                                 AlertWindow::QuestionIcon, 2, nullptr));
+        aw->addTextEditor ("randomSeed", String (getRandomSeed()));
+        aw->enterModalState (true, ModalCallbackFunction::create ([aw] (int res)
+                                                                  {
+                                                                      if (res == 1)
+                                                                      {
+                                                                          if (auto te = aw->getTextEditor ("randomSeed"))
+                                                                          {
+                                                                              auto seedString = te->getText();
+                                                                              setRandomSeed (seedString.startsWith ("0x") ? seedString.getHexValue64()
+                                                                                                                          : seedString.getLargeIntValue());
+                                                                          }
+                                                                      }
+                                                                  }));
+    }
+
+    void showTimeoutDialog()
+    {
+        const String message = TRANS("Set the duration in milliseconds after which to kill the validation if there has been no output from it");
+        std::shared_ptr<AlertWindow> aw (LookAndFeel::getDefaultLookAndFeel().createAlertWindow (TRANS("Set Timeout (ms)"), message,
+                                                                                                 TRANS("OK"), TRANS("Cancel"), String(),
+                                                                                                 AlertWindow::QuestionIcon, 2, nullptr));
+        aw->addTextEditor ("timeoutMs", String (getTimeoutMs()));
+        aw->enterModalState (true, ModalCallbackFunction::create ([aw] (int res)
+                                                                  {
+                                                                      if (res == 1)
+                                                                          if (auto te = aw->getTextEditor ("timeoutMs"))
+                                                                              setTimeoutMs (te->getText().getLargeIntValue());
+                                                                  }));
+    }
+
+    void showNumRepeatsDialog()
+    {
+        const String message = TRANS("Set the number of times the tests will be repeated");
+        std::shared_ptr<AlertWindow> aw (LookAndFeel::getDefaultLookAndFeel().createAlertWindow (TRANS("Set Number of Repeats"), message,
+                                                                                                 TRANS("OK"), TRANS("Cancel"), String(),
+                                                                                                 AlertWindow::QuestionIcon, 2, nullptr));
+        aw->addTextEditor ("repeats", String (getNumRepeats()));
+        aw->enterModalState (true, ModalCallbackFunction::create ([aw] (int res)
+                                                                  {
+                                                                      if (res == 1)
+                                                                          if (auto te = aw->getTextEditor ("repeats"))
+                                                                              setNumRepeats (te->getText().getIntValue());
+                                                                  }));
+    }
+
+    void showOutputDirDialog()
+    {
+        String message = TRANS("Set a desintation directory to place log files");
+        auto dir = getOutputDir();
+
+        if (dir.getFullPathName().isNotEmpty())
+            message << "\n\n" << dir.getFullPathName().quoted();
+        else
+            message << "\n\n" << "\"None set\"";
+
+        std::shared_ptr<AlertWindow> aw (LookAndFeel::getDefaultLookAndFeel().createAlertWindow (TRANS("Set Log File Directory"), message,
+                                                                                                 TRANS("Choose dir"), TRANS("Cancel"), TRANS("Don't save logs"),
+                                                                                                 AlertWindow::QuestionIcon, 3, nullptr));
+        aw->enterModalState (true, ModalCallbackFunction::create ([aw] (int res)
+                                                                  {
+                                                                      if (res == 3)
+                                                                          getAppPreferences().setValue ("outputDir", String());
+
+                                                                      if (res == 1)
+                                                                      {
+                                                                          const auto defaultDir = File::getSpecialLocation (File::userDesktopDirectory).getChildFile ("pluginval logs").getFullPathName();
+                                                                          FileChooser fc (TRANS("Directory to save log files"), defaultDir);
+
+                                                                          if (fc.browseForDirectory())
+                                                                              getAppPreferences().setValue ("outputDir", fc.getResult().getFullPathName());
+                                                                      }
+                                                                  }));
+    }
+
+    void showVST3ValidatorDialog()
+    {
+        String message = TRANS("Set the location of the VST3 validator app");
+        auto app = getVST3Validator();
+
+        if (app.getFullPathName().isNotEmpty())
+            message << "\n\n" << app.getFullPathName().quoted();
+        else
+            message << "\n\n" << "\"None set\"";
+
+        std::shared_ptr<AlertWindow> aw (LookAndFeel::getDefaultLookAndFeel().createAlertWindow (TRANS("Set VST3 validator"), message,
+                                                                                                 TRANS("Choose"), TRANS("Cancel"), TRANS("Don't use VST3 validator"),
+                                                                                                 AlertWindow::QuestionIcon, 3, nullptr));
+        aw->enterModalState (true, ModalCallbackFunction::create ([aw] (int res)
+                                                                  {
+                                                                      if (res == 3)
+                                                                          setVST3Validator ({});
+
+                                                                      if (res == 1)
+                                                                      {
+                                                                          FileChooser fc (TRANS("Choose VST3 validator"), {});
+
+                                                                          if (fc.browseForFileToOpen())
+                                                                              setVST3Validator (fc.getResult().getFullPathName());
+                                                                      }
+                                                                  }));
+    }
 }
 
 //==============================================================================
-void showRandomSeedDialog()
-{
-    const String message = TRANS("Set the random seed to use for the tests, useful for replicating issues");
-    std::shared_ptr<AlertWindow> aw (LookAndFeel::getDefaultLookAndFeel().createAlertWindow (TRANS("Set Random Seed"), message,
-                                                                                             TRANS("OK"), TRANS("Cancel"), String(),
-                                                                                             AlertWindow::QuestionIcon, 2, nullptr));
-    aw->addTextEditor ("randomSeed", String (getRandomSeed()));
-    aw->enterModalState (true, ModalCallbackFunction::create ([aw] (int res)
-                                                              {
-                                                                  if (res == 1)
-                                                                  {
-                                                                      if (auto te = aw->getTextEditor ("randomSeed"))
-                                                                      {
-                                                                          auto seedString = te->getText();
-                                                                          setRandomSeed (seedString.startsWith ("0x") ? seedString.getHexValue64()
-                                                                                                                      : seedString.getLargeIntValue());
-                                                                      }
-                                                                  }
-                                                              }));
-}
-
-void showTimeoutDialog()
-{
-    const String message = TRANS("Set the duration in milliseconds after which to kill the validation if there has been no output from it");
-    std::shared_ptr<AlertWindow> aw (LookAndFeel::getDefaultLookAndFeel().createAlertWindow (TRANS("Set Timeout (ms)"), message,
-                                                                                             TRANS("OK"), TRANS("Cancel"), String(),
-                                                                                             AlertWindow::QuestionIcon, 2, nullptr));
-    aw->addTextEditor ("timeoutMs", String (getTimeoutMs()));
-    aw->enterModalState (true, ModalCallbackFunction::create ([aw] (int res)
-                                                              {
-                                                                  if (res == 1)
-                                                                      if (auto te = aw->getTextEditor ("timeoutMs"))
-                                                                          setTimeoutMs (te->getText().getLargeIntValue());
-                                                              }));
-}
-
-void showNumRepeatsDialog()
-{
-    const String message = TRANS("Set the number of times the tests will be repeated");
-    std::shared_ptr<AlertWindow> aw (LookAndFeel::getDefaultLookAndFeel().createAlertWindow (TRANS("Set Number of Repeats"), message,
-                                                                                             TRANS("OK"), TRANS("Cancel"), String(),
-                                                                                             AlertWindow::QuestionIcon, 2, nullptr));
-    aw->addTextEditor ("repeats", String (getNumRepeats()));
-    aw->enterModalState (true, ModalCallbackFunction::create ([aw] (int res)
-                                                              {
-                                                                  if (res == 1)
-                                                                      if (auto te = aw->getTextEditor ("repeats"))
-                                                                          setNumRepeats (te->getText().getIntValue());
-                                                              }));
-}
-
-void showOutputDirDialog()
-{
-    String message = TRANS("Set a desintation directory to place log files");
-    auto dir = getOutputDir();
-
-    if (dir.getFullPathName().isNotEmpty())
-        message << "\n\n" << dir.getFullPathName().quoted();
-    else
-        message << "\n\n" << "\"None set\"";
-
-    std::shared_ptr<AlertWindow> aw (LookAndFeel::getDefaultLookAndFeel().createAlertWindow (TRANS("Set Log File Directory"), message,
-                                                                                             TRANS("Choose dir"), TRANS("Cancel"), TRANS("Don't save logs"),
-                                                                                             AlertWindow::QuestionIcon, 3, nullptr));
-    aw->enterModalState (true, ModalCallbackFunction::create ([aw] (int res)
-                                                              {
-                                                                  if (res == 3)
-                                                                      getAppPreferences().setValue ("outputDir", String());
-
-                                                                  if (res == 1)
-                                                                  {
-                                                                      const auto defaultDir = File::getSpecialLocation (File::userDesktopDirectory).getChildFile ("pluginval logs").getFullPathName();
-                                                                      FileChooser fc (TRANS("Directory to save log files"), defaultDir);
-
-                                                                      if (fc.browseForDirectory())
-                                                                          getAppPreferences().setValue ("outputDir", fc.getResult().getFullPathName());
-                                                                  }
-                                                              }));
-}
-
 //==============================================================================
 MainComponent::MainComponent (Validator& v)
     : validator (v)
@@ -281,6 +335,7 @@ MainComponent::MainComponent (Validator& v)
                 numRepeats,
                 randomise,
                 chooseOutputDir,
+                showVST3Validator,
                 showSettingsDir
             };
 
@@ -292,6 +347,7 @@ MainComponent::MainComponent (Validator& v)
             m.addItem (numRepeats, TRANS("Num repeats (123)").replace ("123", String (getNumRepeats())));
             m.addItem (randomise, TRANS("Randomise tests"), true, getRandomiseTests());
             m.addItem (chooseOutputDir, TRANS("Choose a location for log files"));
+            m.addItem (showVST3Validator, TRANS("Set the location of the VST3 validator"));
             m.addSeparator();
             m.addItem (showSettingsDir, TRANS("Show settings folder"));
             m.showMenuAsync (PopupMenu::Options().withTargetComponent (&optionsButton),
@@ -325,6 +381,10 @@ MainComponent::MainComponent (Validator& v)
                                  else if (res == chooseOutputDir)
                                  {
                                      showOutputDirDialog();
+                                 }
+                                 else if (res == showVST3Validator)
+                                 {
+                                     showVST3ValidatorDialog();
                                  }
                                  else if (res == showSettingsDir)
                                  {

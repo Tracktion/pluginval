@@ -12,7 +12,7 @@
 
  ==============================================================================*/
 
-#include "../JuceLibraryCode/JuceHeader.h"
+#include <JuceHeader.h>
 #include "MainComponent.h"
 #include "Validator.h"
 #include "CommandLine.h"
@@ -31,15 +31,6 @@ public:
         return *propertiesFile;
     }
 
-    void initialiseSlaveFileLogger()
-    {
-       #if LOG_PIPE_SLAVE_COMMUNICATION
-        fileLogger = std::make_unique<FileLogger> (getPropertiesFileOptions().getDefaultFile().getSiblingFile ("slave_log.txt"),
-                                                   getApplicationName() + " v" + getApplicationVersion(), 1024 * 1024);
-        Logger::setCurrentLogger (fileLogger.get());
-       #endif
-    }
-
     //==============================================================================
     const String getApplicationName() override       { return ProjectInfo::projectName; }
     const String getApplicationVersion() override    { return ProjectInfo::versionString; }
@@ -48,19 +39,16 @@ public:
     //==============================================================================
     void initialise (const String& commandLine) override
     {
-       #if JUCE_DEBUG
-        UnitTestRunner testRunner;
-        testRunner.runTestsInCategory ("pluginval");
-       #endif
-
         if (shouldPerformCommandLine (commandLine))
         {
             triggerAsyncUpdate();
             return;
         }
 
-        if (invokeSlaveProcessValidator (commandLine))
-            return;
+       #if JUCE_DEBUG
+        UnitTestRunner testRunner;
+        testRunner.runTestsInCategory ("pluginval");
+       #endif
 
         validator = std::make_unique<Validator>();
         propertiesFile.reset (getPropertiesFile());
@@ -173,8 +161,8 @@ private:
         return new PropertiesFile (opts.getDefaultFile(), opts);
     }
 
-	void handleAsyncUpdate() override
-	{
+    void handleAsyncUpdate() override
+    {
         commandLineValidator = std::make_unique<CommandLineValidator>();
         performCommandLine (*commandLineValidator, JUCEApplication::getCommandLineParameters());
     }
@@ -188,9 +176,4 @@ PropertiesFile& getAppPreferences()
 {
     auto app = dynamic_cast<PluginValidatorApplication*> (PluginValidatorApplication::getInstance());
     return app->getAppPreferences();
-}
-
-void slaveInitialised()
-{
-    dynamic_cast<PluginValidatorApplication*> (PluginValidatorApplication::getInstance())->initialiseSlaveFileLogger();
 }

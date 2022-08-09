@@ -17,16 +17,52 @@
 #include <JuceHeader.h>
 #include "PluginTests.h"
 
-#ifndef LOG_PIPE_COMMUNICATION
- #define LOG_PIPE_COMMUNICATION 0
-#endif
+class ChildProcessValidator;
+class AsyncValidator;
+class MultiValidator;
 
-#ifndef LOG_PIPE_SLAVE_COMMUNICATION
- #define LOG_PIPE_SLAVE_COMMUNICATION 0
-#endif
+//==============================================================================
+//==============================================================================
+/** Enum to determine the type of validation to run. */
+enum class ValidationType
+{
+    inProcess,      /**< Runs the validation in the calling process. */
+    childProcess    /**< Runs the validation in the a separate process. */
+};
 
-class ValidatorMasterProcess;
+//==============================================================================
+/**
+    A single, asynchronous validation pass for a specific plugin.
+*/
+class ValidationPass
+{
+public:
+    //==============================================================================
+    /** Starts a validation process with a set of options and callbacks.
+        The validation will be async so either use the validationEnded callback or
+        poll hasFinished() to find out when the validation has completed.
 
+        N.B. outputGenerated will be called from a background thread.
+    */
+    ValidationPass (const juce::String& fileOrIdToValidate, PluginTests::Options, ValidationType,
+                    std::function<void (juce::String)> validationStarted,
+                    std::function<void (juce::String, uint32_t /*exitCode*/)> validationEnded,
+                    std::function<void(const String&)> outputGenerated);
+
+    /** Destructor. */
+    ~ValidationPass();
+
+    /** Returns true when the validation pass has ended. */
+    bool hasFinished() const;
+
+private:
+    //==============================================================================
+    std::unique_ptr<ChildProcessValidator> childProcessValidator;
+    std::unique_ptr<AsyncValidator> asyncValidator;
+};
+
+
+//==============================================================================
 //==============================================================================
 /**
     Manages validation calls via a separate process and provides a listener
@@ -41,7 +77,7 @@ public:
     Validator();
 
     /** Destructor. */
-    ~Validator();
+    ~Validator() override;
 
     /** Returns true if there is currently an open connection to a validator process. */
     bool isConnected() const;
@@ -65,9 +101,8 @@ public:
 
         virtual void validationStarted (const String& idString) = 0;
         virtual void logMessage (const String&) = 0;
-        virtual void itemComplete (const String& idString, int numFailures) = 0;
+        virtual void itemComplete (const String& idString, uint32_t exitCode) = 0;
         virtual void allItemsComplete() = 0;
-        virtual void connectionLost() {}
     };
 
     void addListener (Listener* l)          { listeners.add (l); }
@@ -75,19 +110,11 @@ public:
 
 private:
     //==============================================================================
-    std::unique_ptr<ValidatorMasterProcess> masterProcess;
+    std::unique_ptr<MultiValidator> multiValidator;
     ListenerList<Listener> listeners;
     bool launchInProcess = false;
 
     void logMessage (const String&);
-    bool ensureConnection();
 
     void handleAsyncUpdate() override;
 };
-
-//==============================================================================
-/*  The JUCEApplication::initialise method calls this function to allow the
-    child process to launch when the command line parameters indicate that we're
-    being asked to run as a child process.
-*/
-bool invokeSlaveProcessValidator (const String& commandLine);

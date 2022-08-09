@@ -39,7 +39,7 @@ struct EditorStressTest   : public PluginTest
 
             {
                 ut.logMessage ("Testing opening Editor with 0 sample rate and block size");
-                instance.setPlayConfigDetails (instance.getTotalNumInputChannels(), instance.getTotalNumOutputChannels(), 0.0, 0);
+                instance.setRateAndBufferSizeDetails (0.0, 0);
                 ScopedEditorShower editor (instance);
             }
         }

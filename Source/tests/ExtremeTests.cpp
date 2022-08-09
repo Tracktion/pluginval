@@ -26,8 +26,13 @@ struct AllocationsInRealTimeThreadTest  : public PluginTest
     void runTest (PluginTests& ut, AudioPluginInstance& instance) override
     {
         const bool isPluginInstrument = instance.getPluginDescription().isInstrument;
-        const double sampleRates[] = { 44100.0, 48000.0, 96000.0 };
-        const int blockSizes[] = { 64, 128, 256, 512, 1024 };
+
+        const std::vector<double>& sampleRates = ut.getOptions().sampleRates;
+        const std::vector<int>& blockSizes = ut.getOptions().blockSizes;
+
+        jassert (sampleRates.size() > 0 && blockSizes.size() > 0);
+        instance.prepareToPlay (sampleRates[0], blockSizes[0]);
+
         const int numBlocks = 10;
         auto r = ut.getRandom();
 
@@ -36,8 +41,8 @@ struct AllocationsInRealTimeThreadTest  : public PluginTest
             for (auto bs : blockSizes)
             {
                 ut.logMessage (String ("Testing with sample rate [SR] and block size [BS]")
-                               .replace ("SR", String (sr, 0), false)
-                               .replace ("BS", String (bs), false));
+                                   .replace ("SR", String (sr, 0), false)
+                                   .replace ("BS", String (bs), false));
                 instance.releaseResources();
                 instance.prepareToPlay (sr, bs);
 
@@ -104,8 +109,10 @@ struct LargerThanPreparedBlockSizeTest   : public PluginTest
             return;
         }
 
-        const double sampleRates[] = { 44100.0, 48000.0, 96000.0 };
-        const int blockSizes[] = { 64, 128, 256, 512, 1024 };
+        const std::vector<double>& sampleRates = ut.getOptions().sampleRates;
+        const std::vector<int>& blockSizes = ut.getOptions().blockSizes;
+
+        jassert (sampleRates.size() > 0 && blockSizes.size() > 0);
 
         for (auto sr : sampleRates)
         {
@@ -113,9 +120,9 @@ struct LargerThanPreparedBlockSizeTest   : public PluginTest
             {
                 const auto processingBlockSize = preparedBlockSize * 2;
                 ut.logMessage (String ("Preparing with sample rate [SR] and block size [BS], processing with block size [BSP]")
-                               .replace ("SR", String (sr, 0), false)
-                               .replace ("BSP", String (processingBlockSize), false)
-                               .replace ("BS", String (preparedBlockSize), false));
+                                   .replace ("SR", String (sr, 0), false)
+                                   .replace ("BSP", String (processingBlockSize), false)
+                                   .replace ("BS", String (preparedBlockSize), false));
                 instance.releaseResources();
                 instance.prepareToPlay (sr, preparedBlockSize);
 
