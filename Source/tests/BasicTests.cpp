@@ -105,14 +105,14 @@ struct EditorTest   : public PluginTest
             {
                 ScopedEditorShower editorShower (instance);
                 ut.expect (editorShower.editor != nullptr, "Unable to create editor");
-                ut.logMessage ("\nTime taken to open editor (cold): " + timer.getDescription());
+                ut.logVerboseMessage ("\nTime taken to open editor (cold): " + timer.getDescription());
             }
 
             {
                 timer.reset();
                 ScopedEditorShower editorShower (instance);
                 ut.expect (editorShower.editor != nullptr, "Unable to create editor on second attempt");
-                ut.logMessage ("Time taken to open editor (warm): " + timer.getDescription());
+                ut.logVerboseMessage ("Time taken to open editor (warm): " + timer.getDescription());
             }
         }
     }
