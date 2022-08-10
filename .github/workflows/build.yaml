@@ -33,6 +33,13 @@ jobs:
     runs-on: ${{ matrix.os }}
     container: ${{ matrix.container }}
     steps:
+      - name: Install Git (Linux)
+        if: ${{ matrix.name == 'Linux' }}
+        run: |
+          sudo add-apt-repository ppa:ubuntu-toolchain-r/test
+          sudo apt-get update
+          sudo apt-get install git-all
+
       - uses: actions/checkout@v3
         with:
           submodules: true
