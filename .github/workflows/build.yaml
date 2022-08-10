@@ -97,7 +97,7 @@ jobs:
         with: 
           path: ${{ env.PLUGIN_CACHE_PATH }}
           # Increment the version in the key below to manually break plugin cache
-          key: v6-${{ runner.os }}-${{ env.JUCE_SHA1 }}
+          key: v7-${{ runner.os }}-${{ env.JUCE_SHA1 }}
           
       - name: Build JUCE example plugins
         if: steps.cache-plugins.outputs.cache-hit != 'true'
