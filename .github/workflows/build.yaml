@@ -18,10 +18,9 @@ jobs:
       matrix:
         include:
           - name: Linux
-            os: ubuntu-22.04
+            os: ubuntu-18.04
             app: pluginval
             test-binary: ./pluginval
-            container: ubuntu:18.04
           - name: macOS
             os: macos-12
             app: pluginval.app
@@ -31,15 +30,7 @@ jobs:
             app: pluginval.exe
             test-binary: ./pluginval.exe
     runs-on: ${{ matrix.os }}
-    container: ${{ matrix.container }}
     steps:
-      - name: Install Git (Linux)
-        if: ${{ matrix.name == 'Linux' }}
-        run: |
-          add-apt-repository ppa:ubuntu-toolchain-r/test
-          apt-get update
-          apt-get install git-all
-
       - uses: actions/checkout@v3
         with:
           submodules: true
