@@ -90,6 +90,5 @@ target_link_libraries(pluginval PRIVATE
 if (${CMAKE_SYSTEM_NAME} MATCHES "Linux")
     target_link_libraries(pluginval PRIVATE
         -static-libstdc++
-        -static-libc
-        -static-libm)
+        -static-libgcc)
 endif()
