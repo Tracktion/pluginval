@@ -86,3 +86,8 @@ target_link_libraries(pluginval PRIVATE
     juce::juce_audio_processors
     juce::juce_audio_utils
     juce::juce_recommended_warning_flags)
+
+if (${CMAKE_SYSTEM_NAME} MATCHES "Linux")
+    target_link_libraries(pluginval PRIVATE
+        -static-libstdc++)
+endif()
