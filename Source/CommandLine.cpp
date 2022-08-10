@@ -436,7 +436,11 @@ static void performCommandLine (CommandLineValidator& validator, const ArgumentL
                       "Runs the internal unit tests.", String(),
                       [] (const auto&) { runUnitTests(); }});
 
-    JUCEApplication::getInstance()->setApplicationReturnValue (cli.findAndRunCommand (args));
+    if (const auto retValue = cli.findAndRunCommand (args); retValue != 0)
+    {
+        JUCEApplication::getInstance()->setApplicationReturnValue (retValue);
+        JUCEApplication::getInstance()->quit();
+    }
 
     // --validate runs async so will quit itself when done
     if (! args.containsOption ("--validate"))
