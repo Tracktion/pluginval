@@ -79,6 +79,7 @@ target_compile_definitions(pluginval PRIVATE
     JUCE_DISPLAY_SPLASH_SCREEN=0
     JUCE_MODAL_LOOPS_PERMITTED=1
     JUCE_REPORT_APP_USAGE=0
+    JUCE_GUI_BASICS_INCLUDE_XHEADERS=1
     VERSION="${CURRENT_VERSION}")
 
 target_link_libraries(pluginval PRIVATE
