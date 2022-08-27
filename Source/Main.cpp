@@ -12,32 +12,32 @@
 
  ==============================================================================*/
 
-#include <JuceHeader.h>
+#include <juce_gui_basics/juce_gui_basics.h>
 #include "MainComponent.h"
 #include "Validator.h"
 #include "CommandLine.h"
 
 //==============================================================================
-class PluginValidatorApplication  : public JUCEApplication,
-                                    private AsyncUpdater
+class PluginValidatorApplication  : public juce::JUCEApplication,
+                                   private juce::AsyncUpdater
 {
 public:
     //==============================================================================
     PluginValidatorApplication() = default;
 
-    PropertiesFile& getAppPreferences()
+    juce::PropertiesFile& getAppPreferences()
     {
         jassert (propertiesFile); // Calling this from the child process?
         return *propertiesFile;
     }
 
     //==============================================================================
-    const String getApplicationName() override       { return ProjectInfo::projectName; }
-    const String getApplicationVersion() override    { return ProjectInfo::versionString; }
+    const juce::String getApplicationName() override       { return "pluginval"; }
+    const juce::String getApplicationVersion() override    { return VERSION; }
     bool moreThanOneInstanceAllowed() override       { return true; }
 
     //==============================================================================
-    void initialise (const String& commandLine) override
+    void initialise (const juce::String& commandLine) override
     {
         if (shouldPerformCommandLine (commandLine))
         {
@@ -46,7 +46,7 @@ public:
         }
 
        #if JUCE_DEBUG
-        UnitTestRunner testRunner;
+        juce::UnitTestRunner testRunner;
         testRunner.runTestsInCategory ("pluginval");
        #endif
 
@@ -59,7 +59,7 @@ public:
     {
         mainWindow.reset();
         validator.reset();
-        Logger::setCurrentLogger (nullptr);
+        juce::Logger::setCurrentLogger (nullptr);
     }
 
     //==============================================================================
@@ -70,7 +70,7 @@ public:
         quit();
     }
 
-    void anotherInstanceStarted (const String&) override
+    void anotherInstanceStarted (const juce::String&) override
     {
         // When another instance of the app is launched while this one is running,
         // this method is invoked, and the commandLine parameter tells you what
@@ -82,12 +82,12 @@ public:
         This class implements the desktop window that contains an instance of
         our MainComponent class.
     */
-    class MainWindow    : public DocumentWindow
+    class MainWindow    : public juce::DocumentWindow
     {
     public:
-        MainWindow (Validator& v, String name)
+        MainWindow (Validator& v, juce::String name)
             : DocumentWindow (name,
-                              Desktop::getInstance().getDefaultLookAndFeel()
+                              juce::Desktop::getInstance().getDefaultLookAndFeel()
                                 .findColour (ResizableWindow::backgroundColourId),
                               DocumentWindow::allButtons)
         {
@@ -104,7 +104,7 @@ public:
             // This is called when the user tries to close this window. Here, we'll just
             // ask the app to quit when this happens, but you can change this to do
             // whatever you need.
-            JUCEApplication::getInstance()->systemRequestedQuit();
+            juce::JUCEApplication::getInstance()->systemRequestedQuit();
         }
 
         /* Note: Be careful if you override any DocumentWindow methods - the base
@@ -120,18 +120,18 @@ public:
 
 private:
     std::unique_ptr<Validator> validator;
-    std::unique_ptr<PropertiesFile> propertiesFile;
+    std::unique_ptr<juce::PropertiesFile> propertiesFile;
     std::unique_ptr<MainWindow> mainWindow;
-    std::unique_ptr<FileLogger> fileLogger;
+    std::unique_ptr<juce::FileLogger> fileLogger;
     std::unique_ptr<CommandLineValidator> commandLineValidator;
 
-    static PropertiesFile::Options getPropertiesFileOptions()
+    static juce::PropertiesFile::Options getPropertiesFileOptions()
     {
-        PropertiesFile::Options opts;
+        juce::PropertiesFile::Options opts;
         opts.millisecondsBeforeSaving = 2000;
-        opts.storageFormat = PropertiesFile::storeAsXML;
+        opts.storageFormat = juce::PropertiesFile::storeAsXML;
 
-        opts.applicationName = String (ProjectInfo::projectName);
+        opts.applicationName = juce::String ("pluginval");
         opts.filenameSuffix = ".xml";
         opts.folderName = opts.applicationName;
         opts.osxLibrarySubFolder = "Application Support";
@@ -155,16 +155,16 @@ private:
         return opts;
     }
 
-    static PropertiesFile* getPropertiesFile()
+    static juce::PropertiesFile* getPropertiesFile()
     {
         auto opts = getPropertiesFileOptions();
-        return new PropertiesFile (opts.getDefaultFile(), opts);
+        return new juce::PropertiesFile (opts.getDefaultFile(), opts);
     }
 
     void handleAsyncUpdate() override
     {
         commandLineValidator = std::make_unique<CommandLineValidator>();
-        performCommandLine (*commandLineValidator, JUCEApplication::getCommandLineParameters());
+        performCommandLine (*commandLineValidator, juce::JUCEApplication::getCommandLineParameters());
     }
 };
 
@@ -172,7 +172,7 @@ private:
 // This macro generates the main() routine that launches the app.
 START_JUCE_APPLICATION (PluginValidatorApplication)
 
-PropertiesFile& getAppPreferences()
+juce::PropertiesFile& getAppPreferences()
 {
     auto app = dynamic_cast<PluginValidatorApplication*> (PluginValidatorApplication::getInstance());
     return app->getAppPreferences();

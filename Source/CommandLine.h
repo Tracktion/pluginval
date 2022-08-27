@@ -14,7 +14,7 @@
 
 #pragma once
 
-#include <JuceHeader.h>
+#include "juce_core/juce_core.h"
 #include "Validator.h"
 
 //==============================================================================
@@ -30,8 +30,8 @@ private:
 };
 
 //==============================================================================
-void performCommandLine (CommandLineValidator&, const String& commandLine);
-bool shouldPerformCommandLine (const String& commandLine);
+void performCommandLine (CommandLineValidator&, const juce::String& commandLine);
+bool shouldPerformCommandLine (const juce::String& commandLine);
 
 //==============================================================================
 std::pair<juce::String, PluginTests::Options> parseCommandLine (const juce::String&);

@@ -12,6 +12,7 @@
 
  ==============================================================================*/
 
+#include "juce_core/juce_core.h"
 #include "CrashHandler.h"
 
 #if JUCE_MAC
@@ -20,16 +21,16 @@
 
 namespace
 {
-    String getExtraPlatformSpecificInfo()
+    juce::String getExtraPlatformSpecificInfo()
     {
        #if JUCE_MAC
-        StringArray imagesDone;
-        StringArray output;
+        juce::StringArray imagesDone;
+        juce::StringArray output;
 
-        for (auto& l : StringArray::fromLines (SystemStats::getStackBacktrace()))
+        for (auto& l : juce::StringArray::fromLines (juce::SystemStats::getStackBacktrace()))
         {
-            const String imageName = l.upToFirstOccurrenceOf ("0x", false, false).fromFirstOccurrenceOf (" ", false, false).trim();
-            const String addressString = l.fromFirstOccurrenceOf ("0x", true, false).upToFirstOccurrenceOf (" ", false, false).trim();
+            const juce::String imageName = l.upToFirstOccurrenceOf ("0x", false, false).fromFirstOccurrenceOf (" ", false, false).trim();
+            const juce::String addressString = l.fromFirstOccurrenceOf ("0x", true, false).upToFirstOccurrenceOf (" ", false, false).trim();
 
             if (imagesDone.contains (imageName))
                 continue;
@@ -40,7 +41,7 @@ namespace
             const size_t address = static_cast<size_t> (addressString.getHexValue64());
 
             if (dladdr (reinterpret_cast<void*> (address), &info) != 0)
-                output.add (String ("0x") + String::toHexString (static_cast<pointer_sized_int> (reinterpret_cast<size_t> (info.dli_fbase))) + " " + imageName);
+                output.add (juce::String ("0x") + juce::String::toHexString (static_cast<juce::pointer_sized_int> (reinterpret_cast<size_t> (info.dli_fbase))) + " " + imageName);
         }
 
         return "Binary Images:\n" + output.joinIntoString ("\n");
@@ -49,14 +50,14 @@ namespace
        #endif
     }
 
-    String getCrashLogContents()
+    juce::String getCrashLogContents()
     {
-        return "\n" + SystemStats::getStackBacktrace() + "\n" + getExtraPlatformSpecificInfo();
+        return "\n" + juce::SystemStats::getStackBacktrace() + "\n" + getExtraPlatformSpecificInfo();
     }
 
-    static File getCrashTraceFile()
+    static juce::File getCrashTraceFile()
     {
-        return File::getSpecialLocation (File::tempDirectory).getChildFile ("pluginval_crash.txt");
+        return juce::File::getSpecialLocation (juce::File::tempDirectory).getChildFile ("pluginval_crash.txt");
     }
 
     static void handleCrash (void*)
@@ -72,10 +73,10 @@ void initialiseCrashHandler()
 {
     // Delete the crash file, this will be created if possible
     getCrashTraceFile().deleteFile();
-    SystemStats::setApplicationCrashHandler (handleCrash);
+    juce::SystemStats::setApplicationCrashHandler (handleCrash);
 }
 
-String getCrashLog()
+juce::String getCrashLog()
 {
     const auto f = getCrashTraceFile();
 
