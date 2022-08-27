@@ -201,7 +201,7 @@ private:
         if (exitCode == 0)
             logMessage ("ALL TESTS PASSED\n");
         else
-            logMessage ("*** FAILED WITH EXIT CODE: " +juce::String (exitCode) + "\n");
+            logMessage ("*** FAILED WITH EXIT CODE: " + juce::String (exitCode) + "\n");
 
         currentID = juce::String();
     }

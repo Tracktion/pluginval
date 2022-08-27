@@ -90,7 +90,7 @@ void PluginTests::runTest()
 
     logMessage ("Validation started");
     logVerboseMessage ("\t" + juce::Time::getCurrentTime().toString (true, true) + "\n");
-    logMessage ("Strictness level: " +juce::String (options.strictnessLevel));
+    logMessage ("Strictness level: " + juce::String (options.strictnessLevel));
 
     if (fileOrID.isNotEmpty())
     {
@@ -104,7 +104,7 @@ void PluginTests::runTest()
                                    });
         completionEvent.wait();
 
-        logMessage ("Num plugins found: " +juce::String (typesFound.size()));
+        logMessage ("Num plugins found: " + juce::String (typesFound.size()));
         expect (! typesFound.isEmpty(),
                 "No types found. This usually means the plugin binary is missing or damaged, "
                 "an incompatible format or that it is an AU that isn't found by macOS so can't be created.");
@@ -159,7 +159,7 @@ void PluginTests::testType (const juce::PluginDescription& pd)
             for (int testRun = 0; testRun < options.numRepeats; ++testRun)
             {
                 if (options.numRepeats > 1)
-                    logMessage ("\nTest run: " +juce::String (testRun + 1));
+                    logMessage ("\nTest run: " + juce::String (testRun + 1));
 
                 juce::Array<PluginTest*> testsToRun = PluginTest::getAllTests();
 

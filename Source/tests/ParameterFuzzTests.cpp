@@ -33,7 +33,7 @@ private:
     void fuzzTestParameter (PluginTests& ut, juce::AudioProcessorParameter& parameter)
     {
         auto r = ut.getRandom();
-        ut.logVerboseMessage (juce::String ("Fuzz testing parameter: ") +juce::String (parameter.getParameterIndex()) + " - " + parameter.getName (512));
+        ut.logVerboseMessage (juce::String ("Fuzz testing parameter: ") + juce::String (parameter.getParameterIndex()) + " - " + parameter.getName (512));
 
         for (int i = 0; i < 5; ++i)
         {

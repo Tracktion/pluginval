@@ -73,7 +73,7 @@ struct AllocationsInRealTimeThreadTest  : public PluginTest
                     mb.clear();
 
                     auto& ai = getAllocatorInterceptor();
-                    ut.expect (! ai.getAndClearAllocationViolation(), "Allocations occurred in audio thread: " +juce::String (ai.getAndClearNumAllocationViolations()));
+                    ut.expect (! ai.getAndClearAllocationViolation(), "Allocations occurred in audio thread: " + juce::String (ai.getAndClearNumAllocationViolations()));
 
                     ut.expectEquals (countNaNs (ab), 0, "NaNs found in buffer");
                     ut.expectEquals (countInfs (ab), 0, "Infs found in buffer");

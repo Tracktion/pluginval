@@ -341,7 +341,7 @@ MainComponent::MainComponent (Validator& v)
 
             juce::PopupMenu m;
             m.addItem (validateInProcess, TRANS("Validate in process"), true, getValidateInProcess());
-            m.addItem (showRandomSeed, TRANS("Set random seed (123)").replace ("123", "0x" + juce::String::toHexString (getRandomSeed()) + "/" +juce::String (getRandomSeed())));
+            m.addItem (showRandomSeed, TRANS("Set random seed (123)").replace ("123", "0x" + juce::String::toHexString (getRandomSeed()) + "/" + juce::String (getRandomSeed())));
             m.addItem (showTimeout, TRANS("Set timeout (123ms)").replace ("123",juce::String (getTimeoutMs())));
             m.addItem (verboseLogging, TRANS("Verbose logging"), true, getVerboseLogging());
             m.addItem (numRepeats, TRANS("Num repeats (123)").replace ("123",juce::String (getNumRepeats())));

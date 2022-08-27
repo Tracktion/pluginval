@@ -29,9 +29,9 @@ struct PluginInfoTest   : public PluginTest
     {
         ut.logMessage ("\nPlugin name: " + instance.getName());
         ut.logMessage ("Alternative names: " + instance.getAlternateDisplayNames().joinIntoString ("|"));
-        ut.logMessage ("SupportsDoublePrecision: " +juce::String (instance.supportsDoublePrecisionProcessing() ? "yes" : "no"));
-        ut.logMessage ("Reported latency: " +juce::String (instance.getLatencySamples()));
-        ut.logMessage ("Reported taillength: " +juce::String (instance.getTailLengthSeconds()));
+        ut.logMessage ("SupportsDoublePrecision: " + juce::String (instance.supportsDoublePrecisionProcessing() ? "yes" : "no"));
+        ut.logMessage ("Reported latency: " + juce::String (instance.getLatencySamples()));
+        ut.logMessage ("Reported taillength: " + juce::String (instance.getTailLengthSeconds()));
     }
 };
 
@@ -49,7 +49,7 @@ struct PluginPrgramsTest    : public PluginTest
     void runTest (PluginTests& ut, juce::AudioPluginInstance& instance) override
     {
         const int numPrograms = instance.getNumPrograms();
-        ut.logMessage ("Num programs: " +juce::String (numPrograms));
+        ut.logMessage ("Num programs: " + juce::String (numPrograms));
 
         for (int i = 0; i < numPrograms; ++i)
             ut.logVerboseMessage (juce::String ("Program 123 name: XYZ")
@@ -67,13 +67,13 @@ struct PluginPrgramsTest    : public PluginTest
             for (int i = 0; i < 5; ++i)
             {
                 const int programNum = r.nextInt (numPrograms);
-                ut.logVerboseMessage ("Changing program to: " +juce::String (programNum));
+                ut.logVerboseMessage ("Changing program to: " + juce::String (programNum));
                 instance.setCurrentProgram (programNum);
             }
 
             if (currentProgram >= 0)
             {
-                ut.logVerboseMessage ("Resetting program to: " +juce::String (currentProgram));
+                ut.logVerboseMessage ("Resetting program to: " + juce::String (currentProgram));
                 instance.setCurrentProgram (currentProgram);
             }
             else
@@ -429,7 +429,7 @@ struct AutomationTest  : public PluginTest
                 if (subnormalsAreErrors)
                     ut.expectEquals (countInfs (ab), 0, "Submnormals found in buffer");
                 else if (subnormals > 0)
-                    ut.logMessage ("!!! WARNGING: " +juce::String (countSubnormals (ab)) + " submnormals found in buffer");
+                    ut.logMessage ("!!! WARNGING: " + juce::String (countSubnormals (ab)) + " submnormals found in buffer");
             }
         }
     }
@@ -490,8 +490,8 @@ namespace ParameterHelpers
         const bool isMetaParameter = parameter.isMetaParameter();
         const auto category = parameter.getCategory();
 
-        #define LOGP(x) JUCE_STRINGIFY(x) + " - " +juce::String (x) + ", "
-        #define LOGP_B(x) JUCE_STRINGIFY(x) + " - " +juce::String (static_cast<int> (x)) + ", "
+        #define LOGP(x) JUCE_STRINGIFY(x) + " - " + juce::String (x) + ", "
+        #define LOGP_B(x) JUCE_STRINGIFY(x) + " - " + juce::String (static_cast<int> (x)) + ", "
         ut.logVerboseMessage (juce::String ("Parameter info: ")
                               + LOGP(index)
                               + LOGP(paramName)
@@ -530,7 +530,7 @@ struct AutomatableParametersTest  : public PluginTest
     {
         for (auto parameter : getNonBypassAutomatableParameters (instance))
         {
-            ut.logVerboseMessage (juce::String ("\nTesting parameter: ") +juce::String (parameter->getParameterIndex()) + " - " + parameter->getName (512));
+            ut.logVerboseMessage (juce::String ("\nTesting parameter: ") + juce::String (parameter->getParameterIndex()) + " - " + parameter->getName (512));
 
             ParameterHelpers::testParameterInfo (ut, *parameter);
             ParameterHelpers::testParameterDefaults (ut, *parameter);
@@ -552,7 +552,7 @@ struct AllParametersTest    : public PluginTest
     {
         for (auto parameter : getNonBypassAutomatableParameters (instance))
         {
-            ut.logVerboseMessage (juce::String ("\nTesting parameter: ") +juce::String (parameter->getParameterIndex()) + " - " + parameter->getName (512));
+            ut.logVerboseMessage (juce::String ("\nTesting parameter: ") + juce::String (parameter->getParameterIndex()) + " - " + parameter->getName (512));
 
             ParameterHelpers::testParameterInfo (ut, *parameter);
             ParameterHelpers::testParameterDefaults (ut, *parameter);
