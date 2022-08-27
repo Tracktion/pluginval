@@ -21,18 +21,18 @@
 juce::PropertiesFile& getAppPreferences();
 
 //==============================================================================
-struct ConnectionStatus : public juce::Component,
+struct ConnectionState : public juce::Component,
                           private juce::ChangeListener,
                           private Validator::Listener
 {
-    ConnectionStatus (Validator& v)
+    ConnectionState (Validator& v)
         : validator (v)
     {
         validator.addListener (this);
         validator.addChangeListener (this);
     }
 
-    ~ConnectionStatus() override
+    ~ConnectionState() override
     {
         validator.removeListener (this);
         validator.removeChangeListener (this);
@@ -43,12 +43,12 @@ struct ConnectionStatus : public juce::Component,
         auto r = getLocalBounds().toFloat();
 
         g.setColour ([this] {
-            switch (status)
+            switch (state)
             {
-                case Status::disconnected:  return juce::Colours::darkred;
-                case Status::validating:    return juce::Colours::orange;
-                case Status::connected:
-                case Status::complete:      return juce::Colours::lightgreen;
+                case State::disconnected:  return juce::Colours::darkred;
+                case State::validating:    return juce::Colours::orange;
+                case State::connected:
+                case State::complete:      return juce::Colours::lightgreen;
             }
 
             return juce::Colours::darkred;
@@ -60,7 +60,7 @@ struct ConnectionStatus : public juce::Component,
     }
 
 private:
-    enum class Status
+    enum class State
     {
         disconnected,
         connected,
@@ -69,22 +69,22 @@ private:
     };
 
     Validator& validator;
-    std::atomic<Status> status { Status::disconnected };
+    std::atomic<State> state { State::disconnected };
 
-    void setStatus (Status newStatus)
+    void setState (State newStatus)
     {
-        status = newStatus;
+        state = newStatus;
         juce::MessageManager::callAsync ([sp = SafePointer<Component> (this)] () mutable { if (sp != nullptr) sp->repaint(); });
     }
 
     void changeListenerCallback (juce::ChangeBroadcaster*) override
     {
-        setStatus (validator.isConnected() ? Status::connected : Status::disconnected);
+        setState (validator.isConnected() ? State::connected : State::disconnected);
     }
 
     void validationStarted (const juce::String&) override
     {
-        setStatus (Status::validating);
+        setState (State::validating);
     }
 
     void logMessage (const juce::String&) override
@@ -97,7 +97,7 @@ private:
 
     void allItemsComplete() override
     {
-        setStatus (Status::complete);
+        setState (State::complete);
     }
 };
 
@@ -245,7 +245,7 @@ private:
                clearButton { "Clear Log" }, saveButton { "Save Log" }, optionsButton { "Options" };
     juce::Slider strictnessSlider;
     juce::Label strictnessLabel { {}, "Strictness Level" };
-    ConnectionStatus connectionStatus { validator };
+    ConnectionState connectionStatus { validator };
 
     void savePluginList();
 
