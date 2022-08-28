@@ -55,7 +55,7 @@ namespace
 
     int64 getTimeoutMs()
     {
-        return getAppPreferences().getIntValue ("timeoutMs", 30000);
+        return getAppPreferences().getIntValue ("timeoutMs", 60000);
     }
 
     void setVerboseLogging (bool verbose)
