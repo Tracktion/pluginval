@@ -21,7 +21,7 @@
 juce::PropertiesFile& getAppPreferences();
 
 //==============================================================================
-struct ConnectionState : public juce::Component,
+struct ConnectionState  : public juce::Component,
                           private juce::ChangeListener,
                           private Validator::Listener
 {
