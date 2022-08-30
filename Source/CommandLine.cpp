@@ -24,17 +24,17 @@
 
 
 //==============================================================================
-static void exitWithError (const String& error)
+static void exitWithError (const juce::String& error)
 {
     std::cout << error << std::endl << std::endl;
-    JUCEApplication::getInstance()->setApplicationReturnValue (1);
-    JUCEApplication::getInstance()->quit();
+    juce::JUCEApplication::getInstance()->setApplicationReturnValue (1);
+    juce::JUCEApplication::getInstance()->quit();
 }
 
 static void hideDockIcon()
 {
    #if JUCE_MAC
-    Process::setDockIconVisible (false);
+     juce::Process::setDockIconVisible (false);
    #endif
 }
 
@@ -49,7 +49,7 @@ static void setupSignalHandling()
 {
     const int signals[] = { SIGFPE, SIGILL, SIGSEGV, SIGBUS, SIGABRT };
 
-    for (int i = 0; i < numElementsInArray (signals); ++i)
+    for (int i = 0; i < juce::numElementsInArray (signals); ++i)
     {
         ::signal (signals[i], killWithoutMercy);
         ::siginterrupt (signals[i], 1);
@@ -83,7 +83,7 @@ void CommandLineValidator::validate (const juce::String& fileOrID, PluginTests::
                                                       if (exitCode > 0)
                                                           exitWithError ("*** FAILED");
                                                       else
-                                                          JUCEApplication::getInstance()->quit();
+                                                          juce::JUCEApplication::getInstance()->quit();
                                                   },
                                                   [] (auto m)
                                                   {
@@ -96,7 +96,7 @@ void CommandLineValidator::validate (const juce::String& fileOrID, PluginTests::
 //==============================================================================
 namespace
 {
-    ArgumentList::Argument getArgumentAfterOption (const ArgumentList& args, StringRef option)
+    juce::ArgumentList::Argument getArgumentAfterOption (const juce::ArgumentList& args, juce::StringRef option)
     {
         for (int i = 0; i < args.size() - 1; ++i)
             if (args[i] == option)
@@ -105,14 +105,14 @@ namespace
         return {};
     }
 
-    var getOptionValue (const ArgumentList& args, StringRef option, var defaultValue, StringRef errorMessage)
+    juce::var getOptionValue (const juce::ArgumentList& args, juce::StringRef option, juce::var defaultValue, juce::StringRef errorMessage)
     {
         if (args.containsOption (option))
         {
             const auto nextArg = getArgumentAfterOption (args, option);
 
             if (nextArg.isShortOption() || nextArg.isLongOption())
-                ConsoleApplication::fail (errorMessage, -1);
+                juce::ConsoleApplication::fail (errorMessage, -1);
 
             return nextArg.text;
         }
@@ -120,17 +120,17 @@ namespace
         return defaultValue;
     }
 
-    int getStrictnessLevel (const ArgumentList& args)
+    int getStrictnessLevel (const juce::ArgumentList& args)
     {
-        return jlimit (1, 10, (int) getOptionValue (args, "--strictness-level", 5, "Missing strictness level argument! (Must be between 1 - 10)"));
+        return juce::jlimit (1, 10, (int) getOptionValue (args, "--strictness-level", 5, "Missing strictness level argument! (Must be between 1 - 10)"));
     }
 
-    int64 getRandomSeed (const ArgumentList& args)
+    juce::int64 getRandomSeed (const juce::ArgumentList& args)
     {
-        const String seedString = getOptionValue (args, "--random-seed", "0", "Missing random seed argument!").toString();
+        const juce::String seedString = getOptionValue (args, "--random-seed", "0", "Missing random seed argument!").toString();
 
         if (! seedString.containsOnly ("x-0123456789acbdef"))
-            ConsoleApplication::fail ("Invalid random seed argument!", -1);
+            juce::ConsoleApplication::fail ("Invalid random seed argument!", -1);
 
         if (seedString.startsWith ("0x"))
             return seedString.getHexValue64();
@@ -138,61 +138,61 @@ namespace
         return seedString.getLargeIntValue();
     }
 
-    int64 getTimeout (const ArgumentList& args)
+    juce::int64 getTimeout (const juce::ArgumentList& args)
     {
         return getOptionValue (args, "--timeout-ms", 30000, "Missing timeout-ms level argument!");
     }
 
-    int getNumRepeats (const ArgumentList& args)
+    int getNumRepeats (const juce::ArgumentList& args)
     {
-        return jmax (1, (int) getOptionValue (args, "--repeat", 1, "Missing repeat argument! (Must be greater than 0)"));
+        return juce::jmax (1, (int) getOptionValue (args, "--repeat", 1, "Missing repeat argument! (Must be greater than 0)"));
     }
 
-    File getDataFile (const ArgumentList& args)
+    juce::File getDataFile (const juce::ArgumentList& args)
     {
         return getOptionValue (args, "--data-file", {}, "Missing data-file path argument!").toString();
     }
 
-    File getOutputDir (const ArgumentList& args)
+    juce::File getOutputDir (const juce::ArgumentList& args)
     {
         return getOptionValue (args, "--output-dir", {}, "Missing output-dir path argument!").toString();
     }
 
-    std::vector<double> getSampleRates (const ArgumentList& args)
+    std::vector<double> getSampleRates (const juce::ArgumentList& args)
     {
-        StringArray input = StringArray::fromTokens (getOptionValue (args,
+        juce::StringArray input = juce::StringArray::fromTokens (getOptionValue (args,
                                                                      "--sample-rates",
-                                                                     String ("44100,48000,96000"),
+                                                                    juce::String ("44100,48000,96000"),
                                                                      "Missing sample rate list argument!")
                                                          .toString(),
                                                      ",",
                                                      "\"");
         std::vector<double> output;
 
-        for (String sr : input)
+        for (juce::String sr : input)
             output.push_back (sr.getDoubleValue());
 
         return output;
     }
 
-    std::vector<int> getBlockSizes (const ArgumentList& args)
+    std::vector<int> getBlockSizes (const juce::ArgumentList& args)
     {
-        StringArray input = StringArray::fromTokens (getOptionValue (args,
+        juce::StringArray input = juce::StringArray::fromTokens (getOptionValue (args,
                                                                      "--block-sizes",
-                                                                     String ("64,128,256,512,1024"),
+                                                                    juce::String ("64,128,256,512,1024"),
                                                                      "Missing block size list argument!")
                                                          .toString(),
                                                      ",",
                                                      "\"");
         std::vector<int> output;
 
-        for (String sr : input)
+        for (juce::String sr : input)
             output.push_back (sr.getIntValue());
 
         return output;
     }
 
-    StringArray getDisabledTests (const ArgumentList& args)
+    juce::StringArray getDisabledTests (const juce::ArgumentList& args)
     {
         const auto value = getOptionValue (args, "--disabled-tests", {}, "Missing disabled-tests path argument!").toString();
 
@@ -219,7 +219,7 @@ namespace
                 return true;
 
         // The above will check if the file actually exists which isn't really what we want for CLI parsing
-        if (auto f = File::createFileWithoutCheckingPath (arg);
+        if (auto f = juce::File::createFileWithoutCheckingPath (arg);
             f.hasFileExtension (".vst3")
            #if JUCE_PLUGINHOST_VST
             || f.hasFileExtension (".dll")
@@ -238,9 +238,9 @@ struct Option
     bool requiresValue;
 };
 
-static String getEnvironmentVariableName (Option opt)
+static juce::String getEnvironmentVariableName (Option opt)
 {
-    return String (opt.name).trimCharactersAtStart ("-").replace ("-", "_").toUpperCase();
+    return juce::String (opt.name).trimCharactersAtStart ("-").replace ("-", "_").toUpperCase();
 }
 
 static Option possibleOptions[] =
@@ -259,7 +259,7 @@ static Option possibleOptions[] =
     { "--vst3validator",        true    },
 };
 
-static StringArray mergeEnvironmentVariables (StringArray args, std::function<String (const String& name, const String& defaultValue)> environmentVariableProvider = [] (const String& name, const String& defaultValue) { return SystemStats::getEnvironmentVariable (name, defaultValue); })
+static juce::StringArray mergeEnvironmentVariables (juce::StringArray args, std::function<juce::String (const juce::String& name, const juce::String& defaultValue)> environmentVariableProvider = [] (const juce::String& name, const juce::String& defaultValue) { return juce::SystemStats::getEnvironmentVariable (name, defaultValue); })
 {
     for (auto arg : possibleOptions)
     {
@@ -289,14 +289,15 @@ static StringArray mergeEnvironmentVariables (StringArray args, std::function<St
 
 //==============================================================================
 //==============================================================================
-static String getHelpMessage()
+static juce::String getHelpMessage()
 {
-    const String appName (JUCEApplication::getInstance()->getApplicationName());
+    const juce::String appName (juce::JUCEApplication::getInstance()->getApplicationName());
 
-    String help;
+    auto& newLine = juce::newLine;
+    juce::String help;
     help << "//==============================================================================" << newLine
          << appName << newLine
-         << SystemStats::getJUCEVersion() << newLine
+         << juce::SystemStats::getJUCEVersion() << newLine
          << newLine
          << "Description: " << newLine
          << "  Validate plugins to test compatibility with hosts and verify plugin API conformance" << newLine << newLine
@@ -348,12 +349,12 @@ static String getHelpMessage()
     return help;
 }
 
-static String getVersionText()
+static juce::String getVersionText()
 {
-    return String (ProjectInfo::projectName) + " - " + ProjectInfo::versionString;
+    return juce::String ("pluginval") + " - " + VERSION;
 }
 
-static int getNumTestFailures (UnitTestRunner& testRunner)
+static int getNumTestFailures (juce::UnitTestRunner& testRunner)
 {
     int numFailures = 0;
 
@@ -366,16 +367,16 @@ static int getNumTestFailures (UnitTestRunner& testRunner)
 
 static void runUnitTests()
 {
-    UnitTestRunner testRunner;
+    juce::UnitTestRunner testRunner;
     testRunner.runTestsInCategory ("pluginval");
     const int numFailures = getNumTestFailures (testRunner);
 
     if (numFailures > 0)
-        ConsoleApplication::fail (String (numFailures) + " tests failed!!!");
+        juce::ConsoleApplication::fail (juce::String (numFailures) + " tests failed!!!");
 }
 
 //==============================================================================
-static ArgumentList createCommandLineArgs (String commandLine)
+static juce::ArgumentList createCommandLineArgs (juce::String commandLine)
 {
     if (commandLine.contains ("strictnessLevel"))
     {
@@ -387,9 +388,9 @@ static ArgumentList createCommandLineArgs (String commandLine)
                              .replace ("-NSDocumentRevisionsDebugMode YES", "")
                              .trim();
 
-    const auto exe = File::getSpecialLocation (File::currentExecutableFile);
+    const auto exe = juce::File::getSpecialLocation (juce::File::currentExecutableFile);
 
-    StringArray args;
+    juce::StringArray args;
     args.addTokens (commandLine, true);
     args = mergeEnvironmentVariables (args);
     args.trim();
@@ -399,7 +400,7 @@ static ArgumentList createCommandLineArgs (String commandLine)
 
     // If only a plugin path is supplied as the last arg, add an implicit --validate
     // option for it so the rest of the CLI works
-    ArgumentList argList (exe.getFullPathName(), args);
+    juce::ArgumentList argList (exe.getFullPathName(), args);
 
     if (argList.size() > 0)
     {
@@ -416,16 +417,16 @@ static ArgumentList createCommandLineArgs (String commandLine)
     return argList;
 }
 
-static void performCommandLine (CommandLineValidator& validator, const ArgumentList& args)
+static void performCommandLine (CommandLineValidator& validator, const juce::ArgumentList& args)
 {
     hideDockIcon();
 
-    ConsoleApplication cli;
+    juce::ConsoleApplication cli;
     cli.addVersionCommand ("--version", getVersionText());
     cli.addHelpCommand ("--help|-h", getHelpMessage(), true);
     cli.addCommand ({ "--validate",
                       "--validate [pathToPlugin]",
-                      "Validates the file (or IDs for AUs).", String(),
+                      "Validates the file (or IDs for AUs).", juce::String(),
                       [&validator] (const auto& validatorArgs)
                       {
                           auto [fileOrIDToValidate, options] = parseCommandLine (validatorArgs);
@@ -433,27 +434,27 @@ static void performCommandLine (CommandLineValidator& validator, const ArgumentL
                       }});
     cli.addCommand ({ "--run-tests",
                       "--run-tests",
-                      "Runs the internal unit tests.", String(),
+                      "Runs the internal unit tests.", juce::String(),
                       [] (const auto&) { runUnitTests(); }});
 
     if (const auto retValue = cli.findAndRunCommand (args); retValue != 0)
     {
-        JUCEApplication::getInstance()->setApplicationReturnValue (retValue);
-        JUCEApplication::getInstance()->quit();
+        juce::JUCEApplication::getInstance()->setApplicationReturnValue (retValue);
+        juce::JUCEApplication::getInstance()->quit();
     }
 
     // --validate runs async so will quit itself when done
     if (! args.containsOption ("--validate"))
-        JUCEApplication::getInstance()->quit();
+        juce::JUCEApplication::getInstance()->quit();
 }
 
 //==============================================================================
-void performCommandLine (CommandLineValidator& validator, const String& commandLine)
+void performCommandLine (CommandLineValidator& validator, const juce::String& commandLine)
 {
     performCommandLine (validator, createCommandLineArgs (commandLine));
 }
 
-bool shouldPerformCommandLine (const String& commandLine)
+bool shouldPerformCommandLine (const juce::String& commandLine)
 {
     const auto args = createCommandLineArgs (commandLine);
     return args.containsOption ("--help|-h")
@@ -472,7 +473,7 @@ std::pair<juce::String, PluginTests::Options> parseCommandLine (const juce::Argu
     // getCurrentWorkingDirectory is needed to handle relative paths
     // It preserves absolute paths and first checks for ~ on Mac/Windows
     if (fileOrID.contains ("~") || fileOrID.contains ("."))
-        fileOrID = File::getCurrentWorkingDirectory().getChildFile(fileOrID).getFullPathName();
+        fileOrID = juce::File::getCurrentWorkingDirectory().getChildFile(fileOrID).getFullPathName();
 
     PluginTests::Options options;
     options.strictnessLevel     = getStrictnessLevel (args);
@@ -492,7 +493,7 @@ std::pair<juce::String, PluginTests::Options> parseCommandLine (const juce::Argu
     return { fileOrID, options };
 }
 
-std::pair<juce::String, PluginTests::Options> parseCommandLine (const String& cmd)
+std::pair<juce::String, PluginTests::Options> parseCommandLine (const juce::String& cmd)
 {
     return parseCommandLine (createCommandLineArgs (cmd));
 }

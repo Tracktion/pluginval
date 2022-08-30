@@ -11,10 +11,9 @@
    DISCLAIMED.
 
  ==============================================================================*/
-
 #pragma once
 
-#include <JuceHeader.h>
+#include "juce_audio_processors/juce_audio_processors.h"
 #include "PluginTests.h"
 
 class ChildProcessValidator;
@@ -47,13 +46,13 @@ public:
     ValidationPass (const juce::String& fileOrIdToValidate, PluginTests::Options, ValidationType,
                     std::function<void (juce::String)> validationStarted,
                     std::function<void (juce::String, uint32_t /*exitCode*/)> validationEnded,
-                    std::function<void(const String&)> outputGenerated);
+                    std::function<void(const juce::String&)> outputGenerated);
 
     /** Destructor. */
     ~ValidationPass();
 
     /** Returns true when the validation pass has ended. */
-    bool hasFinished() const;
+    [[nodiscard]] bool hasFinished() const;
 
 private:
     //==============================================================================
@@ -68,8 +67,8 @@ private:
     Manages validation calls via a separate process and provides a listener
     interface to find out the results of the validation.
 */
-class Validator : public ChangeBroadcaster,
-                  private AsyncUpdater
+class Validator : public juce::ChangeBroadcaster,
+                  private juce::AsyncUpdater
 {
 public:
     //==============================================================================
@@ -83,10 +82,10 @@ public:
     bool isConnected() const;
 
     /** Validates an array of fileOrIDs. */
-    bool validate (const StringArray& fileOrIDsToValidate, PluginTests::Options);
+    bool validate (const juce::StringArray& fileOrIDsToValidate, PluginTests::Options);
 
     /** Validates an array of PluginDescriptions. */
-    bool validate (const Array<PluginDescription>& pluginsToValidate, PluginTests::Options);
+    bool validate (const juce::Array<juce::PluginDescription>& pluginsToValidate, PluginTests::Options);
 
     /** Call this to make validation happen in the same process.
         This can be useful for debugging but should not generally be used as a crashing
@@ -99,9 +98,9 @@ public:
     {
         virtual ~Listener() = default;
 
-        virtual void validationStarted (const String& idString) = 0;
-        virtual void logMessage (const String&) = 0;
-        virtual void itemComplete (const String& idString, uint32_t exitCode) = 0;
+        virtual void validationStarted (const juce::String& idString) = 0;
+        virtual void logMessage (const juce::String&) = 0;
+        virtual void itemComplete (const juce::String& idString, uint32_t exitCode) = 0;
         virtual void allItemsComplete() = 0;
     };
 
@@ -111,10 +110,10 @@ public:
 private:
     //==============================================================================
     std::unique_ptr<MultiValidator> multiValidator;
-    ListenerList<Listener> listeners;
+    juce::ListenerList<Listener> listeners;
     bool launchInProcess = false;
 
-    void logMessage (const String&);
+    void logMessage (const juce::String&);
 
     void handleAsyncUpdate() override;
 };

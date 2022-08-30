@@ -19,25 +19,25 @@
 namespace
 {
     /** Deletes a plugin asyncronously on the message thread */
-    void deletePluginAsync (std::unique_ptr<AudioPluginInstance> pluginInstance)
+    void deletePluginAsync (std::unique_ptr<juce::AudioPluginInstance> pluginInstance)
     {
-        WaitableEvent completionEvent;
+        juce::WaitableEvent completionEvent;
 
-        struct AsyncDeleter : public CallbackMessage
+        struct AsyncDeleter : public juce::CallbackMessage
         {
-            AsyncDeleter (std::unique_ptr<AudioPluginInstance> api, WaitableEvent& we)
+            AsyncDeleter (std::unique_ptr<juce::AudioPluginInstance> api, juce::WaitableEvent& we)
                 : instance (std::move (api)), event (we)
             {}
 
             void messageCallback() override
             {
                 instance.reset();
-                Thread::sleep (150); // Pause a few ms to let the plugin clean up after itself
+                juce::Thread::sleep (150); // Pause a few ms to let the plugin clean up after itself
                 event.signal();
             }
 
-            std::unique_ptr<AudioPluginInstance> instance;
-            WaitableEvent& event;
+            std::unique_ptr<juce::AudioPluginInstance> instance;
+            juce::WaitableEvent& event;
         };
 
         (new AsyncDeleter (std::move (pluginInstance), completionEvent))->post();
@@ -45,23 +45,23 @@ namespace
     }
 }
 
-PluginTests::PluginTests (const String& fileOrIdentifier, Options opts)
-    : UnitTest ("pluginval"),
+PluginTests::PluginTests (const juce::String& fileOrIdentifier, Options opts)
+    : juce::UnitTest ("pluginval"),
       fileOrID (fileOrIdentifier),
       options (opts)
 {
     jassert (fileOrIdentifier.isNotEmpty());
-    jassert (isPositiveAndNotGreaterThan (options.strictnessLevel, 10));
+    jassert (juce::isPositiveAndNotGreaterThan (options.strictnessLevel, 10));
     formatManager.addDefaultFormats();
 }
 
-PluginTests::PluginTests (const PluginDescription& desc, Options opts)
-    : PluginTests (String(), opts)
+PluginTests::PluginTests (const juce::PluginDescription& desc, Options opts)
+    : PluginTests (juce::String(), opts)
 {
-    typesFound.add (new PluginDescription (desc));
+    typesFound.add (new juce::PluginDescription (desc));
 }
 
-String PluginTests::getFileOrID() const
+juce::String PluginTests::getFileOrID() const
 {
     if (fileOrID.isNotEmpty())
         return fileOrID;
@@ -72,15 +72,15 @@ String PluginTests::getFileOrID() const
     return {};
 }
 
-void PluginTests::logVerboseMessage (const String& message)
+void PluginTests::logVerboseMessage (const juce::String& message)
 {
     // We still need to send an empty message or the test may timeout
-    logMessage (options.verbose ? message : String());
+    logMessage (options.verbose ? message : juce::String());
 }
 
 void PluginTests::resetTimeout()
 {
-    logMessage (String());
+    logMessage (juce::String());
 }
 
 void PluginTests::runTest()
@@ -89,22 +89,22 @@ void PluginTests::runTest()
     jassert (! juce::MessageManager::existsAndIsCurrentThread());
 
     logMessage ("Validation started");
-    logVerboseMessage ("\t" + Time::getCurrentTime().toString (true, true) + "\n");
-    logMessage ("Strictness level: " + String (options.strictnessLevel));
+    logVerboseMessage ("\t" + juce::Time::getCurrentTime().toString (true, true) + "\n");
+    logMessage ("Strictness level: " + juce::String (options.strictnessLevel));
 
     if (fileOrID.isNotEmpty())
     {
         beginTest ("Scan for plugins located in: " + fileOrID);
 
-        WaitableEvent completionEvent;
-        MessageManager::callAsync ([&, this]() mutable
+        juce::WaitableEvent completionEvent;
+        juce::MessageManager::callAsync ([&, this]() mutable
                                    {
-                                       knownPluginList.scanAndAddDragAndDroppedFiles (formatManager, StringArray (fileOrID), typesFound);
+                                       knownPluginList.scanAndAddDragAndDroppedFiles (formatManager, juce::StringArray (fileOrID), typesFound);
                                        completionEvent.signal();
                                    });
         completionEvent.wait();
 
-        logMessage ("Num plugins found: " + String (typesFound.size()));
+        logMessage ("Num plugins found: " + juce::String (typesFound.size()));
         expect (! typesFound.isEmpty(),
                 "No types found. This usually means the plugin binary is missing or damaged, "
                 "an incompatible format or that it is an AU that isn't found by macOS so can't be created.");
@@ -114,17 +114,17 @@ void PluginTests::runTest()
         testType (*pd);
 }
 
-std::unique_ptr<AudioPluginInstance> PluginTests::testOpenPlugin (const PluginDescription& pd)
+std::unique_ptr<juce::AudioPluginInstance> PluginTests::testOpenPlugin (const juce::PluginDescription& pd)
 {
-    String errorMessage;
-    auto instance = std::unique_ptr<AudioPluginInstance> (formatManager.createPluginInstance (pd, 44100.0, 512, errorMessage));
-    expectEquals (errorMessage, String());
-    expect (instance != nullptr, "Unable to create AudioPluginInstance");
+    juce::String errorMessage;
+    auto instance = std::unique_ptr<juce::AudioPluginInstance> (formatManager.createPluginInstance (pd, 44100.0, 512, errorMessage));
+    expectEquals (errorMessage, juce::String());
+    expect (instance != nullptr, "Unable to create juce::AudioPluginInstance");
 
     return instance;
 }
 
-void PluginTests::testType (const PluginDescription& pd)
+void PluginTests::testType (const juce::PluginDescription& pd)
 {
     StopwatchTimer totalTimer;
     logMessage ("\nTesting plugin: " + pd.createIdentifierString());
@@ -144,7 +144,7 @@ void PluginTests::testType (const PluginDescription& pd)
         if (auto instance = testOpenPlugin (pd))
         {
             logVerboseMessage ("\nTime taken to open plugin (warm): " + sw.getDescription());
-            logMessage (String ("Running tests 123 times").replace ("123", String (options.numRepeats)));
+            logMessage (juce::String ("Running tests 123 times").replace ("123",juce::String (options.numRepeats)));
 
             // This sleep is here to allow time for plugin async initialisation as in most cases
             // plugins will be added to tracks and then be played a little time later. This sleep
@@ -153,15 +153,15 @@ void PluginTests::testType (const PluginDescription& pd)
             // The exception to this is if the plugin is being rendered there's likely to be no gap
             // between construction, initialisation and processing. For this case, plugins should
             // check AudioProcessor::isNonRealtime and force initialisation if rendering.
-            Thread::sleep (150);
+            juce::Thread::sleep (150);
             auto r = getRandom();
 
             for (int testRun = 0; testRun < options.numRepeats; ++testRun)
             {
                 if (options.numRepeats > 1)
-                    logMessage ("\nTest run: " + String (testRun + 1));
+                    logMessage ("\nTest run: " + juce::String (testRun + 1));
 
-                Array<PluginTest*> testsToRun = PluginTest::getAllTests();
+                juce::Array<PluginTest*> testsToRun = PluginTest::getAllTests();
 
                 if (options.randomiseTestOrder)
                 {
@@ -186,8 +186,8 @@ void PluginTests::testType (const PluginDescription& pd)
 
                     if (t->needsToRunOnMessageThread())
                     {
-                        WaitableEvent completionEvent;
-                        MessageManager::callAsync ([&, this]() mutable
+                        juce::WaitableEvent completionEvent;
+                        juce::MessageManager::callAsync ([&, this]() mutable
                                                    {
                                                        t->runTest (*this, *instance);
                                                        completionEvent.signal();

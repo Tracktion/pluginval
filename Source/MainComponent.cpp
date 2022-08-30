@@ -20,20 +20,20 @@ namespace
 {
     void setStrictnessLevel (int newLevel)
     {
-        getAppPreferences().setValue ("strictnessLevel", jlimit (1, 10, newLevel));
+        getAppPreferences().setValue ("strictnessLevel", juce::jlimit (1, 10, newLevel));
     }
 
     int getStrictnessLevel()
     {
-        return jlimit (1, 10, getAppPreferences().getIntValue ("strictnessLevel", 5));
+        return juce::jlimit (1, 10, getAppPreferences().getIntValue ("strictnessLevel", 5));
     }
 
-    void setRandomSeed (int64 newSeed)
+    void setRandomSeed (juce::int64 newSeed)
     {
         getAppPreferences().setValue ("randomSeed", newSeed);
     }
 
-    int64 getRandomSeed()
+    juce::int64 getRandomSeed()
     {
         return getAppPreferences().getIntValue ("randomSeed", 0);
     }
@@ -48,12 +48,12 @@ namespace
         return getAppPreferences().getBoolValue ("validateInProcess", false);
     }
 
-    void setTimeoutMs (int64 newTimeout)
+    void setTimeoutMs (juce::int64 newTimeout)
     {
         getAppPreferences().setValue ("timeoutMs", newTimeout);
     }
 
-    int64 getTimeoutMs()
+    juce::int64 getTimeoutMs()
     {
         return getAppPreferences().getIntValue ("timeoutMs", 30000);
     }
@@ -76,7 +76,7 @@ namespace
 
     int getNumRepeats()
     {
-        return jmax (1, getAppPreferences().getIntValue ("numRepeats", 1));
+        return juce::jmax (1, getAppPreferences().getIntValue ("numRepeats", 1));
     }
 
     void setRandomiseTests (bool shouldRandomiseTests)
@@ -89,9 +89,9 @@ namespace
         return getAppPreferences().getBoolValue ("randomiseTests", false);
     }
 
-    File getOutputDir()
+    juce::File getOutputDir()
     {
-        return getAppPreferences().getValue ("outputDir", String());
+        return getAppPreferences().getValue ("outputDir", juce::String());
     }
 
     std::vector<double> getSampleRates() // from UI no setting of sampleRates yet
@@ -111,7 +111,7 @@ namespace
 
     juce::File getVST3Validator()
     {
-        return getAppPreferences().getValue ("vst3validator", String());
+        return getAppPreferences().getValue ("vst3validator", juce::String());
     }
 
     PluginTests::Options getTestOptions()
@@ -134,12 +134,12 @@ namespace
     //==============================================================================
     void showRandomSeedDialog()
     {
-        const String message = TRANS("Set the random seed to use for the tests, useful for replicating issues");
-        std::shared_ptr<AlertWindow> aw (LookAndFeel::getDefaultLookAndFeel().createAlertWindow (TRANS("Set Random Seed"), message,
-                                                                                                 TRANS("OK"), TRANS("Cancel"), String(),
-                                                                                                 AlertWindow::QuestionIcon, 2, nullptr));
-        aw->addTextEditor ("randomSeed", String (getRandomSeed()));
-        aw->enterModalState (true, ModalCallbackFunction::create ([aw] (int res)
+        const juce::String message = TRANS("Set the random seed to use for the tests, useful for replicating issues");
+        std::shared_ptr<juce::AlertWindow> aw (juce::LookAndFeel::getDefaultLookAndFeel().createAlertWindow (TRANS("Set Random Seed"), message,
+                                                                                                 TRANS("OK"), TRANS("Cancel"), juce::String(),
+                                                                                                 juce::AlertWindow::QuestionIcon, 2, nullptr));
+        aw->addTextEditor ("randomSeed",juce::String (getRandomSeed()));
+        aw->enterModalState (true, juce::ModalCallbackFunction::create ([aw] (int res)
                                                                   {
                                                                       if (res == 1)
                                                                       {
@@ -155,12 +155,12 @@ namespace
 
     void showTimeoutDialog()
     {
-        const String message = TRANS("Set the duration in milliseconds after which to kill the validation if there has been no output from it");
-        std::shared_ptr<AlertWindow> aw (LookAndFeel::getDefaultLookAndFeel().createAlertWindow (TRANS("Set Timeout (ms)"), message,
-                                                                                                 TRANS("OK"), TRANS("Cancel"), String(),
-                                                                                                 AlertWindow::QuestionIcon, 2, nullptr));
-        aw->addTextEditor ("timeoutMs", String (getTimeoutMs()));
-        aw->enterModalState (true, ModalCallbackFunction::create ([aw] (int res)
+        const juce::String message = TRANS("Set the duration in milliseconds after which to kill the validation if there has been no output from it");
+        std::shared_ptr<juce::AlertWindow> aw (juce::LookAndFeel::getDefaultLookAndFeel().createAlertWindow (TRANS("Set Timeout (ms)"), message,
+                                                                                                 TRANS("OK"), TRANS("Cancel"), juce::String(),
+                                                                                                 juce::AlertWindow::QuestionIcon, 2, nullptr));
+        aw->addTextEditor ("timeoutMs",juce::String (getTimeoutMs()));
+        aw->enterModalState (true, juce::ModalCallbackFunction::create ([aw] (int res)
                                                                   {
                                                                       if (res == 1)
                                                                           if (auto te = aw->getTextEditor ("timeoutMs"))
@@ -170,12 +170,12 @@ namespace
 
     void showNumRepeatsDialog()
     {
-        const String message = TRANS("Set the number of times the tests will be repeated");
-        std::shared_ptr<AlertWindow> aw (LookAndFeel::getDefaultLookAndFeel().createAlertWindow (TRANS("Set Number of Repeats"), message,
-                                                                                                 TRANS("OK"), TRANS("Cancel"), String(),
-                                                                                                 AlertWindow::QuestionIcon, 2, nullptr));
-        aw->addTextEditor ("repeats", String (getNumRepeats()));
-        aw->enterModalState (true, ModalCallbackFunction::create ([aw] (int res)
+        const juce::String message = TRANS("Set the number of times the tests will be repeated");
+        std::shared_ptr<juce::AlertWindow> aw (juce::LookAndFeel::getDefaultLookAndFeel().createAlertWindow (TRANS("Set Number of Repeats"), message,
+                                                                                                 TRANS("OK"), TRANS("Cancel"), juce::String(),
+                                                                                                 juce::AlertWindow::QuestionIcon, 2, nullptr));
+        aw->addTextEditor ("repeats",juce::String (getNumRepeats()));
+        aw->enterModalState (true, juce::ModalCallbackFunction::create ([aw] (int res)
                                                                   {
                                                                       if (res == 1)
                                                                           if (auto te = aw->getTextEditor ("repeats"))
@@ -185,7 +185,7 @@ namespace
 
     void showOutputDirDialog()
     {
-        String message = TRANS("Set a desintation directory to place log files");
+        juce::String message = TRANS("Set a desintation directory to place log files");
         auto dir = getOutputDir();
 
         if (dir.getFullPathName().isNotEmpty())
@@ -193,18 +193,18 @@ namespace
         else
             message << "\n\n" << "\"None set\"";
 
-        std::shared_ptr<AlertWindow> aw (LookAndFeel::getDefaultLookAndFeel().createAlertWindow (TRANS("Set Log File Directory"), message,
+        std::shared_ptr<juce::AlertWindow> aw (juce::LookAndFeel::getDefaultLookAndFeel().createAlertWindow (TRANS("Set Log File Directory"), message,
                                                                                                  TRANS("Choose dir"), TRANS("Cancel"), TRANS("Don't save logs"),
-                                                                                                 AlertWindow::QuestionIcon, 3, nullptr));
-        aw->enterModalState (true, ModalCallbackFunction::create ([aw] (int res)
+                                                                                                 juce::AlertWindow::QuestionIcon, 3, nullptr));
+        aw->enterModalState (true, juce::ModalCallbackFunction::create ([aw] (int res)
                                                                   {
                                                                       if (res == 3)
-                                                                          getAppPreferences().setValue ("outputDir", String());
+                                                                          getAppPreferences().setValue ("outputDir", juce::String());
 
                                                                       if (res == 1)
                                                                       {
-                                                                          const auto defaultDir = File::getSpecialLocation (File::userDesktopDirectory).getChildFile ("pluginval logs").getFullPathName();
-                                                                          FileChooser fc (TRANS("Directory to save log files"), defaultDir);
+                                                                          const auto defaultDir = juce::File::getSpecialLocation (juce::File::userDesktopDirectory).getChildFile ("pluginval logs").getFullPathName();
+                                                                          juce::FileChooser fc (TRANS("Directory to save log files"), defaultDir);
 
                                                                           if (fc.browseForDirectory())
                                                                               getAppPreferences().setValue ("outputDir", fc.getResult().getFullPathName());
@@ -214,7 +214,7 @@ namespace
 
     void showVST3ValidatorDialog()
     {
-        String message = TRANS("Set the location of the VST3 validator app");
+        juce::String message = TRANS("Set the location of the VST3 validator app");
         auto app = getVST3Validator();
 
         if (app.getFullPathName().isNotEmpty())
@@ -222,17 +222,17 @@ namespace
         else
             message << "\n\n" << "\"None set\"";
 
-        std::shared_ptr<AlertWindow> aw (LookAndFeel::getDefaultLookAndFeel().createAlertWindow (TRANS("Set VST3 validator"), message,
+        std::shared_ptr<juce::AlertWindow> aw (juce::LookAndFeel::getDefaultLookAndFeel().createAlertWindow (TRANS("Set VST3 validator"), message,
                                                                                                  TRANS("Choose"), TRANS("Cancel"), TRANS("Don't use VST3 validator"),
-                                                                                                 AlertWindow::QuestionIcon, 3, nullptr));
-        aw->enterModalState (true, ModalCallbackFunction::create ([aw] (int res)
+                                                                                                 juce::AlertWindow::QuestionIcon, 3, nullptr));
+        aw->enterModalState (true, juce::ModalCallbackFunction::create ([aw] (int res)
                                                                   {
                                                                       if (res == 3)
                                                                           setVST3Validator ({});
 
                                                                       if (res == 1)
                                                                       {
-                                                                          FileChooser fc (TRANS("Choose VST3 validator"), {});
+                                                                          juce::FileChooser fc (TRANS("Choose VST3 validator"), {});
 
                                                                           if (fc.browseForFileToOpen())
                                                                               setVST3Validator (fc.getResult().getFullPathName());
@@ -248,7 +248,7 @@ MainComponent::MainComponent (Validator& v)
 {
     formatManager.addDefaultFormats();
 
-    const auto tabCol = getLookAndFeel().findColour (ResizableWindow::backgroundColourId);
+    const auto tabCol = getLookAndFeel().findColour (juce::ResizableWindow::backgroundColourId);
     addAndMakeVisible (tabbedComponent);
     tabbedComponent.addTab ("Plugin List", tabCol, &pluginListComponent, false);
     tabbedComponent.addTab ("Console", tabCol, &console, false);
@@ -266,7 +266,7 @@ MainComponent::MainComponent (Validator& v)
     testSelectedButton.onClick = [this]
         {
             auto rows = pluginListComponent.getTableListBox().getSelectedRows();
-            Array<PluginDescription> plugins;
+            juce::Array<juce::PluginDescription> plugins;
 
             for (int i = 0; i < rows.size(); ++i)
                 plugins.add (knownPluginList.getTypes()[rows[i]]);
@@ -283,8 +283,8 @@ MainComponent::MainComponent (Validator& v)
 
     testFileButton.onClick = [this]
         {
-            FileChooser fc (TRANS("Browse for Plug-in File"),
-                            getAppPreferences().getValue ("lastPluginLocation", File::getSpecialLocation (File::userApplicationDataDirectory).getFullPathName()),
+            juce::FileChooser fc (TRANS("Browse for Plug-in File"),
+                            getAppPreferences().getValue ("lastPluginLocation", juce::File::getSpecialLocation (juce::File::userApplicationDataDirectory).getFullPathName()),
                             "*.vst;*.vst3;*.dll;*.component");
 
             if (fc.browseForFileToOpen())
@@ -304,8 +304,8 @@ MainComponent::MainComponent (Validator& v)
 
     saveButton.onClick = [this]
         {
-            FileChooser fc (TRANS("Save Log File"),
-                            getAppPreferences().getValue ("lastSaveLocation", File::getSpecialLocation (File::userDesktopDirectory).getFullPathName()),
+            juce::FileChooser fc (TRANS("Save Log File"),
+                            getAppPreferences().getValue ("lastSaveLocation", juce::File::getSpecialLocation (juce::File::userDesktopDirectory).getFullPathName()),
                             "*.txt");
 
             if (fc.browseForFileToSave (true))
@@ -318,7 +318,7 @@ MainComponent::MainComponent (Validator& v)
                 }
                 else
                 {
-                    AlertWindow::showMessageBoxAsync (AlertWindow::WarningIcon, TRANS("Unable to Save"),
+                    juce::AlertWindow::showMessageBoxAsync (juce::AlertWindow::WarningIcon, TRANS("Unable to Save"),
                                                       TRANS("Unable to save to the file at location: XYYX").replace ("XYYX", f.getFullPathName()));
                 }
             }
@@ -339,18 +339,18 @@ MainComponent::MainComponent (Validator& v)
                 showSettingsDir
             };
 
-            PopupMenu m;
+            juce::PopupMenu m;
             m.addItem (validateInProcess, TRANS("Validate in process"), true, getValidateInProcess());
-            m.addItem (showRandomSeed, TRANS("Set random seed (123)").replace ("123", "0x" + String::toHexString (getRandomSeed()) + "/" + String (getRandomSeed())));
-            m.addItem (showTimeout, TRANS("Set timeout (123ms)").replace ("123", String (getTimeoutMs())));
+            m.addItem (showRandomSeed, TRANS("Set random seed (123)").replace ("123", "0x" + juce::String::toHexString (getRandomSeed()) + "/" + juce::String (getRandomSeed())));
+            m.addItem (showTimeout, TRANS("Set timeout (123ms)").replace ("123",juce::String (getTimeoutMs())));
             m.addItem (verboseLogging, TRANS("Verbose logging"), true, getVerboseLogging());
-            m.addItem (numRepeats, TRANS("Num repeats (123)").replace ("123", String (getNumRepeats())));
+            m.addItem (numRepeats, TRANS("Num repeats (123)").replace ("123",juce::String (getNumRepeats())));
             m.addItem (randomise, TRANS("Randomise tests"), true, getRandomiseTests());
             m.addItem (chooseOutputDir, TRANS("Choose a location for log files"));
             m.addItem (showVST3Validator, TRANS("Set the location of the VST3 validator"));
             m.addSeparator();
             m.addItem (showSettingsDir, TRANS("Show settings folder"));
-            m.showMenuAsync (PopupMenu::Options().withTargetComponent (&optionsButton),
+            m.showMenuAsync (juce::PopupMenu::Options().withTargetComponent (&optionsButton),
                              [sp] (int res) mutable
                              {
                                  if (res == validateInProcess)
@@ -393,17 +393,17 @@ MainComponent::MainComponent (Validator& v)
                              });
         };
 
-    strictnessSlider.setTextBoxStyle (Slider::TextBoxLeft, false, 35, 24);
-    strictnessSlider.setSliderStyle (Slider::IncDecButtons);
+    strictnessSlider.setTextBoxStyle (juce::Slider::TextBoxLeft, false, 35, 24);
+    strictnessSlider.setSliderStyle (juce::Slider::IncDecButtons);
     strictnessSlider.setRange ({ 1.0, 10.0 }, 1.0);
     strictnessSlider.setNumDecimalPlacesToDisplay (0);
     strictnessSlider.setValue (getStrictnessLevel());
     strictnessSlider.onValueChange = [this]
         {
-            setStrictnessLevel (roundToInt (strictnessSlider.getValue()));
+            setStrictnessLevel (juce::roundToInt (strictnessSlider.getValue()));
         };
 
-    if (auto xml = std::unique_ptr<XmlElement> (getAppPreferences().getXmlValue ("scannedPlugins")))
+    if (auto xml = std::unique_ptr<juce::XmlElement> (getAppPreferences().getXmlValue ("scannedPlugins")))
         knownPluginList.recreateFromXml (*xml);
 
     knownPluginList.addChangeListener (this);
@@ -417,9 +417,9 @@ MainComponent::~MainComponent()
 }
 
 //==============================================================================
-void MainComponent::paint (Graphics& g)
+void MainComponent::paint (juce::Graphics& g)
 {
-    g.fillAll (getLookAndFeel().findColour (ResizableWindow::backgroundColourId));
+    g.fillAll (getLookAndFeel().findColour (juce::ResizableWindow::backgroundColourId));
 }
 
 void MainComponent::resized()
@@ -445,11 +445,11 @@ void MainComponent::resized()
 //==============================================================================
 void MainComponent::savePluginList()
 {
-    if (auto xml = std::unique_ptr<XmlElement> (knownPluginList.createXml()))
+    if (auto xml = std::unique_ptr<juce::XmlElement> (knownPluginList.createXml()))
         getAppPreferences().setValue ("scannedPlugins", xml.get());
 }
 
-void MainComponent::changeListenerCallback (ChangeBroadcaster*)
+void MainComponent::changeListenerCallback (juce::ChangeBroadcaster*)
 {
     savePluginList();
 }

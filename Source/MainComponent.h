@@ -14,15 +14,15 @@
 
 #pragma once
 
-#include <JuceHeader.h>
+#include "juce_gui_extra/juce_gui_extra.h"
 #include "Validator.h"
 #include "CrashHandler.h"
 
-PropertiesFile& getAppPreferences();
+juce::PropertiesFile& getAppPreferences();
 
 //==============================================================================
-struct ConnectionStatus : public Component,
-                          private ChangeListener,
+struct ConnectionStatus : public juce::Component,
+                          private juce::ChangeListener,
                           private Validator::Listener
 {
     ConnectionStatus (Validator& v)
@@ -38,24 +38,24 @@ struct ConnectionStatus : public Component,
         validator.removeChangeListener (this);
     }
 
-    void paint (Graphics& g) override
+    void paint (juce::Graphics& g) override
     {
         auto r = getLocalBounds().toFloat();
 
         g.setColour ([this] {
             switch (status)
             {
-                case Status::disconnected:  return Colours::darkred;
-                case Status::validating:    return Colours::orange;
+                case Status::disconnected:  return juce::Colours::darkred;
+                case Status::validating:    return juce::Colours::orange;
                 case Status::connected:
-                case Status::complete:      return Colours::lightgreen;
+                case Status::complete:      return juce::Colours::lightgreen;
             }
 
-            return Colours::darkred;
+            return juce::Colours::darkred;
         }());
         g.fillEllipse (r);
 
-        g.setColour (Colours::darkgrey);
+        g.setColour (juce::Colours::darkgrey);
         g.drawEllipse (r.reduced (1.0f), 2.0f);
     }
 
@@ -74,24 +74,24 @@ private:
     void setStatus (Status newStatus)
     {
         status = newStatus;
-        MessageManager::callAsync ([sp = SafePointer<Component> (this)] () mutable { if (sp != nullptr) sp->repaint(); });
+        juce::MessageManager::callAsync ([sp = SafePointer<Component> (this)] () mutable { if (sp != nullptr) sp->repaint(); });
     }
 
-    void changeListenerCallback (ChangeBroadcaster*) override
+    void changeListenerCallback (juce::ChangeBroadcaster*) override
     {
         setStatus (validator.isConnected() ? Status::connected : Status::disconnected);
     }
 
-    void validationStarted (const String&) override
+    void validationStarted (const juce::String&) override
     {
         setStatus (Status::validating);
     }
 
-    void logMessage (const String&) override
+    void logMessage (const juce::String&) override
     {
     }
 
-    void itemComplete (const String&, uint32_t) override
+    void itemComplete (const juce::String&, uint32_t) override
     {
     }
 
@@ -102,9 +102,9 @@ private:
 };
 
 //==============================================================================
-struct ConsoleComponent : public Component,
-                          private ChangeListener,
-                          private AsyncUpdater,
+struct ConsoleComponent : public juce::Component,
+                          private juce::ChangeListener,
+                          private juce::AsyncUpdater,
                           private Validator::Listener
 {
     ConsoleComponent (Validator& v)
@@ -125,14 +125,14 @@ struct ConsoleComponent : public Component,
         validator.removeListener (this);
     }
 
-    String getLog() const
+    juce::String getLog() const
     {
         return codeDocument.getAllContent();
     }
 
     void clearLog()
     {
-        codeDocument.replaceAllContent (String());
+        codeDocument.replaceAllContent (juce::String());
     }
 
     void resized() override
@@ -144,19 +144,19 @@ struct ConsoleComponent : public Component,
 private:
     Validator& validator;
 
-    CodeDocument codeDocument;
-    CodeEditorComponent editor { codeDocument, nullptr };
-    String currentID;
+    juce::CodeDocument codeDocument;
+    juce::CodeEditorComponent editor { codeDocument, nullptr };
+    juce::String currentID;
 
-    CriticalSection logMessagesLock;
-    StringArray pendingLogMessages;
+    juce::CriticalSection logMessagesLock;
+    juce::StringArray pendingLogMessages;
 
     void handleAsyncUpdate() override
     {
-        StringArray logMessages;
+        juce::StringArray logMessages;
 
         {
-            const ScopedLock sl (logMessagesLock);
+            const juce::ScopedLock sl (logMessagesLock);
             pendingLogMessages.swapWith (logMessages);
         }
 
@@ -167,26 +167,26 @@ private:
         }
     }
 
-    void changeListenerCallback (ChangeBroadcaster*) override
+    void changeListenerCallback (juce::ChangeBroadcaster*) override
     {
         if (! validator.isConnected() && currentID.isNotEmpty())
         {
             logMessage ("\n*** FAILED: VALIDATION CRASHED\n");
             logMessage (getCrashLog());
-            currentID = String();
+            currentID = juce::String();
         }
     }
 
-    void validationStarted (const String& id) override
+    void validationStarted (const juce::String& id) override
     {
         currentID = id;
         logMessage ("Started validating: " + id + "\n");
     }
 
-    void logMessage (const String& m) override
+    void logMessage (const juce::String& m) override
     {
         {
-            const ScopedLock sl (logMessagesLock);
+            const juce::ScopedLock sl (logMessagesLock);
             pendingLogMessages.add (m);
             triggerAsyncUpdate();
         }
@@ -194,16 +194,16 @@ private:
         std::cout << m;
     }
 
-    void itemComplete (const String& id, uint32_t exitCode) override
+    void itemComplete (const juce::String& id, uint32_t exitCode) override
     {
         logMessage ("\nFinished validating: " + id + "\n");
 
         if (exitCode == 0)
             logMessage ("ALL TESTS PASSED\n");
         else
-            logMessage ("*** FAILED WITH EXIT CODE: " + String (exitCode) + "\n");
+            logMessage ("*** FAILED WITH EXIT CODE: " + juce::String (exitCode) + "\n");
 
-        currentID = String();
+        currentID = juce::String();
     }
 
     void allItemsComplete() override
@@ -217,8 +217,8 @@ private:
     This component lives inside our window, and this is where you should put all
     your controls and content.
 */
-class MainComponent   : public Component,
-                        private ChangeListener
+class MainComponent   : public juce::Component,
+                        private juce::ChangeListener
 {
 public:
     //==============================================================================
@@ -226,30 +226,30 @@ public:
     ~MainComponent() override;
 
     //==============================================================================
-    void paint (Graphics&) override;
+    void paint (juce::Graphics&) override;
     void resized() override;
 
 private:
     //==============================================================================
     Validator& validator;
 
-    AudioPluginFormatManager formatManager;
-    KnownPluginList knownPluginList;
+    juce::AudioPluginFormatManager formatManager;
+    juce::KnownPluginList knownPluginList;
 
-    TabbedComponent tabbedComponent { TabbedButtonBar::TabsAtTop };
-    PluginListComponent pluginListComponent { formatManager, knownPluginList,
+    juce::TabbedComponent tabbedComponent { juce::TabbedButtonBar::TabsAtTop };
+    juce::PluginListComponent pluginListComponent { formatManager, knownPluginList,
                                               getAppPreferences().getFile().getSiblingFile ("PluginsListDeadMansPedal"),
                                               &getAppPreferences() };
     ConsoleComponent console { validator };
-    TextButton testSelectedButton { "Test Selected" }, testAllButton { "Test All" }, testFileButton { "Test File" },
+    juce::TextButton testSelectedButton { "Test Selected" }, testAllButton { "Test All" }, testFileButton { "Test File" },
                clearButton { "Clear Log" }, saveButton { "Save Log" }, optionsButton { "Options" };
-    Slider strictnessSlider;
-    Label strictnessLabel { {}, "Strictness Level" };
+    juce::Slider strictnessSlider;
+    juce::Label strictnessLabel { {}, "Strictness Level" };
     ConnectionStatus connectionStatus { validator };
 
     void savePluginList();
 
-    void changeListenerCallback (ChangeBroadcaster*) override;
+    void changeListenerCallback (juce::ChangeBroadcaster*) override;
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (MainComponent)
 };

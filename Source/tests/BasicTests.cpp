@@ -25,13 +25,13 @@ struct PluginInfoTest   : public PluginTest
     {
     }
 
-    void runTest (PluginTests& ut, AudioPluginInstance& instance) override
+    void runTest (PluginTests& ut, juce::AudioPluginInstance& instance) override
     {
         ut.logMessage ("\nPlugin name: " + instance.getName());
         ut.logMessage ("Alternative names: " + instance.getAlternateDisplayNames().joinIntoString ("|"));
-        ut.logMessage ("SupportsDoublePrecision: " + String (instance.supportsDoublePrecisionProcessing() ? "yes" : "no"));
-        ut.logMessage ("Reported latency: " + String (instance.getLatencySamples()));
-        ut.logMessage ("Reported taillength: " + String (instance.getTailLengthSeconds()));
+        ut.logMessage ("SupportsDoublePrecision: " + juce::String (instance.supportsDoublePrecisionProcessing() ? "yes" : "no"));
+        ut.logMessage ("Reported latency: " + juce::String (instance.getLatencySamples()));
+        ut.logMessage ("Reported taillength: " + juce::String (instance.getTailLengthSeconds()));
     }
 };
 
@@ -46,14 +46,14 @@ struct PluginPrgramsTest    : public PluginTest
     {
     }
 
-    void runTest (PluginTests& ut, AudioPluginInstance& instance) override
+    void runTest (PluginTests& ut, juce::AudioPluginInstance& instance) override
     {
         const int numPrograms = instance.getNumPrograms();
-        ut.logMessage ("Num programs: " + String (numPrograms));
+        ut.logMessage ("Num programs: " + juce::String (numPrograms));
 
         for (int i = 0; i < numPrograms; ++i)
-            ut.logVerboseMessage (String ("Program 123 name: XYZ")
-                                  .replace ("123", String (i))
+            ut.logVerboseMessage (juce::String ("Program 123 name: XYZ")
+                                  .replace ("123",juce::String (i))
                                   .replace ("XYZ", instance.getProgramName (i)));
 
         ut.logMessage ("All program names checked");
@@ -67,13 +67,13 @@ struct PluginPrgramsTest    : public PluginTest
             for (int i = 0; i < 5; ++i)
             {
                 const int programNum = r.nextInt (numPrograms);
-                ut.logVerboseMessage ("Changing program to: " + String (programNum));
+                ut.logVerboseMessage ("Changing program to: " + juce::String (programNum));
                 instance.setCurrentProgram (programNum);
             }
 
             if (currentProgram >= 0)
             {
-                ut.logVerboseMessage ("Resetting program to: " + String (currentProgram));
+                ut.logVerboseMessage ("Resetting program to: " + juce::String (currentProgram));
                 instance.setCurrentProgram (currentProgram);
             }
             else
@@ -96,7 +96,7 @@ struct EditorTest   : public PluginTest
     {
     }
 
-    void runTest (PluginTests& ut, AudioPluginInstance& instance) override
+    void runTest (PluginTests& ut, juce::AudioPluginInstance& instance) override
     {
         if (instance.hasEditor())
         {
@@ -130,7 +130,7 @@ struct EditorWhilstProcessingTest   : public PluginTest
     {
     }
 
-    void runTest (PluginTests& ut, AudioPluginInstance& instance) override
+    void runTest (PluginTests& ut, juce::AudioPluginInstance& instance) override
     {
         if (instance.hasEditor())
         {
@@ -142,12 +142,12 @@ struct EditorWhilstProcessingTest   : public PluginTest
             jassert (sampleRates.size() > 0 && blockSizes.size() > 0);
             callPrepareToPlayOnMessageThreadIfVST3 (instance, sampleRates[0], blockSizes[0]);
 
-            const int numChannelsRequired = jmax (instance.getTotalNumInputChannels(), instance.getTotalNumOutputChannels());
-            AudioBuffer<float> ab (numChannelsRequired, instance.getBlockSize());
-            MidiBuffer mb;
+            const int numChannelsRequired = juce::jmax (instance.getTotalNumInputChannels(), instance.getTotalNumOutputChannels());
+            juce::AudioBuffer<float> ab (numChannelsRequired, instance.getBlockSize());
+            juce::MidiBuffer mb;
 
 
-            WaitableEvent threadStartedEvent;
+            juce::WaitableEvent threadStartedEvent;
             std::atomic<bool> shouldProcess { true };
 
             auto processThread = std::async (std::launch::async,
@@ -185,7 +185,7 @@ struct AudioProcessingTest  : public PluginTest
     {
     }
 
-    static void runAudioProcessingTest (PluginTests& ut, AudioPluginInstance& instance,
+    static void runAudioProcessingTest (PluginTests& ut, juce::AudioPluginInstance& instance,
                                         bool callReleaseResourcesBeforeSampleRateChange)
     {
         const bool isPluginInstrument = instance.getPluginDescription().isInstrument;
@@ -203,25 +203,25 @@ struct AudioProcessingTest  : public PluginTest
         {
             for (auto bs : blockSizes)
             {
-                ut.logMessage (String ("Testing with sample rate [SR] and block size [BS]")
-                                   .replace ("SR", String (sr, 0), false)
-                                   .replace ("BS", String (bs), false));
+                ut.logMessage (juce::String ("Testing with sample rate [SR] and block size [BS]")
+                                   .replace ("SR",juce::String (sr, 0), false)
+                                   .replace ("BS",juce::String (bs), false));
 
                 if (callReleaseResourcesBeforeSampleRateChange)
                     callReleaseResourcesOnMessageThreadIfVST3 (instance);
 
                 callPrepareToPlayOnMessageThreadIfVST3 (instance, sr, bs);
 
-                const int numChannelsRequired = jmax (instance.getTotalNumInputChannels(), instance.getTotalNumOutputChannels());
-                AudioBuffer<float> ab (numChannelsRequired, bs);
-                MidiBuffer mb;
+                const int numChannelsRequired = juce::jmax (instance.getTotalNumInputChannels(), instance.getTotalNumOutputChannels());
+                juce::AudioBuffer<float> ab (numChannelsRequired, bs);
+                juce::MidiBuffer mb;
 
                 // Add a random note on if the plugin is a synth
                 const int noteChannel = r.nextInt ({ 1, 17 });
                 const int noteNumber = r.nextInt (128);
 
                 if (isPluginInstrument)
-                    addNoteOn (mb, noteChannel, noteNumber, jmin (10, bs));
+                    addNoteOn (mb, noteChannel, noteNumber, juce::jmin (10, bs));
 
                 for (int i = 0; i < numBlocks; ++i)
                 {
@@ -241,7 +241,7 @@ struct AudioProcessingTest  : public PluginTest
         }
     }
 
-    void runTest (PluginTests& ut, AudioPluginInstance& instance) override
+    void runTest (PluginTests& ut, juce::AudioPluginInstance& instance) override
     {
         runAudioProcessingTest (ut, instance, true);
     }
@@ -262,7 +262,7 @@ struct NonReleasingAudioProcessingTest  : public PluginTest
     {
     }
 
-    void runTest (PluginTests& ut, AudioPluginInstance& instance) override
+    void runTest (PluginTests& ut, juce::AudioPluginInstance& instance) override
     {
         AudioProcessingTest::runAudioProcessingTest (ut, instance, false);
     }
@@ -279,7 +279,7 @@ struct PluginStateTest  : public PluginTest
     {
     }
 
-    void runTest (PluginTests& ut, AudioPluginInstance& instance) override
+    void runTest (PluginTests& ut, juce::AudioPluginInstance& instance) override
     {
         auto r = ut.getRandom();
 
@@ -306,7 +306,7 @@ struct PluginStateTestRestoration   : public PluginTest
     {
     }
 
-    void runTest (PluginTests& ut, AudioPluginInstance& instance) override
+    void runTest (PluginTests& ut, juce::AudioPluginInstance& instance) override
     {
         auto r = ut.getRandom();
 
@@ -348,7 +348,7 @@ struct AutomationTest  : public PluginTest
     {
     }
 
-    void runTest (PluginTests& ut, AudioPluginInstance& instance) override
+    void runTest (PluginTests& ut, juce::AudioPluginInstance& instance) override
     {
         const bool subnormalsAreErrors = ut.getOptions().strictnessLevel > 5;
         const bool isPluginInstrument = instance.getPluginDescription().isInstrument;
@@ -367,25 +367,25 @@ struct AutomationTest  : public PluginTest
             for (auto bs : blockSizes)
             {
                 const int subBlockSize = 32;
-                ut.logMessage (String ("Testing with sample rate [SR] and block size [BS] and sub-block size [SB]")
-                                   .replace ("SR", String (sr, 0), false)
-                                   .replace ("BS", String (bs), false)
-                                   .replace ("SB", String (subBlockSize), false));
+                ut.logMessage (juce::String ("Testing with sample rate [SR] and block size [BS] and sub-block size [SB]")
+                                   .replace ("SR",juce::String (sr, 0), false)
+                                   .replace ("BS",juce::String (bs), false)
+                                   .replace ("SB",juce::String (subBlockSize), false));
 
                 callReleaseResourcesOnMessageThreadIfVST3 (instance);
                 callPrepareToPlayOnMessageThreadIfVST3 (instance, sr, bs);
 
                 int numSamplesDone = 0;
-                const int numChannelsRequired = jmax (instance.getTotalNumInputChannels(), instance.getTotalNumOutputChannels());
-                AudioBuffer<float> ab (numChannelsRequired, bs);
-                MidiBuffer mb;
+                const int numChannelsRequired = juce::jmax (instance.getTotalNumInputChannels(), instance.getTotalNumOutputChannels());
+                juce::AudioBuffer<float> ab (numChannelsRequired, bs);
+                juce::MidiBuffer mb;
 
                 // Add a random note on if the plugin is a synth
                 const int noteChannel = r.nextInt ({ 1, 17 });
                 const int noteNumber = r.nextInt (128);
 
                 if (isPluginInstrument)
-                    addNoteOn (mb, noteChannel, noteNumber, jmin (10, subBlockSize));
+                    addNoteOn (mb, noteChannel, noteNumber, juce::jmin (10, subBlockSize));
 
                 for (;;)
                 {
@@ -393,7 +393,7 @@ struct AutomationTest  : public PluginTest
                     {
                         auto parameters = getNonBypassAutomatableParameters (instance);
 
-                        for (int i = 0; i < jmin (10, parameters.size()); ++i)
+                        for (int i = 0; i < juce::jmin (10, parameters.size()); ++i)
                         {
                             const int paramIndex = r.nextInt (parameters.size());
                             parameters[paramIndex]->setValue (r.nextFloat());
@@ -401,13 +401,13 @@ struct AutomationTest  : public PluginTest
                     }
 
                     // Create a sub-buffer and process
-                    const int numSamplesThisTime = jmin (subBlockSize, bs - numSamplesDone);
+                    const int numSamplesThisTime = juce::jmin (subBlockSize, bs - numSamplesDone);
 
                     // Trigger a note off in the last sub block
                     if (isPluginInstrument && (bs - numSamplesDone) <= subBlockSize)
-                        addNoteOff (mb, noteChannel, noteNumber, jmin (10, subBlockSize));
+                        addNoteOff (mb, noteChannel, noteNumber, juce::jmin (10, subBlockSize));
 
-                    AudioBuffer<float> subBuffer (ab.getArrayOfWritePointers(),
+                    juce::AudioBuffer<float> subBuffer (ab.getArrayOfWritePointers(),
                                                   ab.getNumChannels(),
                                                   numSamplesDone,
                                                   numSamplesThisTime);
@@ -429,7 +429,7 @@ struct AutomationTest  : public PluginTest
                 if (subnormalsAreErrors)
                     ut.expectEquals (countInfs (ab), 0, "Submnormals found in buffer");
                 else if (subnormals > 0)
-                    ut.logMessage ("!!! WARNGING: " + String (countSubnormals (ab)) + " submnormals found in buffer");
+                    ut.logMessage ("!!! WARNGING: " + juce::String (countSubnormals (ab)) + " submnormals found in buffer");
             }
         }
     }
@@ -447,7 +447,7 @@ struct EditorAutomationTest : public PluginTest
     {
     }
 
-    void runTest (PluginTests& ut, AudioPluginInstance& instance) override
+    void runTest (PluginTests& ut, juce::AudioPluginInstance& instance) override
     {
         const ScopedEditorShower editor (instance);
 
@@ -462,7 +462,7 @@ struct EditorAutomationTest : public PluginTest
                 parameter->setValue (r.nextFloat());
 
             ut.resetTimeout();
-            Thread::sleep (10);
+            juce::Thread::sleep (10);
         }
     }
 };
@@ -473,26 +473,26 @@ static EditorAutomationTest editorAutomationTest;
 //==============================================================================
 namespace ParameterHelpers
 {
-    static void testParameterInfo (PluginTests& ut, AudioProcessorParameter& parameter)
+    static void testParameterInfo (PluginTests& ut, juce::AudioProcessorParameter& parameter)
     {
         const int index = parameter.getParameterIndex();
-        const String paramName = parameter.getName (512);
+        const juce::String paramName = parameter.getName (512);
 
         const float defaultValue = parameter.getDefaultValue();
-        const String label = parameter.getLabel();
+        const juce::String label = parameter.getLabel();
         const int numSteps = parameter.getNumSteps();
         const bool isDiscrete = parameter.isDiscrete();
         const bool isBoolean = parameter.isBoolean();
-        const StringArray allValueStrings = parameter.getAllValueStrings();
+        const juce::StringArray allValueStrings = parameter.getAllValueStrings();
 
         const bool isOrientationInverted = parameter.isOrientationInverted();
         const bool isAutomatable = parameter.isAutomatable();
         const bool isMetaParameter = parameter.isMetaParameter();
         const auto category = parameter.getCategory();
 
-        #define LOGP(x) JUCE_STRINGIFY(x) + " - " + String (x) + ", "
-        #define LOGP_B(x) JUCE_STRINGIFY(x) + " - " + String (static_cast<int> (x)) + ", "
-        ut.logVerboseMessage (String ("Parameter info: ")
+        #define LOGP(x) JUCE_STRINGIFY(x) + " - " + juce::String (x) + ", "
+        #define LOGP_B(x) JUCE_STRINGIFY(x) + " - " + juce::String (static_cast<int> (x)) + ", "
+        ut.logVerboseMessage (juce::String ("Parameter info: ")
                               + LOGP(index)
                               + LOGP(paramName)
                               + LOGP(defaultValue)
@@ -507,14 +507,14 @@ namespace ParameterHelpers
                               + "all value strings - " + allValueStrings.joinIntoString ("|"));
     }
 
-    static void testParameterDefaults (PluginTests& ut, AudioProcessorParameter& parameter)
+    static void testParameterDefaults (PluginTests& ut, juce::AudioProcessorParameter& parameter)
     {
-        ut.logVerboseMessage ("Testing accessers");
+        ut.logVerboseMessage ("Testing accessors");
 
         const float value = parameter.getValue();
-        const String text = parameter.getText (value, 1024);
+        const juce::String text = parameter.getText (value, 1024);
         const float valueForText = parameter.getValueForText (text);
-        const String currentValueAsText = parameter.getCurrentValueAsText();
+        const juce::String currentValueAsText = parameter.getCurrentValueAsText();
         ignoreUnused (value, text, valueForText, currentValueAsText);
     }
 }
@@ -526,11 +526,11 @@ struct AutomatableParametersTest  : public PluginTest
     {
     }
 
-    void runTest (PluginTests& ut, AudioPluginInstance& instance) override
+    void runTest (PluginTests& ut, juce::AudioPluginInstance& instance) override
     {
         for (auto parameter : getNonBypassAutomatableParameters (instance))
         {
-            ut.logVerboseMessage (String ("\nTesting parameter: ") + String (parameter->getParameterIndex()) + " - " + parameter->getName (512));
+            ut.logVerboseMessage (juce::String ("\nTesting parameter: ") + juce::String (parameter->getParameterIndex()) + " - " + parameter->getName (512));
 
             ParameterHelpers::testParameterInfo (ut, *parameter);
             ParameterHelpers::testParameterDefaults (ut, *parameter);
@@ -548,11 +548,11 @@ struct AllParametersTest    : public PluginTest
     {
     }
 
-    void runTest (PluginTests& ut, AudioPluginInstance& instance) override
+    void runTest (PluginTests& ut, juce::AudioPluginInstance& instance) override
     {
         for (auto parameter : getNonBypassAutomatableParameters (instance))
         {
-            ut.logVerboseMessage (String ("\nTesting parameter: ") + String (parameter->getParameterIndex()) + " - " + parameter->getName (512));
+            ut.logVerboseMessage (juce::String ("\nTesting parameter: ") + juce::String (parameter->getParameterIndex()) + " - " + parameter->getName (512));
 
             ParameterHelpers::testParameterInfo (ut, *parameter);
             ParameterHelpers::testParameterDefaults (ut, *parameter);
@@ -575,7 +575,7 @@ struct BackgroundThreadStateTest    : public PluginTest
     {
     }
 
-    void runTest (PluginTests& ut, AudioPluginInstance& instance) override
+    void runTest (PluginTests& ut, juce::AudioPluginInstance& instance) override
     {
         auto r = ut.getRandom();
         ScopedEditorShower editor (instance);
@@ -593,7 +593,7 @@ struct BackgroundThreadStateTest    : public PluginTest
         callSetStateInformationOnMessageThreadIfVST3 (instance, originalState);
 
         // Allow for async reaction to state changes
-        Thread::sleep (2000);
+        juce::Thread::sleep (2000);
     }
 };
 
@@ -602,7 +602,7 @@ static BackgroundThreadStateTest backgroundThreadStateTest;
 
 //==============================================================================
 /** Sets plugin parameters from a background thread and the main thread at the
-    same time, as if via host automation and UI simultenously.
+    same time, as if via host automation and UI simultaneously.
 */
 struct ParameterThreadSafetyTest    : public PluginTest
 {
@@ -611,16 +611,16 @@ struct ParameterThreadSafetyTest    : public PluginTest
     {
     }
 
-    void runTest (PluginTests& ut, AudioPluginInstance& instance) override
+    void runTest (PluginTests& ut, juce::AudioPluginInstance& instance) override
     {
-        WaitableEvent startWaiter, endWaiter;
+        juce::WaitableEvent startWaiter, endWaiter;
         auto r = ut.getRandom();
         auto parameters = getNonBypassAutomatableParameters (instance);
         const bool isPluginInstrument = instance.getPluginDescription().isInstrument;
         const int numBlocks = 500;
 
         // This emulates the plugin itself setting a value for example from a slider within its UI
-        MessageManager::callAsync ([&, threadRandom = r]() mutable
+        juce::MessageManager::callAsync ([&, threadRandom = r]() mutable
                                    {
                                        startWaiter.signal();
 
@@ -635,16 +635,16 @@ struct ParameterThreadSafetyTest    : public PluginTest
         callReleaseResourcesOnMessageThreadIfVST3 (instance);
         callPrepareToPlayOnMessageThreadIfVST3 (instance, 44100.0, blockSize);
 
-        const int numChannelsRequired = jmax (instance.getTotalNumInputChannels(), instance.getTotalNumOutputChannels());
-        AudioBuffer<float> ab (numChannelsRequired, blockSize);
-        MidiBuffer mb;
+        const int numChannelsRequired = juce::jmax (instance.getTotalNumInputChannels(), instance.getTotalNumOutputChannels());
+        juce::AudioBuffer<float> ab (numChannelsRequired, blockSize);
+        juce::MidiBuffer mb;
 
         // Add a random note on if the plugin is a synth
         const int noteChannel = r.nextInt ({ 1, 17 });
         const int noteNumber = r.nextInt (128);
 
         if (isPluginInstrument)
-            addNoteOn (mb, noteChannel, noteNumber, jmin (10, blockSize));
+            addNoteOn (mb, noteChannel, noteNumber, juce::jmin (10, blockSize));
 
         startWaiter.wait();
 
@@ -679,7 +679,7 @@ struct AUvalTest    : public PluginTest
     {
     }
 
-    void runTest (PluginTests& ut, AudioPluginInstance& instance) override
+    void runTest (PluginTests& ut, juce::AudioPluginInstance& instance) override
     {
         const auto desc = instance.getPluginDescription();
 
@@ -746,7 +746,7 @@ struct VST3validator    : public PluginTest
     {
     }
 
-    void runTest (PluginTests& ut, AudioPluginInstance& instance) override
+    void runTest (PluginTests& ut, juce::AudioPluginInstance& instance) override
     {
         const auto desc = instance.getPluginDescription();
 
@@ -755,7 +755,7 @@ struct VST3validator    : public PluginTest
 
         auto vst3Validator = ut.getOptions().vst3Validator;
 
-        if (vst3Validator == File())
+        if (vst3Validator == juce::File())
         {
             ut.logMessage ("INFO: Skipping vst3 validator as validator path hasn't been set");
             return;

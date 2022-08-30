@@ -23,17 +23,17 @@ struct FuzzParametersTest  : public PluginTest
     {
     }
 
-    void runTest (PluginTests& ut, AudioPluginInstance& instance) override
+    void runTest (PluginTests& ut, juce::AudioPluginInstance& instance) override
     {
         for (auto parameter : getNonBypassAutomatableParameters (instance))
             fuzzTestParameter (ut, *parameter);
     }
 
 private:
-    void fuzzTestParameter (PluginTests& ut, AudioProcessorParameter& parameter)
+    void fuzzTestParameter (PluginTests& ut, juce::AudioProcessorParameter& parameter)
     {
         auto r = ut.getRandom();
-        ut.logVerboseMessage (String ("Fuzz testing parameter: ") + String (parameter.getParameterIndex()) + " - " + parameter.getName (512));
+        ut.logVerboseMessage (juce::String ("Fuzz testing parameter: ") + juce::String (parameter.getParameterIndex()) + " - " + parameter.getName (512));
 
         for (int i = 0; i < 5; ++i)
         {
@@ -42,8 +42,8 @@ private:
             parameter.setValue (value);
             const float v = parameter.getValue();
 
-            const String currentValueAsText = parameter.getCurrentValueAsText();
-            const String text = parameter.getText (value, 1024);
+            const juce::String currentValueAsText = parameter.getCurrentValueAsText();
+            const juce::String text = parameter.getText (value, 1024);
             const float valueForText = parameter.getValueForText (text);
             ignoreUnused (v, text, valueForText, currentValueAsText);
         }

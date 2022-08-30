@@ -65,3 +65,7 @@ install/testresults.txt
 **/bin
 **/tmp
 **/cmake_build
+
+# CLion
+cmake-build*
+.idea/

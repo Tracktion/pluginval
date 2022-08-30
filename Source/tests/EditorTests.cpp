@@ -26,7 +26,7 @@ struct EditorStressTest   : public PluginTest
     {
     }
 
-    void runTest (PluginTests& ut, AudioPluginInstance& instance) override
+    void runTest (PluginTests& ut, juce::AudioPluginInstance& instance) override
     {
         if (instance.hasEditor())
         {
@@ -59,7 +59,7 @@ struct EditorDPITest   : public PluginTest
     {
     }
 
-    void runTest (PluginTests& ut, AudioPluginInstance& instance) override
+    void runTest (PluginTests& ut, juce::AudioPluginInstance& instance) override
     {
         if (instance.hasEditor())
         {

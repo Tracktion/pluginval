@@ -20,10 +20,10 @@
 #include <thread>
 
 //==============================================================================
-struct PluginsUnitTestRunner    : public UnitTestRunner,
-                                  private Thread
+struct PluginsUnitTestRunner    : public juce::UnitTestRunner,
+                               private juce::Thread
 {
-    PluginsUnitTestRunner (std::function<void (const String&)> logCallback, std::unique_ptr<FileOutputStream> logDestination, int64 timeoutInMs)
+    PluginsUnitTestRunner (std::function<void (const juce::String&)> logCallback, std::unique_ptr<juce::FileOutputStream> logDestination, juce::int64 timeoutInMs)
         : Thread ("TimoutThread"),
           callback (std::move (logCallback)),
           outputStream (std::move (logDestination)),
@@ -41,7 +41,7 @@ struct PluginsUnitTestRunner    : public UnitTestRunner,
         stopThread (5000);
     }
 
-    FileOutputStream* getOutputFileStream() const
+    juce::FileOutputStream* getOutputFileStream() const
     {
         return outputStream.get();
     }
@@ -51,7 +51,7 @@ struct PluginsUnitTestRunner    : public UnitTestRunner,
         resetTimeout();
     }
 
-    void logMessage (const String& message) override
+    void logMessage (const juce::String& message) override
     {
         if (! canSendLogMessage)
             return;
@@ -68,65 +68,65 @@ struct PluginsUnitTestRunner    : public UnitTestRunner,
     }
 
 private:
-    std::function<void (const String&)> callback;
-    std::unique_ptr<FileOutputStream> outputStream;
-    const int64 timeoutMs = -1;
-    std::atomic<int64> timoutTime { -1 };
+    std::function<void (const juce::String&)> callback;
+    std::unique_ptr<juce::FileOutputStream> outputStream;
+    const juce::int64 timeoutMs = -1;
+    std::atomic<juce::int64> timoutTime { -1 };
     std::atomic<bool> canSendLogMessage { true };
 
     void resetTimeout()
     {
-        timoutTime = (Time::getCurrentTime() + RelativeTime::milliseconds (timeoutMs)).toMilliseconds();
+        timoutTime = (juce::Time::getCurrentTime() + juce::RelativeTime::milliseconds (timeoutMs)).toMilliseconds();
     }
 
     void run() override
     {
         while (! threadShouldExit())
         {
-            if (Time::getCurrentTime().toMilliseconds() > timoutTime)
+            if (juce::Time::getCurrentTime().toMilliseconds() > timoutTime)
             {
-                logMessage ("*** FAILED: Timeout after " + RelativeTime::milliseconds (timeoutMs).getDescription());
+                logMessage ("*** FAILED: Timeout after " + juce::RelativeTime::milliseconds (timeoutMs).getDescription());
                 canSendLogMessage = false;
                 outputStream.reset();
 
                 // Give the log a second to flush the message before terminating
-                Thread::sleep (1000);
-                Process::terminate();
+                juce::Thread::sleep (1000);
+                juce::Process::terminate();
             }
 
-            Thread::sleep (200);
+            juce::Thread::sleep (200);
         }
     }
 };
 
 //==============================================================================
 //==============================================================================
-static String getFileNameFromDescription (PluginTests& test)
+static juce::String getFileNameFromDescription (PluginTests& test)
 {
-    auto getBaseName = [&]() -> String
+    auto getBaseName = [&]() -> juce::String
     {
         if (auto pd = test.getDescriptions().getFirst())
-            return pd->manufacturerName + " - " + pd->name + " " + pd->version + " - " + SystemStats::getOperatingSystemName() + " " + pd->pluginFormatName;
+            return pd->manufacturerName + " - " + pd->name + " " + pd->version + " - " + juce::SystemStats::getOperatingSystemName() + " " + pd->pluginFormatName;
 
         const auto fileOrID = test.getFileOrID();
 
         if (fileOrID.isNotEmpty())
         {
-            if (File::isAbsolutePath (fileOrID))
-                return File (fileOrID).getFileName();
+            if (juce::File::isAbsolutePath (fileOrID))
+                return juce::File (fileOrID).getFileName();
         }
 
         return "pluginval Log";
     };
 
-    return getBaseName() + "_" + Time::getCurrentTime().toString (true, true).replace (":", ",") + ".txt";
+    return getBaseName() + "_" + juce::Time::getCurrentTime().toString (true, true).replace (":", ",") + ".txt";
 }
 
-static File getDestinationFile (PluginTests& test)
+static juce::File getDestinationFile (PluginTests& test)
 {
     const auto dir = test.getOptions().outputDir;
 
-    if (dir == File())
+    if (dir == juce::File())
         return {};
 
     if (dir.existsAsFile() || ! dir.createDirectory())
@@ -138,14 +138,14 @@ static File getDestinationFile (PluginTests& test)
     return dir.getChildFile (getFileNameFromDescription (test));
 }
 
-static std::unique_ptr<FileOutputStream> createDestinationFileStream (PluginTests& test)
+static std::unique_ptr<juce::FileOutputStream> createDestinationFileStream (PluginTests& test)
 {
     auto file = getDestinationFile (test);
 
-    if (file == File())
+    if (file == juce::File())
         return {};
 
-    std::unique_ptr<FileOutputStream> fos (file.createOutputStream());
+    std::unique_ptr<juce::FileOutputStream> fos (file.createOutputStream());
 
     if (fos && fos->openedOk())
         return fos;
@@ -168,7 +168,7 @@ static void updateFileNameIfPossible (PluginTests& test, PluginsUnitTestRunner& 
             return;
 
         const bool success = sourceFile.moveFileTo (sourceFile.getParentDirectory().getChildFile (destName));
-        ignoreUnused (success);
+        juce::ignoreUnused (success);
         jassert (success);
     }
 }
@@ -176,14 +176,14 @@ static void updateFileNameIfPossible (PluginTests& test, PluginsUnitTestRunner& 
 
 //==============================================================================
 //==============================================================================
-inline Array<UnitTestRunner::TestResult> runTests (PluginTests& test, std::function<void (const String&)> callback)
+inline juce::Array<juce::UnitTestRunner::TestResult> runTests (PluginTests& test, std::function<void (const juce::String&)> callback)
 {
     const auto options = test.getOptions();
-    Array<UnitTestRunner::TestResult> results;
+    juce::Array<juce::UnitTestRunner::TestResult> results;
     PluginsUnitTestRunner testRunner (std::move (callback), createDestinationFileStream (test), options.timeoutMs);
     testRunner.setAssertOnFailure (false);
 
-    Array<UnitTest*> testsToRun;
+    juce::Array<juce::UnitTest*> testsToRun;
     testsToRun.add (&test);
     testRunner.runTests (testsToRun, options.randomSeed);
 
@@ -195,16 +195,16 @@ inline Array<UnitTestRunner::TestResult> runTests (PluginTests& test, std::funct
     return results;
 }
 
-inline Array<UnitTestRunner::TestResult> validate (const String& fileOrIDToValidate, PluginTests::Options options, std::function<void (const String&)> callback)
+inline juce::Array<juce::UnitTestRunner::TestResult> validate (const juce::String& fileOrIDToValidate, PluginTests::Options options, std::function<void (const juce::String&)> callback)
 {
     PluginTests test (fileOrIDToValidate, options);
     return runTests (test, std::move (callback));
 }
 
-inline int getNumFailures (Array<UnitTestRunner::TestResult> results)
+inline int getNumFailures (juce::Array<juce::UnitTestRunner::TestResult> results)
 {
     return std::accumulate (results.begin(), results.end(), 0,
-                            [] (int count, const UnitTestRunner::TestResult& r) { return count + r.failures; });
+                            [] (int count, const juce::UnitTestRunner::TestResult& r) { return count + r.failures; });
 }
 
 
@@ -217,7 +217,7 @@ public:
     ChildProcessValidator (const juce::String& fileOrID_, PluginTests::Options options_,
                            std::function<void (juce::String)> validationStarted_,
                            std::function<void (juce::String, uint32_t /*exitCode*/)> validationEnded_,
-                           std::function<void (const String&)> outputGenerated_)
+                           std::function<void (const juce::String&)> outputGenerated_)
         : fileOrID (fileOrID_),
           options (options_),
           validationStarted (std::move (validationStarted_)),
@@ -244,13 +244,13 @@ private:
     const juce::String fileOrID;
     PluginTests::Options options;
 
-    ChildProcess childProcess;
+    juce::ChildProcess childProcess;
     std::thread thread;
     std::atomic<bool> isRunning { true };
 
     std::function<void (juce::String)> validationStarted;
     std::function<void (juce::String, uint32_t)> validationEnded;
-    std::function<void(const String&)> outputGenerated;
+    std::function<void(const juce::String&)> outputGenerated;
 
     //==============================================================================
     void run()
@@ -260,7 +260,7 @@ private:
         if (! isRunning)
             return;
 
-        juce::MessageManager::callAsync ([this, wr = WeakReference<ChildProcessValidator> (this)]
+        juce::MessageManager::callAsync ([this, wr = juce::WeakReference<ChildProcessValidator> (this)]
                                          {
                                              if (wr != nullptr && validationStarted)
                                                  validationStarted (fileOrID);
@@ -295,7 +295,7 @@ private:
             std::this_thread::sleep_for (100ms);
         }
 
-        juce::MessageManager::callAsync ([this, wr = WeakReference<ChildProcessValidator> (this), exitCode = childProcess.getExitCode()]
+        juce::MessageManager::callAsync ([this, wr = juce::WeakReference<ChildProcessValidator> (this), exitCode = childProcess.getExitCode()]
                                          {
                                              if (wr != nullptr)
                                              {
@@ -318,7 +318,7 @@ public:
     AsyncValidator (const juce::String& fileOrID_, PluginTests::Options options_,
                     std::function<void (juce::String)> validationStarted_,
                     std::function<void (juce::String, uint32_t /*exitCode*/)> validationEnded_,
-                    std::function<void (const String&)> outputGenerated_)
+                    std::function<void (const juce::String&)> outputGenerated_)
         : fileOrID (fileOrID_),
           options (options_),
           validationStarted (std::move (validationStarted_)),
@@ -350,12 +350,12 @@ private:
 
     std::function<void (juce::String)> validationStarted;
     std::function<void (juce::String, uint32_t)> validationEnded;
-    std::function<void (const String&)> outputGenerated;
+    std::function<void (const juce::String&)> outputGenerated;
 
     //==============================================================================
     void run()
     {
-        juce::MessageManager::callAsync ([this, wr = WeakReference<AsyncValidator> (this)]
+        juce::MessageManager::callAsync ([this, wr = juce::WeakReference<AsyncValidator> (this)]
                                          {
                                              if (wr != nullptr && validationStarted)
                                                  validationStarted (fileOrID);
@@ -363,7 +363,7 @@ private:
 
         const auto numFailues = getNumFailures (validate (fileOrID, options, outputGenerated));
 
-        juce::MessageManager::callAsync ([this, wr = WeakReference<AsyncValidator> (this), numFailues]
+        juce::MessageManager::callAsync ([this, wr = juce::WeakReference<AsyncValidator> (this), numFailues]
                                          {
                                              if (wr != nullptr)
                                              {
@@ -382,7 +382,7 @@ private:
 ValidationPass::ValidationPass (const juce::String& fileOrIdToValidate, PluginTests::Options opts, ValidationType vt,
                                 std::function<void (juce::String)> validationStarted,
                                 std::function<void (juce::String, uint32_t)> validationEnded,
-                                std::function<void(const String&)> outputGenerated)
+                                std::function<void(const juce::String&)> outputGenerated)
 {
     if (vt == ValidationType::inProcess)
     {
@@ -421,7 +421,7 @@ public:
                     ValidationType validationType_,
                     std::function<void (juce::String)> validationStarted_,
                     std::function<void (juce::String, uint32_t /*exitCode*/)> validationEnded_,
-                    std::function<void(const String&)> outputGenerated_,
+                    std::function<void(const juce::String&)> outputGenerated_,
                     std::function<void()> allCompleteCallback_)
         : pluginsToValidate (std::move (fileOrIDsToValidate)),
           options (std::move (options_)),
@@ -444,7 +444,7 @@ private:
 
     std::function<void (juce::String)> validationStarted;
     std::function<void (juce::String, uint32_t /*exitCode*/)> validationEnded;
-    std::function<void(const String&)> outputGenerated;
+    std::function<void(const juce::String&)> outputGenerated;
     std::function<void()> completeCallback;
 
     //==============================================================================
@@ -491,20 +491,20 @@ bool Validator::isConnected() const
     return multiValidator != nullptr;
 }
 
-bool Validator::validate (const StringArray& fileOrIDsToValidate, PluginTests::Options options)
+bool Validator::validate (const juce::StringArray& fileOrIDsToValidate, PluginTests::Options options)
 {
     sendChangeMessage();
     multiValidator = std::make_unique<MultiValidator> (fileOrIDsToValidate, options, launchInProcess ? ValidationType::inProcess : ValidationType::childProcess,
                                                        [this] (juce::String id) { listeners.call (&Listener::validationStarted, id); },
                                                        [this] (juce::String id, uint32_t exitCode) { listeners.call (&Listener::itemComplete, id, exitCode); },
-                                                       [this] (const String& m) { listeners.call (&Listener::logMessage, m); },
+                                                       [this] (const juce::String& m) { listeners.call (&Listener::logMessage, m); },
                                                        [this] { listeners.call (&Listener::allItemsComplete); triggerAsyncUpdate(); });
     return true;
 }
 
-bool Validator::validate (const Array<PluginDescription>& pluginsToValidate, PluginTests::Options options)
+bool Validator::validate (const juce::Array<juce::PluginDescription>& pluginsToValidate, PluginTests::Options options)
 {
-    StringArray fileOrIDsToValidate;
+    juce::StringArray fileOrIDsToValidate;
 
     for (auto pd : pluginsToValidate)
         fileOrIDsToValidate.add (pd.fileOrIdentifier);

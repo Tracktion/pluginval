@@ -14,7 +14,7 @@
 
 #pragma once
 
-#include <JuceHeader.h>
+#include "juce_audio_processors/juce_audio_processors.h"
 
 //==============================================================================
 struct StopwatchTimer
@@ -26,25 +26,25 @@ struct StopwatchTimer
 
     void reset()
     {
-        startTime = Time::getMillisecondCounter();
+        startTime = juce::Time::getMillisecondCounter();
     }
 
-    String getDescription() const
+    juce::String getDescription() const
     {
-        const auto relTime = RelativeTime::milliseconds (static_cast<int> (Time::getMillisecondCounter() - startTime));
+        const auto relTime = juce::RelativeTime::milliseconds (static_cast<int> (juce::Time::getMillisecondCounter() - startTime));
         return relTime.getDescription();
     }
 
 private:
-    uint32 startTime;
+    juce::uint32 startTime;
 };
 
 
 //==============================================================================
 /** Returns the set of automatable parameters excluding the bypass parameter. */
-static inline Array<AudioProcessorParameter*> getNonBypassAutomatableParameters (AudioPluginInstance& instance)
+static inline juce::Array<juce::AudioProcessorParameter*> getNonBypassAutomatableParameters (juce::AudioPluginInstance& instance)
 {
-    Array<AudioProcessorParameter*> parameters;
+    juce::Array<juce::AudioProcessorParameter*> parameters;
 
     for (auto p : instance.getParameters())
         if (p->isAutomatable() && p != instance.getBypassParameter())
@@ -55,7 +55,7 @@ static inline Array<AudioProcessorParameter*> getNonBypassAutomatableParameters 
 
 //==============================================================================
 template<typename UnaryFunction>
-void iterateAudioBuffer (AudioBuffer<float>& ab, UnaryFunction fn)
+void iterateAudioBuffer (juce::AudioBuffer<float>& ab, UnaryFunction fn)
 {
     float** sampleData = ab.getArrayOfWritePointers();
 
@@ -64,10 +64,10 @@ void iterateAudioBuffer (AudioBuffer<float>& ab, UnaryFunction fn)
             fn (sampleData[c][s]);
 }
 
-static inline void fillNoise (AudioBuffer<float>& ab) noexcept
+static inline void fillNoise (juce::AudioBuffer<float>& ab) noexcept
 {
-    Random r;
-    ScopedNoDenormals noDenormals;
+    juce::Random r;
+    juce::ScopedNoDenormals noDenormals;
 
     float** sampleData = ab.getArrayOfWritePointers();
 
@@ -76,7 +76,7 @@ static inline void fillNoise (AudioBuffer<float>& ab) noexcept
             sampleData[c][s] = r.nextFloat() * 2.0f - 1.0f;
 }
 
-static inline int countNaNs (AudioBuffer<float>& ab) noexcept
+static inline int countNaNs (juce::AudioBuffer<float>& ab) noexcept
 {
     int count = 0;
     iterateAudioBuffer (ab, [&count] (float s)
@@ -88,7 +88,7 @@ static inline int countNaNs (AudioBuffer<float>& ab) noexcept
     return count;
 }
 
-static inline int countInfs (AudioBuffer<float>& ab) noexcept
+static inline int countInfs (juce::AudioBuffer<float>& ab) noexcept
 {
     int count = 0;
     iterateAudioBuffer (ab, [&count] (float s)
@@ -100,7 +100,7 @@ static inline int countInfs (AudioBuffer<float>& ab) noexcept
     return count;
 }
 
-static inline int countSubnormals (AudioBuffer<float>& ab) noexcept
+static inline int countSubnormals (juce::AudioBuffer<float>& ab) noexcept
 {
     int count = 0;
     iterateAudioBuffer (ab, [&count] (float s)
@@ -112,17 +112,17 @@ static inline int countSubnormals (AudioBuffer<float>& ab) noexcept
     return count;
 }
 
-static inline void addNoteOn (MidiBuffer& mb, int channel, int noteNumber, int sample)
+static inline void addNoteOn (juce::MidiBuffer& mb, int channel, int noteNumber, int sample)
 {
     mb.addEvent (juce::MidiMessage::noteOn (channel, noteNumber, 0.5f), sample);
 }
 
-static inline void addNoteOff (MidiBuffer& mb, int channel, int noteNumber, int sample)
+static inline void addNoteOff (juce::MidiBuffer& mb, int channel, int noteNumber, int sample)
 {
     mb.addEvent (juce::MidiMessage::noteOff (channel, noteNumber, 0.5f), sample);
 }
 
-static inline float getParametersSum (AudioPluginInstance& instance)
+static inline float getParametersSum (juce::AudioPluginInstance& instance)
 {
     float value = 0.0f;
 
@@ -135,11 +135,11 @@ static inline float getParametersSum (AudioPluginInstance& instance)
 
 //==============================================================================
 //==============================================================================
-static std::unique_ptr<AudioProcessorEditor> createAndShowEditorOnMessageThread (AudioPluginInstance& instance)
+static std::unique_ptr<juce::AudioProcessorEditor> createAndShowEditorOnMessageThread (juce::AudioPluginInstance& instance)
 {
-    std::unique_ptr<AudioProcessorEditor> editor;
+    std::unique_ptr<juce::AudioProcessorEditor> editor;
 
-    if (MessageManager::getInstance()->isThisTheMessageThread())
+    if (juce::MessageManager::getInstance()->isThisTheMessageThread())
     {
         if (! instance.hasEditor())
             return {};
@@ -155,14 +155,14 @@ static std::unique_ptr<AudioProcessorEditor> createAndShowEditorOnMessageThread 
             // Pump the message loop for a couple of seconds for the window to initialise itself
             // For some reason this blocks on Linux though so we'll avoid doing it
            #if ! JUCE_LINUX
-            MessageManager::getInstance()->runDispatchLoopUntil (200);
+             juce::MessageManager::getInstance()->runDispatchLoopUntil (200);
            #endif
         }
     }
     else
     {
-        WaitableEvent waiter;
-        MessageManager::callAsync ([&]
+        juce::WaitableEvent waiter;
+        juce::MessageManager::callAsync ([&]
                                    {
                                        editor = createAndShowEditorOnMessageThread (instance);
                                        waiter.signal();
@@ -173,16 +173,16 @@ static std::unique_ptr<AudioProcessorEditor> createAndShowEditorOnMessageThread 
     return editor;
 }
 
-static void deleteEditorOnMessageThread (std::unique_ptr<AudioProcessorEditor> editor)
+static void deleteEditorOnMessageThread (std::unique_ptr<juce::AudioProcessorEditor> editor)
 {
-    if (MessageManager::getInstance()->isThisTheMessageThread())
+    if (juce::MessageManager::getInstance()->isThisTheMessageThread())
     {
         editor.reset();
         return;
     }
 
-    WaitableEvent waiter;
-    MessageManager::callAsync ([&]
+    juce::WaitableEvent waiter;
+    juce::MessageManager::callAsync ([&]
                                {
                                    editor.reset();
                                    waiter.signal();
@@ -192,18 +192,18 @@ static void deleteEditorOnMessageThread (std::unique_ptr<AudioProcessorEditor> e
 
 //==============================================================================
 //==============================================================================
-inline void callPrepareToPlayOnMessageThreadIfVST3 (AudioPluginInstance& instance,
+inline void callPrepareToPlayOnMessageThreadIfVST3 (juce::AudioPluginInstance& instance,
                                                     double sampleRate, int blockSize)
 {
     if (instance.getPluginDescription().pluginFormatName != "VST3"
-        || MessageManager::getInstance()->isThisTheMessageThread())
+        || juce::MessageManager::getInstance()->isThisTheMessageThread())
     {
         instance.prepareToPlay (sampleRate, blockSize);
         return;
     }
 
-    WaitableEvent waiter;
-    MessageManager::callAsync ([&]
+    juce::WaitableEvent waiter;
+    juce::MessageManager::callAsync ([&]
                                {
                                    instance.prepareToPlay (sampleRate, blockSize);
                                    waiter.signal();
@@ -211,17 +211,17 @@ inline void callPrepareToPlayOnMessageThreadIfVST3 (AudioPluginInstance& instanc
     waiter.wait();
 }
 
-inline void callReleaseResourcesOnMessageThreadIfVST3 (AudioPluginInstance& instance)
+inline void callReleaseResourcesOnMessageThreadIfVST3 (juce::AudioPluginInstance& instance)
 {
     if (instance.getPluginDescription().pluginFormatName != "VST3"
-        || MessageManager::getInstance()->isThisTheMessageThread())
+        || juce::MessageManager::getInstance()->isThisTheMessageThread())
     {
         instance.releaseResources();
         return;
     }
 
-    WaitableEvent waiter;
-    MessageManager::callAsync ([&]
+    juce::WaitableEvent waiter;
+    juce::MessageManager::callAsync ([&]
                                {
                                    instance.releaseResources();
                                    waiter.signal();
@@ -231,17 +231,17 @@ inline void callReleaseResourcesOnMessageThreadIfVST3 (AudioPluginInstance& inst
 
 inline juce::MemoryBlock callGetStateInformationOnMessageThreadIfVST3 (juce::AudioPluginInstance& instance)
 {
-    MemoryBlock state;
+    juce::MemoryBlock state;
 
     if (instance.getPluginDescription().pluginFormatName != "VST3"
-        || MessageManager::getInstance()->isThisTheMessageThread())
+        || juce::MessageManager::getInstance()->isThisTheMessageThread())
     {
         instance.getStateInformation (state);
     }
     else
     {
-        WaitableEvent waiter;
-        MessageManager::callAsync ([&]
+        juce::WaitableEvent waiter;
+        juce::MessageManager::callAsync ([&]
                                    {
                                        instance.getStateInformation (state);
                                        waiter.signal();
@@ -255,14 +255,14 @@ inline juce::MemoryBlock callGetStateInformationOnMessageThreadIfVST3 (juce::Aud
 inline void callSetStateInformationOnMessageThreadIfVST3 (juce::AudioPluginInstance& instance, const juce::MemoryBlock& state)
 {
     if (instance.getPluginDescription().pluginFormatName != "VST3"
-        || MessageManager::getInstance()->isThisTheMessageThread())
+        || juce::MessageManager::getInstance()->isThisTheMessageThread())
     {
         instance.setStateInformation (state.getData(), (int) state.getSize());
     }
     else
     {
-        WaitableEvent waiter;
-        MessageManager::callAsync ([&]
+        juce::WaitableEvent waiter;
+        juce::MessageManager::callAsync ([&]
                                    {
                                        instance.setStateInformation (state.getData(), (int) state.getSize());
                                        waiter.signal();
@@ -277,7 +277,7 @@ inline void callSetStateInformationOnMessageThreadIfVST3 (juce::AudioPluginInsta
 */
 struct ScopedEditorShower
 {
-    ScopedEditorShower (AudioPluginInstance& instance)
+    ScopedEditorShower (juce::AudioPluginInstance& instance)
         : editor (createAndShowEditorOnMessageThread (instance))
     {
     }
@@ -287,7 +287,7 @@ struct ScopedEditorShower
         deleteEditorOnMessageThread (std::move (editor));
     }
 
-    std::unique_ptr<AudioProcessorEditor> editor;
+    std::unique_ptr<juce::AudioProcessorEditor> editor;
 };
 
 
@@ -295,7 +295,7 @@ struct ScopedEditorShower
 //==============================================================================
 struct ScopedPluginDeinitialiser
 {
-    ScopedPluginDeinitialiser (AudioPluginInstance& ap)
+    ScopedPluginDeinitialiser (juce::AudioPluginInstance& ap)
         : instance (ap), sampleRate (ap.getSampleRate()), blockSize (ap.getBlockSize())
     {
         callReleaseResourcesOnMessageThreadIfVST3 (instance);
@@ -307,7 +307,7 @@ struct ScopedPluginDeinitialiser
             callPrepareToPlayOnMessageThreadIfVST3 (instance, sampleRate, blockSize);
     }
 
-    AudioPluginInstance& instance;
+    juce::AudioPluginInstance& instance;
     const double sampleRate;
     const int blockSize;
 };
@@ -317,7 +317,7 @@ struct ScopedPluginDeinitialiser
 //==============================================================================
 struct ScopedBusesLayout
 {
-    ScopedBusesLayout (AudioProcessor& ap)
+    ScopedBusesLayout (juce::AudioProcessor& ap)
         : processor (ap), currentLayout (ap.getBusesLayout())
     {
     }
@@ -327,8 +327,8 @@ struct ScopedBusesLayout
         processor.setBusesLayout (currentLayout);
     }
 
-    AudioProcessor& processor;
-    AudioProcessor::BusesLayout currentLayout;
+    juce::AudioProcessor& processor;
+    juce::AudioProcessor::BusesLayout currentLayout;
 };
 
 

@@ -23,7 +23,7 @@ struct BasicBusTest   : public PluginTest
     {
     }
 
-    void runTest (PluginTests& ut, AudioPluginInstance& instance) override
+    void runTest (PluginTests& ut, juce::AudioPluginInstance& instance) override
     {
         const ScopedPluginDeinitialiser deinitialiser (instance);
         const auto currentLayout = instance.getBusesLayout();
@@ -33,8 +33,8 @@ struct BasicBusTest   : public PluginTest
             listBuses (ut, instance, true);
             listBuses (ut, instance, false);
 
-            ut.logMessage ("Main bus num input channels: " + String (instance.getMainBusNumInputChannels()));
-            ut.logMessage ("Main bus num output channels: " + String (instance.getMainBusNumOutputChannels()));
+            ut.logMessage ("Main bus num input channels: " + juce::String (instance.getMainBusNumInputChannels()));
+            ut.logMessage ("Main bus num output channels: " + juce::String (instance.getMainBusNumOutputChannels()));
         }
 
         ut.beginTest ("Enabling all buses");
@@ -52,15 +52,15 @@ struct BasicBusTest   : public PluginTest
         ut.beginTest ("Restoring default layout");
         {
             ut.expect (instance.setBusesLayout (currentLayout), "Unable to restore default layout");
-            ut.logMessage ("Main bus num input channels: " + String (instance.getMainBusNumInputChannels()));
-            ut.logMessage ("Main bus num output channels: " + String (instance.getMainBusNumOutputChannels()));
+            ut.logMessage ("Main bus num input channels: " + juce::String (instance.getMainBusNumInputChannels()));
+            ut.logMessage ("Main bus num output channels: " + juce::String (instance.getMainBusNumOutputChannels()));
         }
     }
 
-    static void listBuses (PluginTests& ut, AudioPluginInstance& instance, bool inputs)
+    static void listBuses (PluginTests& ut, juce::AudioPluginInstance& instance, bool inputs)
     {
         const int numBuses = instance.getBusCount (inputs);
-        StringArray namedLayouts, discreteLayouts;
+        juce::StringArray namedLayouts, discreteLayouts;
 
         for (int busNum = 0; busNum < numBuses; ++busNum)
         {
@@ -75,34 +75,34 @@ struct BasicBusTest   : public PluginTest
         }
 
         ut.logMessage (inputs ? "Inputs:" : "Outputs:");
-        ut.logMessage ("\tNamed layouts: " + (namedLayouts.isEmpty() ? String ("None") : namedLayouts.joinIntoString (", ")));
-        ut.logMessage ("\tDiscrete layouts: " + (discreteLayouts.isEmpty() ? String ("None") : discreteLayouts.joinIntoString (", ")));
+        ut.logMessage ("\tNamed layouts: " + (namedLayouts.isEmpty() ?juce::String ("None") : namedLayouts.joinIntoString (", ")));
+        ut.logMessage ("\tDiscrete layouts: " + (discreteLayouts.isEmpty() ?juce::String ("None") : discreteLayouts.joinIntoString (", ")));
     }
 
-    static Array<AudioChannelSet> supportedLayoutsWithNamedChannels (AudioProcessor::Bus& bus)
+    static juce::Array<juce::AudioChannelSet> supportedLayoutsWithNamedChannels (juce::AudioProcessor::Bus& bus)
     {
-        Array<AudioChannelSet> sets;
+        juce::Array<juce::AudioChannelSet> sets;
 
-        for (int i = 0; i <= AudioChannelSet::maxChannelsOfNamedLayout; ++i)
+        for (int i = 0; i <= juce::AudioChannelSet::maxChannelsOfNamedLayout; ++i)
         {
-            AudioChannelSet set;
+            juce::AudioChannelSet set;
 
-            if (! (set = AudioChannelSet::namedChannelSet  (i)).isDisabled() && bus.isLayoutSupported (set))
+            if (! (set = juce::AudioChannelSet::namedChannelSet  (i)).isDisabled() && bus.isLayoutSupported (set))
                 sets.add (set);
         }
 
         return sets;
     }
 
-    static Array<AudioChannelSet> supportedLayoutsWithDiscreteChannels (AudioProcessor::Bus& bus)
+    static juce::Array<juce::AudioChannelSet> supportedLayoutsWithDiscreteChannels (juce::AudioProcessor::Bus& bus)
     {
-        Array<AudioChannelSet> sets;
+        juce::Array<juce::AudioChannelSet> sets;
 
         for (int i = 0; i <= 32; ++i)
         {
-            AudioChannelSet set;
+            juce::AudioChannelSet set;
 
-            if (! (set = AudioChannelSet::discreteChannels (i)).isDisabled() && bus.isLayoutSupported (set))
+            if (! (set = juce::AudioChannelSet::discreteChannels (i)).isDisabled() && bus.isLayoutSupported (set))
                 sets.add (set);
         }
 
