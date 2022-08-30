@@ -43,8 +43,6 @@ jobs:
           apt install -y p7zip-full git wget gpg
           apt purge --auto-remove cmake
           wget -O - https://apt.kitware.com/keys/kitware-archive-latest.asc 2>/dev/null | gpg --dearmor - | tee /etc/apt/trusted.gpg.d/kitware.gpg >/dev/null
-          # wget -q -O - https://apt.kitware.com/keys/kitware-archive-latest.asc
-          # apt-key add kitware-archive-latest.asc
           apt-add-repository 'deb https://apt.kitware.com/ubuntu/ bionic main'
           apt update
           apt install -y sudo cmake curl
