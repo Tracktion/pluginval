@@ -33,6 +33,13 @@ jobs:
     runs-on: ${{ matrix.os }}
     container: ${{ matrix.container }}
     steps:
+      - name: Log
+        if: ${{ matrix.name == 'Linux' }}
+        shell: bash
+        run: |
+          git --version
+          sudo apt-get update
+
       - uses: actions/checkout@v3
         with:
           submodules: true
