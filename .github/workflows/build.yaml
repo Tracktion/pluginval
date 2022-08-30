@@ -47,7 +47,7 @@ jobs:
           # apt-key add kitware-archive-latest.asc
           apt-add-repository 'deb https://apt.kitware.com/ubuntu/ bionic main'
           apt update
-          apt install cmake
+          apt install -y cmake
 
       - uses: actions/checkout@v3
         with:
