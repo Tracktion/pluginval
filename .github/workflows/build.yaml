@@ -39,7 +39,7 @@ jobs:
         run: |
           apt update && apt install sudo
           sudo apt update
-          sudo apt install software-properties-common
+          sudo apt install -y software-properties-common
           sudo apt update
           sudo add-apt-repository ppa:ubuntu-toolchain-r/test
           sudo apt-get update
