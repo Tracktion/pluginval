@@ -117,7 +117,7 @@ jobs:
           
       - name: Build JUCE example plugins
         if: steps.cache-plugins.outputs.cache-hit != 'true'
-        working-directory: modules/juce
+        working-directory: ${{ github.workspace }}/modules/juce
         shell: bash
         run: |
           echo JUCE dir:
