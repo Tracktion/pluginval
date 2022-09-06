@@ -62,7 +62,8 @@ jobs:
           echo "PLUGIN_BUILD_DIR=modules/juce/Builds" >> $GITHUB_ENV
           
           # This needs to be absolute to make action/cache happy
-          echo "PLUGIN_CACHE_PATH=${{ github.workspace }}/modules/juce/Builds/examples/Plugins" >> $GITHUB_ENV
+          WORKING_DIR=$(pwd)
+          echo "PLUGIN_CACHE_PATH=$WORKING_DIR/modules/juce/Builds/examples/Plugins" >> $GITHUB_ENV
       
       - name: Install dependencies (Linux)
         if: ${{ matrix.name == 'Linux' }}
@@ -117,10 +118,9 @@ jobs:
           
       - name: Build JUCE example plugins
         if: steps.cache-plugins.outputs.cache-hit != 'true'
-        # working-directory: ${{ github.workspace }}/modules/juce
+        working-directory: modules/juce
         shell: bash
         run: |
-          cd ${{ github.workspace }}/modules/juce
           echo JUCE dir:
           pwd
           cmake -B Builds -DJUCE_BUILD_EXAMPLES=ON -DCMAKE_BUILD_TYPE=Release -DCMAKE_C_COMPILER_LAUNCHER=ccache -DCMAKE_CXX_COMPILER_LAUNCHER=ccache .
@@ -133,6 +133,7 @@ jobs:
         shell: bash
         run: |
           echo "github.workspace: ${{ github.workspace }}"
+          echo cwd: $(pwd)
           cd ${{ env.PLUGIN_CACHE_PATH }}
           tree
       
