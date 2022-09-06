@@ -108,6 +108,11 @@ void PluginTests::runTest()
         expect (! typesFound.isEmpty(),
                 "No types found. This usually means the plugin binary is missing or damaged, "
                 "an incompatible format or that it is an AU that isn't found by macOS so can't be created.");
+
+
+        if (typesFound.isEmpty())
+            if (! juce::File (fileOrID).exists())
+                logMessage (juce::String ("There was no plugin file found at: XYYX").replace ("XYYX", fileOrID));
     }
 
     for (auto pd : typesFound)

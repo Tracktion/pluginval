@@ -18,9 +18,10 @@ jobs:
       matrix:
         include:
           - name: Linux
-            os: ubuntu-18.04
+            os: ubuntu-latest
             app: pluginval
             test-binary: ./pluginval
+            container: ubuntu:18.04
           - name: macOS
             os: macos-12
             app: pluginval.app
@@ -30,7 +31,22 @@ jobs:
             app: pluginval.exe
             test-binary: ./pluginval.exe
     runs-on: ${{ matrix.os }}
+    container: ${{ matrix.container }}
     steps:
+      - name: Configure Docker container
+        if: ${{ matrix.name == 'Linux' }}
+        shell: bash
+        run: |
+          # install workflow deps needed because we're on a bare ubuntu container
+          apt update && apt install -y software-properties-common
+          add-apt-repository ppa:git-core/ppa -y
+          apt install -y p7zip-full git wget gpg
+          apt purge --auto-remove cmake
+          wget -O - https://apt.kitware.com/keys/kitware-archive-latest.asc 2>/dev/null | gpg --dearmor - | tee /etc/apt/trusted.gpg.d/kitware.gpg >/dev/null
+          apt-add-repository 'deb https://apt.kitware.com/ubuntu/ bionic main'
+          apt update
+          apt install -y sudo cmake curl tree
+
       - uses: actions/checkout@v3
         with:
           submodules: true
@@ -46,7 +62,8 @@ jobs:
           echo "PLUGIN_BUILD_DIR=modules/juce/Builds" >> $GITHUB_ENV
           
           # This needs to be absolute to make action/cache happy
-          echo "PLUGIN_CACHE_PATH=${{ github.workspace }}/modules/juce/Builds/examples/Plugins" >> $GITHUB_ENV
+          WORKING_DIR=$(pwd)
+          echo "PLUGIN_CACHE_PATH=$WORKING_DIR/modules/juce/Builds/examples/Plugins" >> $GITHUB_ENV
       
       - name: Install dependencies (Linux)
         if: ${{ matrix.name == 'Linux' }}
@@ -61,7 +78,7 @@ jobs:
         run: |
           curl -O ${{ secrets.VST2_SDK_URL }}
           7z x vstsdk2.4.zip
-          echo "VST2_SDK_DIR=${{ github.workspace }}/vstsdk2.4" >> $GITHUB_ENV
+          echo "VST2_SDK_DIR=$(pwd)/vstsdk2.4" >> $GITHUB_ENV
 
       - name: Import Certificates
         uses: apple-actions/import-codesign-certs@v1
@@ -108,7 +125,7 @@ jobs:
           # Full list of targets https://gist.github.com/sudara/05be084efa371f4e43e21eb19ce04c50
           # Be sure to manually break the cache in the previous step if you want to add/remove plugins
           cmake --build Builds --config Release --target DSPModulePluginDemo_All --target MultiOutSynthPlugin_All
-      
+
       - name: Validate JUCE Plugin examples (VST3)
         shell: bash
         run: |
