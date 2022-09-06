@@ -78,7 +78,7 @@ jobs:
         run: |
           curl -O ${{ secrets.VST2_SDK_URL }}
           7z x vstsdk2.4.zip
-          echo "VST2_SDK_DIR=${{ github.workspace }}/vstsdk2.4" >> $GITHUB_ENV
+          echo "VST2_SDK_DIR=$(pwd)/vstsdk2.4" >> $GITHUB_ENV
 
       - name: Import Certificates
         uses: apple-actions/import-codesign-certs@v1
