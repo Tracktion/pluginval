@@ -117,9 +117,10 @@ jobs:
           
       - name: Build JUCE example plugins
         if: steps.cache-plugins.outputs.cache-hit != 'true'
-        working-directory: ${{ github.workspace }}/modules/juce
+        # working-directory: ${{ github.workspace }}/modules/juce
         shell: bash
         run: |
+          cd ${{ github.workspace }}/modules/juce
           echo JUCE dir:
           pwd
           cmake -B Builds -DJUCE_BUILD_EXAMPLES=ON -DCMAKE_BUILD_TYPE=Release -DCMAKE_C_COMPILER_LAUNCHER=ccache -DCMAKE_CXX_COMPILER_LAUNCHER=ccache .
