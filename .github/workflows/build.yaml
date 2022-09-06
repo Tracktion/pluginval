@@ -131,6 +131,7 @@ jobs:
         if: ${{ matrix.name == 'Linux' }}
         shell: bash
         run: |
+          echo "github.workspace: ${{ github.workspace }}"
           cd ${{ env.PLUGIN_CACHE_PATH }}
           tree
       
