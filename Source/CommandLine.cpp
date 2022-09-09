@@ -40,18 +40,20 @@ static void hideDockIcon()
 
 //==============================================================================
 #if JUCE_MAC
-static void killWithoutMercy (int)
+static void kill9WithSomeMercy (int signal)
 {
-    kill (getpid(), SIGKILL);
+   juce::Logger::writeToLog ("pluginval received " + juce::String(::strsignal(signal)) + ", exiting immediately");
+   kill (getpid(), SIGKILL);
 }
 
+// Avoid showing the macOS crash dialog, which can cause the process to hang
 static void setupSignalHandling()
 {
     const int signals[] = { SIGFPE, SIGILL, SIGSEGV, SIGBUS, SIGABRT };
 
     for (int i = 0; i < juce::numElementsInArray (signals); ++i)
     {
-        ::signal (signals[i], killWithoutMercy);
+        ::signal (signals[i], kill9WithSomeMercy);
         ::siginterrupt (signals[i], 1);
     }
 }
