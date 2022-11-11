@@ -33,7 +33,7 @@ struct PluginsUnitTestRunner    : public juce::UnitTestRunner,
         resetTimeout();
 
         if (timeoutInMs > 0)
-            startThread (1);
+            startThread (juce::Thread::Priority::low);
     }
 
     ~PluginsUnitTestRunner() override

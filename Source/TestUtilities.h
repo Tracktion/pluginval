@@ -57,7 +57,7 @@ static inline juce::Array<juce::AudioProcessorParameter*> getNonBypassAutomatabl
 template<typename UnaryFunction>
 void iterateAudioBuffer (juce::AudioBuffer<float>& ab, UnaryFunction fn)
 {
-    float** sampleData = ab.getArrayOfWritePointers();
+    auto sampleData = ab.getArrayOfWritePointers();
 
     for (int c = ab.getNumChannels(); --c >= 0;)
         for (int s = ab.getNumSamples(); --s >= 0;)
@@ -69,7 +69,7 @@ static inline void fillNoise (juce::AudioBuffer<float>& ab) noexcept
     juce::Random r;
     juce::ScopedNoDenormals noDenormals;
 
-    float** sampleData = ab.getArrayOfWritePointers();
+    auto sampleData = ab.getArrayOfWritePointers();
 
     for (int c = ab.getNumChannels(); --c >= 0;)
         for (int s = ab.getNumSamples(); --s >= 0;)
