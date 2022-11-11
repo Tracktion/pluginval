@@ -33,7 +33,7 @@ juce_add_gui_app(pluginval
     COMPANY_NAME                    Tracktion
     ICON_BIG                        "${CMAKE_CURRENT_SOURCE_DIR}/Source/binarydata/icon.png"
     HARDENED_RUNTIME_ENABLED        TRUE
-    HARDENED_RUNTIME_OPTIONS        com.apple.security.cs.allow-unsigned-executable-memory com.apple.security.cs.disable-library-validation)
+    HARDENED_RUNTIME_OPTIONS        com.apple.security.cs.allow-unsigned-executable-memory com.apple.security.cs.disable-library-validation com.apple.security.get-task-allow)
 
 juce_generate_juce_header(pluginval)
 
