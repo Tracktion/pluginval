@@ -1,5 +1,11 @@
 # pluginval Change List
 
+### 1.0.2
+- Added com.apple.security.get-task-allow to allow debugging on pluginval [macOS]
+
+### 1.0.1
+- Fixed support for Ubuntu 18.04
+
 ### 1.0.0
 - Added running auval as a test for Audio Units on macOS (levels 5 and up)
 - Added running VST3's validator as a test for VST3s (levels 5 and up)
