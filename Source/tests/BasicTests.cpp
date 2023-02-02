@@ -313,19 +313,21 @@ struct PluginStateTestRestoration   : public PluginTest
         // Read state
         auto originalState = callGetStateInformationOnMessageThreadIfVST3 (instance);
 
-        // Check current sum of parameter values
-        const float originalParamsSum = getParametersSum (instance);
+        const auto tolaratedDiff = 0.1f;
 
         // Set random parameter values
-        for (auto parameter : getNonBypassAutomatableParameters (instance))
-            parameter->setValue (r.nextFloat());
+        for (auto parameter : getNonBypassAutomatableParameters(instance))
+        {
+			const auto expectedValue = r.nextFloat();
+            parameter->setValue(expectedValue);
 
-        // Restore original state
-        callSetStateInformationOnMessageThreadIfVST3 (instance, originalState);
+            // Restore original state
+            callSetStateInformationOnMessageThreadIfVST3(instance, originalState);
 
-        // Check parameter values return to original
-        ut.expectWithinAbsoluteError (getParametersSum (instance), originalParamsSum, 0.1f,
-                                      "Parameters not restored on setStateInformation");
+            // Check parameter values return to original
+            ut.expectWithinAbsoluteError(parameter->getValue(), expectedValue, tolaratedDiff,
+                parameter->getName(1024) << " not restored on setStateInformation");
+        }
 
         if (strictnessLevel >= 8)
         {
