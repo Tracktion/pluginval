@@ -63,7 +63,14 @@ struct PluginsUnitTestRunner    : public juce::UnitTestRunner,
             if (outputStream)
                 *outputStream << message << "\n";
 
-            callback (message + "\n");
+            if (juce::MessageManager::getInstance()->isThisTheMessageThread())
+            {
+                callback (message + "\n");
+            }
+            else
+            {
+                juce::MessageManager::callAsync([this, message] { callback (message + "\n"); });
+            }
         }
     }
 
