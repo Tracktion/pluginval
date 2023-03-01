@@ -38,6 +38,24 @@ static void hideDockIcon()
    #endif
 }
 
+inline std::mutex& getCoutMutex()
+{
+    static std::mutex m;
+    return m;
+}
+
+inline void logLine (const juce::String& m)
+{
+    const std::scoped_lock sl (getCoutMutex());
+    std::cout << m << std::endl;
+}
+
+inline void logAndFlush (const juce::String& m)
+{
+    const std::scoped_lock sl (getCoutMutex());
+    std::cout << m << std::flush;
+}
+
 //==============================================================================
 #if JUCE_MAC
 static void kill9WithSomeMercy (int signal)
@@ -78,7 +96,7 @@ void CommandLineValidator::validate (const juce::String& fileOrID, PluginTests::
     validator = std::make_unique<ValidationPass> (fileOrID, options, ValidationType::inProcess,
                                                   [] (auto id)
                                                   {
-                                                      std::cout << "Started validating: " << id << std::endl;
+                                                      logLine ("Started validating: " + id);
                                                   },
                                                   [] (auto, uint32_t exitCode)
                                                   {
@@ -89,7 +107,7 @@ void CommandLineValidator::validate (const juce::String& fileOrID, PluginTests::
                                                   },
                                                   [] (auto m)
                                                   {
-                                                      std::cout << m << std::flush;
+                                                      logAndFlush (m);
                                                   });
 }
 
