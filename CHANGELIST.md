@@ -1,5 +1,8 @@
 # pluginval Change List
 
+### 1.0.3
+-  Fix VST3 host bus issue
+
 ### 1.0.2
 - Added com.apple.security.get-task-allow to allow debugging on pluginval [macOS]
 
