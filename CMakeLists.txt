@@ -92,3 +92,12 @@ if (${CMAKE_SYSTEM_NAME} MATCHES "Linux")
     target_link_libraries(pluginval PRIVATE
         -static-libstdc++)
 endif()
+
+set (cmdline_docs_out "${CMAKE_CURRENT_LIST_DIR}/docs/Command line options.md")
+
+add_custom_command (OUTPUT "${cmdline_docs_out}"
+                    COMMAND pluginval --help > "${cmdline_docs_out}"
+                    COMMENT "Regenerating Command line options.md..."
+                    USES_TERMINAL)
+
+add_custom_target (PluginvalDocs DEPENDS "${cmdline_docs_out}")
