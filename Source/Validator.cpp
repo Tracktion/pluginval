@@ -125,9 +125,14 @@ static juce::String getFileNameFromDescription (PluginTests& test)
 static juce::File getDestinationFile (PluginTests& test)
 {
     const auto dir = test.getOptions().outputDir;
+    const auto filename = test.getOptions().outputFilename;
 
     if (dir == juce::File())
-        return {};
+    {
+        if (juce::String() == filename)
+            return {};
+        return juce::File(filename);
+    }
 
     if (dir.existsAsFile() || ! dir.createDirectory())
     {
@@ -135,7 +140,9 @@ static juce::File getDestinationFile (PluginTests& test)
         return {};
     }
 
-    return dir.getChildFile (getFileNameFromDescription (test));
+    if (juce::String() == filename)
+        return dir.getChildFile (getFileNameFromDescription (test));
+    return dir.getChildFile (filename);
 }
 
 static std::unique_ptr<juce::FileOutputStream> createDestinationFileStream (PluginTests& test)
@@ -162,7 +169,8 @@ static void updateFileNameIfPossible (PluginTests& test, PluginsUnitTestRunner& 
     if (auto os = runner.getOutputFileStream())
     {
         const auto sourceFile = os->getFile();
-        const auto destName = getFileNameFromDescription (test);
+        const auto filename = test.getOptions().outputFilename;
+        const auto destName = (filename == juce::String())?getFileNameFromDescription (test) : filename;
 
         if (destName.isEmpty() || sourceFile.getFileName() == destName)
             return;

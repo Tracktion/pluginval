@@ -178,6 +178,11 @@ namespace
         return getOptionValue (args, "--output-dir", {}, "Missing output-dir path argument!").toString();
     }
 
+    juce::String getOutputFilename (const juce::ArgumentList& args)
+    {
+        return getOptionValue (args, "--output-filename", {}, "Missing output-filename path argument!").toString();
+    }
+
     std::vector<double> getSampleRates (const juce::ArgumentList& args)
     {
         juce::StringArray input = juce::StringArray::fromTokens (getOptionValue (args,
@@ -272,6 +277,7 @@ static Option possibleOptions[] =
     { "--skip-gui-tests",       false   },
     { "--data-file",            true    },
     { "--output-dir",           true    },
+    { "--output-filename",      true    },
     { "--repeat",               true    },
     { "--randomise",            false   },
     { "--sample-rates",         true    },
@@ -375,8 +381,12 @@ static juce::String getHelpMessage()
          << newLine
          // output
          << "  --output-dir [pathToDir]" << newLine
-         << "    If specified, sets a directory to store the log files. This can be useful " << newLine
+         << "    If specified, sets a directory to store the log files. This can be useful" << newLine
          << "    for continuous integration." << newLine
+         << "  --output-filename [filename]" << newLine
+         << "    If specified, sets a filename for the log files (within 'output-dir' or" << newLine
+         << "    (lacking that) the current directory." << newLine
+         << "    By default, the name is constructed from the plugin metainformation" << newLine
          << "  --verbose" << newLine
          << "    If specified, outputs additional logging information. It can be useful to" << newLine
          << "    turn this off when building with CI to avoid huge log files." << newLine
@@ -534,6 +544,7 @@ std::pair<juce::String, PluginTests::Options> parseCommandLine (const juce::Argu
     options.randomiseTestOrder  = args.containsOption ("--randomise");
     options.dataFile            = getDataFile (args);
     options.outputDir           = getOutputDir (args);
+    options.outputFilename      = getOutputFilename (args);
     options.withGUI             = ! args.containsOption ("--skip-gui-tests");
     options.disabledTests       = getDisabledTests (args);
     options.sampleRates         = getSampleRates (args);
@@ -579,6 +590,9 @@ juce::StringArray createCommandLine (juce::String fileOrID, PluginTests::Options
 
     if (options.outputDir != defaults.outputDir)
         args.addArray ({ "--output-dir", options.outputDir.getFullPathName() });
+
+    if (options.outputFilename != defaults.outputFilename)
+        args.addArray ({ "--output-filename", options.outputFilename });
 
     if (options.disabledTests != defaults.disabledTests)
         args.addArray ({ "--disabled-tests", options.disabledTests.joinIntoString (",") });
