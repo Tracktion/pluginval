@@ -35,6 +35,7 @@ struct PluginTests : public juce::UnitTest
         bool withGUI = true;                /**< Whether or not avoid tests that instantiate a gui. */
         juce::File dataFile;                      /**< juce::File which tests can use to run user provided data. */
         juce::File outputDir;                     /**< Directory in which to write the log files for each test run. */
+        juce::String outputFilename;        /**< Filename to write logs into */
         juce::StringArray disabledTests;          /**< List of disabled tests. */
         std::vector<double> sampleRates;    /**< List of sample rates. */
         std::vector<int> blockSizes;        /**< List of block sizes. */
