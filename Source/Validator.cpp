@@ -119,7 +119,7 @@ static juce::String getFileNameFromDescription (PluginTests& test)
         return "pluginval Log";
     };
 
-    return getBaseName() + "_" + juce::Time::getCurrentTime().toString (true, true).replace (":", ",") + ".txt";
+    return getBaseName() + "_" + juce::Time::getCurrentTime().toISO8601 (false).replace (":", ",") + ".txt";
 }
 
 static juce::File getDestinationFile (PluginTests& test)
