@@ -323,48 +323,78 @@ static juce::String getHelpMessage()
          << "  Validate plugins to test compatibility with hosts and verify plugin API conformance" << newLine << newLine
          << "Usage: "
          << newLine
-         << "  --validate [pathToPlugin]" << newLine
-         << "    Validates the plugin at the given path." << newLine
-         << "    N.B. the --validate flag is optional if the path is the last argument. This enables you to validate a plugin with simply \"pluginval path_to_plugin\"." << newLine
-         << "  --strictness-level [1-10]" << newLine
-         << "    Sets the strictness level to use. A minimum level of 5 (also the default) is recomended for compatibility. Higher levels include longer, more thorough tests such as fuzzing." << newLine
-         << "  --random-seed [hex or int]" << newLine
-         << "    Sets the random seed to use for the tests. Useful for replicating test environments." << newLine
-         << "  --timeout-ms [numMilliseconds]" << newLine
-         << "    Sets a timout which will stop validation with an error if no output from any test has happened for this number of ms." << newLine
-         << "    By default this is 30s but can be set to -1 to never timeout." << newLine
-         << "  --verbose" << newLine
-         << "    If specified, outputs additional logging information. It can be useful to turn this off when building with CI to avoid huge log files." << newLine
-         << "  --skip-gui-tests" << newLine
-         << "    If specified, avoids tests that create GUI windows, which can cause problems on headless CI systems." << newLine
-         << "  --repeat [num repeats]" << newLine
-         << "    If specified repeats the tests a given number of times. Note that this does not delete and re-instantiate the plugin for each repeat." << newLine
-         << "  --randomise" << newLine
-         << "    If specified the tests are run in a random order per repeat." << newLine
-         << "  --data-file [pathToFile]" << newLine
-         << "    If specified, sets a path to a data file which can be used by tests to configure themselves. This can be useful for things like known audio output." << newLine
-         << "  --output-dir [pathToDir]" << newLine
-         << "    If specified, sets a directory to store the log files. This can be useful for continuous integration." << newLine
-         << "  --disabled-tests [pathToFile]" << newLine
-         << "    If specified, sets a path to a file that should have the names of disabled tests on each row." << newLine
-         << "  --sample-rates [list of comma separated sample rates]" << newLine
-         << "    If specified, sets the list of sample rates at which tests will be executed (default=44100,48000,96000)" << newLine
-         << "  --block-sizes [list of comma separated block sizes]" << newLine
-         << "    If specified, sets the list of block sizes at which tests will be executed (default=64,128,256,512,1024)" << newLine
-         << "  --vst3validator [pathToValidator]" << newLine
-         << "    If specified, this will run the VST3 validator as part of the test process." << newLine
+         // commands
          << "  --version" << newLine
          << "    Print pluginval version." << newLine
+         << "  --validate [pathToPlugin]" << newLine
+         << "    Validates the plugin at the given path." << newLine
+         << "    N.B. the \"--validate\" flag is optional if the path is the last argument." << newLine
+         << "    This enables you to validate a plugin with simply \"pluginval path_to_plugin\"." << newLine
+         << newLine
+         // what to test
+         << "  --sample-rates [list of comma separated sample rates]" << newLine
+         << "    If specified, sets the list of sample rates at which tests will be executed" << newLine
+         << "    (default=44100,48000,96000)" << newLine
+         << "  --block-sizes [list of comma separated block sizes]" << newLine
+         << "    If specified, sets the list of block sizes at which tests will be executed" << newLine
+         << "    (default=64,128,256,512,1024)" << newLine
+         << "  --random-seed [hex or int]" << newLine
+         << "    Sets the random seed to use for the tests. Useful for replicating test" << newLine
+         << "    environments." << newLine
+         << "  --data-file [pathToFile]" << newLine
+         << "    If specified, sets a path to a data file which can be used by tests to" << newLine
+         << "    configure themselves. This can be useful for things like known audio output." << newLine
+         << newLine
+         // how to test
+         << "  --strictness-level [1-10]" << newLine
+         << "    Sets the strictness level to use. A minimum level of 5 (also the default)" << newLine
+         << "    is recomended for compatibility." << newLine
+         << "    Higher levels include longer, more thorough tests such as fuzzing." << newLine
+         << "  --timeout-ms [numMilliseconds]" << newLine
+         << "    Sets a timout which will stop validation with an error if no output from any" << newLine
+         << "    test has happened for this number of ms." << newLine
+         << "    By default this is 30s but can be set to -1 to never timeout." << newLine
+         << newLine
+         // repeating tests
+         << "  --repeat [num repeats]" << newLine
+         << "    If specified repeats the tests a given number of times. Note that this does" << newLine
+         << "    not delete and re-instantiate the plugin for each repeat." << newLine
+         << "  --randomise" << newLine
+         << "    If specified, the tests are run in a random order per repeat." << newLine
+         << newLine
+         // test selection
+         << "  --skip-gui-tests" << newLine
+         << "    If specified, avoids tests that create GUI windows, which can cause problems" << newLine
+         << "    on headless CI systems." << newLine
+         << "  --disabled-tests [pathToFile]" << newLine
+         << "    If specified, sets a path to a file that should have the names of disabled" << newLine
+         << "    tests on each row." << newLine
+         // external validators
+         << "  --vst3validator [pathToValidator]" << newLine
+         << "    If specified, this will run the VST3 validator as part of the test process." << newLine
+         << newLine
+         // output
+         << "  --output-dir [pathToDir]" << newLine
+         << "    If specified, sets a directory to store the log files. This can be useful " << newLine
+         << "    for continuous integration." << newLine
+         << "  --verbose" << newLine
+         << "    If specified, outputs additional logging information. It can be useful to" << newLine
+         << "    turn this off when building with CI to avoid huge log files." << newLine
+
+         // end of options
          << newLine
          << "Exit code: "
          << newLine
          << "  0 if all tests complete successfully" << newLine
          << "  1 if there are any errors" << newLine
          << newLine
-         << "Additionally, you can specify any of the command line options as environment varibles by removing prefix dashes,"
-            " converting internal dashes to underscores and captialising all letters e.g. \"--skip-gui-tests\" > \"SKIP_GUI_TESTS=1\","
-            " \"--timeout-ms 30000\" > \"TIMEOUT_MS=30000\"" << newLine
-         << "Specifying specific command-line options will override any environment variables set for that option." << newLine;
+         << "Additionally, you can specify any of the command line options as environment" << newLine
+         << "variables by removing prefix dashes, converting internal dashes to underscores" << newLine
+         << "and capitalising all letters, a.g." << newLine
+         << "    \"--skip-gui-tests\" > \"SKIP_GUI_TESTS=1\"" << newLine
+         << "    \"--timeout-ms 30000\" > \"TIMEOUT_MS=30000\"" << newLine
+         << "Specifying specific command-line options will override any environment variables" << newLine
+         << "set for that option." << newLine;
 
     return help;
 }
