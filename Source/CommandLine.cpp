@@ -338,9 +338,9 @@ static juce::String getHelpMessage()
          << "  --skip-gui-tests" << newLine
          << "    If specified, avoids tests that create GUI windows, which can cause problems on headless CI systems." << newLine
          << "  --repeat [num repeats]" << newLine
-         << "    If specified repeats the tests a given number of times. Note that this does not delete and re-instantiate the plugin for each repeat."
+         << "    If specified repeats the tests a given number of times. Note that this does not delete and re-instantiate the plugin for each repeat." << newLine
          << "  --randomise" << newLine
-         << "    If specified the tests are run in a random order per repeat."
+         << "    If specified the tests are run in a random order per repeat." << newLine
          << "  --data-file [pathToFile]" << newLine
          << "    If specified, sets a path to a data file which can be used by tests to configure themselves. This can be useful for things like known audio output." << newLine
          << "  --output-dir [pathToDir]" << newLine
