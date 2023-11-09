@@ -184,6 +184,8 @@ static void updateFileNameIfPossible (PluginTests& test, PluginsUnitTestRunner& 
 
 //==============================================================================
 //==============================================================================
+inline int getNumFailures (juce::Array<juce::UnitTestRunner::TestResult> results);
+
 inline juce::Array<juce::UnitTestRunner::TestResult> runTests (PluginTests& test, std::function<void (const juce::String&)> callback)
 {
     const auto options = test.getOptions();
@@ -199,6 +201,11 @@ inline juce::Array<juce::UnitTestRunner::TestResult> runTests (PluginTests& test
         results.add (*testRunner.getResult (i));
 
     updateFileNameIfPossible (test, testRunner);
+    const int failures = getNumFailures (results);
+    if (!failures)
+        testRunner.logMessage("SUCCESS");
+    else
+        testRunner.logMessage("FAILURE");
 
     return results;
 }
