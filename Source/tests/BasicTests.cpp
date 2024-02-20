@@ -431,7 +431,7 @@ struct AutomationTest  : public PluginTest
                 if (subnormalsAreErrors)
                     ut.expectEquals (countInfs (ab), 0, "Submnormals found in buffer");
                 else if (subnormals > 0)
-                    ut.logMessage ("!!! WARNGING: " + juce::String (countSubnormals (ab)) + " submnormals found in buffer");
+                    ut.logMessage ("!!! WARNING: " + juce::String (countSubnormals (ab)) + " submnormals found in buffer");
             }
         }
     }
