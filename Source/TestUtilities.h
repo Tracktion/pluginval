@@ -54,6 +54,21 @@ static inline juce::Array<juce::AudioProcessorParameter*> getNonBypassAutomatabl
 }
 
 //==============================================================================
+static inline void randomizeParameter (juce::Random& r, juce::AudioProcessorParameter* parameter)
+{
+    auto newValue = r.nextFloat();
+
+    // snap to legal value
+    if (parameter->isDiscrete())
+    {
+        auto maxValue = static_cast<float>(parameter->getNumSteps() - 1);
+        newValue = std::round(newValue * maxValue) / maxValue;
+    }
+
+    parameter->setValue (newValue);
+}
+
+//==============================================================================
 template<typename UnaryFunction>
 void iterateAudioBuffer (juce::AudioBuffer<float>& ab, UnaryFunction fn)
 {
