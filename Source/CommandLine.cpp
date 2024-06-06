@@ -60,8 +60,10 @@ inline void logAndFlush (const juce::String& m)
 #if JUCE_MAC
 static void kill9WithSomeMercy (int signal)
 {
-   juce::Logger::writeToLog ("pluginval received " + juce::String(::strsignal(signal)) + ", exiting immediately");
-   kill (getpid(), SIGKILL);
+    juce::Logger::writeToLog ("pluginval received " + juce::String(::strsignal(signal)) + ", exiting immediately");
+
+    // Use std::_Exit here instead of kill as kill doesn't seem to set the exit code of the process so is picked up as a "pass" in the host process
+    std::_Exit (SIGKILL);
 }
 
 // Avoid showing the macOS crash dialog, which can cause the process to hang
