@@ -361,7 +361,7 @@ static juce::String getHelpMessage()
          << "  --timeout-ms [numMilliseconds]" << newLine
          << "    Sets a timout which will stop validation with an error if no output from any" << newLine
          << "    test has happened for this number of ms." << newLine
-         << "    By default this is 30s but can be set to -1 to never timeout." << newLine
+         << "    By default this is 30s but can be set to \"-1\" (must be quoted) to never timeout." << newLine
          << newLine
          // repeating tests
          << "  --repeat [num repeats]" << newLine
