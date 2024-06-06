@@ -429,9 +429,9 @@ struct AutomationTest  : public PluginTest
                 const int subnormals = countSubnormals (ab);
 
                 if (subnormalsAreErrors)
-                    ut.expectEquals (countInfs (ab), 0, "Submnormals found in buffer");
+                    ut.expectEquals (countInfs (ab), 0, "Subnormals found in buffer");
                 else if (subnormals > 0)
-                    ut.logMessage ("!!! WARNING: " + juce::String (countSubnormals (ab)) + " submnormals found in buffer");
+                    ut.logMessage ("!!! WARNING: " + juce::String (countSubnormals (ab)) + " subnormals found in buffer");
             }
         }
     }
