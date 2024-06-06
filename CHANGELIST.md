@@ -2,7 +2,8 @@
 
 ### 1.0.4
 - Fixed incorrect "ALL TESTS PASSED" message when validating out of process [#125]
-- - Updated juce to 113009c074
+- Updated juce to 113009c074
+- Added LV2 support [#25]
 
 ### 1.0.3
 -  Fix VST3 host bus issue
