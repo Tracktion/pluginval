@@ -11,6 +11,10 @@ if (APPLE)
     # set(CMAKE_OSX_ARCHITECTURES arm64 x86_64)
 endif()
 
+# Uncomment to enable tsan
+# set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fsanitize=thread")
+
+
 # Adds all the module sources so they appear correctly in the IDE
 set_property(GLOBAL PROPERTY USE_FOLDERS YES)
 option(JUCE_ENABLE_MODULE_SOURCE_GROUPS "Enable Module Source Groups" ON)
