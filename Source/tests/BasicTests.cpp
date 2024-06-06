@@ -288,7 +288,7 @@ struct PluginStateTest  : public PluginTest
 
         // Set random parameter values
         for (auto parameter : getNonBypassAutomatableParameters (instance))
-            parameter->setValue (r.nextFloat());
+            randomizeParameter (r, parameter);
 
         // Restore original state
         callSetStateInformationOnMessageThreadIfVST3 (instance, originalState);
@@ -318,8 +318,9 @@ struct PluginStateTestRestoration   : public PluginTest
         // Set random parameter values
         for (auto parameter : getNonBypassAutomatableParameters(instance))
         {
-			const auto originalValue = parameter->getValue();
-            parameter->setValue(r.nextFloat());
+            const auto originalValue = parameter->getValue();
+
+            randomizeParameter (r, parameter);
 
             // Restore original state
             callSetStateInformationOnMessageThreadIfVST3(instance, originalState);
@@ -398,7 +399,7 @@ struct AutomationTest  : public PluginTest
                         for (int i = 0; i < juce::jmin (10, parameters.size()); ++i)
                         {
                             const int paramIndex = r.nextInt (parameters.size());
-                            parameters[paramIndex]->setValue (r.nextFloat());
+                            randomizeParameter (r, parameters[paramIndex]);
                         }
                     }
 
@@ -461,7 +462,7 @@ struct EditorAutomationTest : public PluginTest
         while (--numBlocks >= 0)
         {
             for (auto parameter : parameters)
-                parameter->setValue (r.nextFloat());
+                randomizeParameter (r, parameter);
 
             ut.resetTimeout();
             juce::Thread::sleep (10);
@@ -589,7 +590,7 @@ struct BackgroundThreadStateTest    : public PluginTest
 
         // Set random parameter values
         for (auto parameter : parameters)
-            parameter->setValue (r.nextFloat());
+            randomizeParameter (r, parameter);
 
         // Restore original state
         callSetStateInformationOnMessageThreadIfVST3 (instance, originalState);
