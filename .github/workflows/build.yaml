@@ -47,7 +47,7 @@ jobs:
           apt update
           apt install -y sudo cmake curl tree
 
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
         with:
           submodules: true
 
@@ -81,7 +81,7 @@ jobs:
           echo "VST2_SDK_DIR=$(pwd)/vstsdk2.4" >> $GITHUB_ENV
 
       - name: Import Certificates
-        uses: apple-actions/import-codesign-certs@v1
+        uses: apple-actions/import-codesign-certs@v3
         if: ${{ matrix.name == 'macOS' }}
         with:
           p12-file-base64: ${{ secrets.DEV_CERT_APP }}
@@ -163,7 +163,7 @@ jobs:
         run: 7z a -aoa -tzip ${{ env.ZIP_FILE_NAME }} ${{ matrix.app }}
       
       - name: Upload zip files
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: ${{ env.ZIP_FILE_NAME }}
           path: ${{ env.APP_DIR }}/${{ env.ZIP_FILE_NAME }}
