@@ -202,7 +202,8 @@ inline juce::Array<juce::UnitTestRunner::TestResult> runTests (PluginTests& test
 
     updateFileNameIfPossible (test, testRunner);
     const int failures = getNumFailures (results);
-    if (!failures)
+
+    if (! failures)
         testRunner.logMessage("SUCCESS");
     else
         testRunner.logMessage("FAILURE");

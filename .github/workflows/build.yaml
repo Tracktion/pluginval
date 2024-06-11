@@ -147,7 +147,9 @@ jobs:
     
       - name: Codesign (macOS)
         if: ${{ matrix.name == 'macOS' }}
-        run: codesign --force -s "${{ secrets.DEVELOPER_ID_APPLICATION}}" -v ${{ env.APP_DIR }}/${{ matrix.app }} --entitlements ${{ env.BUILD_DIR }}/${{ env.BINARY_NAME }}_artefacts/JuceLibraryCode/${{ env.BINARY_NAME }}.entitlements --deep --strict --options=runtime --timestamp
+        run: |
+          codesign --force -s "${{ secrets.DEVELOPER_ID_APPLICATION}}" -v ${{ env.APP_DIR }}/${{ matrix.app }}/Contents/Libraries/librtcheck.dylib --entitlements ${{ env.BUILD_DIR }}/${{ env.BINARY_NAME }}_artefacts/JuceLibraryCode/${{ env.BINARY_NAME }}.entitlements --deep --strict --options=runtime --timestamp
+          codesign --force -s "${{ secrets.DEVELOPER_ID_APPLICATION}}" -v ${{ env.APP_DIR }}/${{ matrix.app }} --entitlements ${{ env.BUILD_DIR }}/${{ env.BINARY_NAME }}_artefacts/JuceLibraryCode/${{ env.BINARY_NAME }}.entitlements --deep --strict --options=runtime --timestamp
       
       - name: "Notarize and staple (macOS)"
         if: ${{ matrix.name == 'macOS' }}
