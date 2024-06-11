@@ -9,6 +9,7 @@ if (APPLE)
     
     # Uncomment to produce a universal binary
     # set(CMAKE_OSX_ARCHITECTURES arm64 x86_64)
+    set(PLUGINVAL_ENABLE_RTCHECK ON)
 endif()
 
 # Uncomment to enable tsan
@@ -19,7 +20,20 @@ endif()
 set_property(GLOBAL PROPERTY USE_FOLDERS YES)
 option(JUCE_ENABLE_MODULE_SOURCE_GROUPS "Enable Module Source Groups" ON)
 
-option(PLUGINVAL_FETCH_JUCE "Fetch JUCE along with PluginVal" ON)
+if(PLUGINVAL_ENABLE_RTCHECK)
+    Include(FetchContent)
+    FetchContent_Declare(rtcheck
+            GIT_REPOSITORY https://github.com/Tracktion/rtcheck.git
+            GIT_TAG origin/main
+            SOURCE_DIR ${CMAKE_CURRENT_BINARY_DIR}/rtcheck)
+    FetchContent_MakeAvailable(rtcheck)
+
+#    execute_process(COMMAND cmake --build ${CMAKE_CURRENT_BINARY_DIR}/rtcheck-build)
+#    execute_process(COMMAND cmake -B ${CMAKE_CURRENT_BINARY_DIR}/rtcheck/build -S ${CMAKE_CURRENT_BINARY_DIR}/rtcheck)
+#    execute_process(COMMAND cmake --build ${CMAKE_CURRENT_BINARY_DIR}/rtcheck)
+endif()
+
+option(PLUGINVAL_FETCH_JUCE "Fetch JUCE along with pluginval" ON)
 
 if(PLUGINVAL_FETCH_JUCE)
     add_subdirectory(modules/juce)
@@ -85,6 +99,7 @@ target_compile_definitions(pluginval PRIVATE
     JUCE_MODAL_LOOPS_PERMITTED=1
     JUCE_REPORT_APP_USAGE=0
     JUCE_GUI_BASICS_INCLUDE_XHEADERS=1
+    $<$<BOOL:${PLUGINVAL_ENABLE_RTCHECK}>:PLUGINVAL_ENABLE_RTCHECK=1>
     VERSION="${CURRENT_VERSION}")
 
 target_link_libraries(pluginval PRIVATE
@@ -96,6 +111,20 @@ target_link_libraries(pluginval PRIVATE
 if (${CMAKE_SYSTEM_NAME} MATCHES "Linux")
     target_link_libraries(pluginval PRIVATE
         -static-libstdc++)
+endif()
+
+if (PLUGINVAL_ENABLE_RTCHECK)
+    target_link_libraries(pluginval PRIVATE
+        rtcheck)
+
+    if (APPLE)
+        add_custom_command(TARGET pluginval POST_BUILD
+                COMMAND ${CMAKE_COMMAND} -E echo "Executable path: $<TARGET_FILE_DIR:pluginval>")
+        add_custom_command(TARGET pluginval POST_BUILD
+            COMMAND ${CMAKE_COMMAND} -E copy
+                    ${CMAKE_CURRENT_BINARY_DIR}/_deps/rtcheck-build/src/librtcheck.dylib
+                    $<TARGET_FILE_DIR:pluginval>/../Libraries/librtcheck.dylib)
+    endif ()
 endif()
 
 set (cmdline_docs_out "${CMAKE_CURRENT_LIST_DIR}/docs/Command line options.md")

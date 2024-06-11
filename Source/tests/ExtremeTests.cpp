@@ -14,6 +14,7 @@
 
 #include "../PluginTests.h"
 #include "../TestUtilities.h"
+#include "../RTCheck.h"
 
 //==============================================================================
 struct AllocationsInRealTimeThreadTest  : public PluginTest
@@ -66,6 +67,7 @@ struct AllocationsInRealTimeThreadTest  : public PluginTest
                     fillNoise (ab);
 
                     {
+                        RTC_REALTIME_CONTEXT_IF_LEVEL_10(ut.getOptions().strictnessLevel)
                         ScopedAllocationDisabler sad;
                         instance.processBlock (ab, mb);
                     }
