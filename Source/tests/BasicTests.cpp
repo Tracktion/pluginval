@@ -14,6 +14,8 @@
 
 #include "../PluginTests.h"
 #include "../TestUtilities.h"
+#include "../RTCheck.h"
+
 #include <future>
 #include <thread>
 
@@ -156,7 +158,12 @@ struct EditorWhilstProcessingTest   : public PluginTest
                                                  while (shouldProcess)
                                                  {
                                                      fillNoise (ab);
-                                                     instance.processBlock (ab, mb);
+
+                                                     {
+                                                         RTC_REALTIME_CONTEXT_IF_LEVEL_10(ut.getOptions().strictnessLevel)
+                                                         instance.processBlock (ab, mb);
+                                                     }
+
                                                      mb.clear();
 
                                                      threadStartedEvent.signal();
@@ -230,7 +237,12 @@ struct AudioProcessingTest  : public PluginTest
                         addNoteOff (mb, noteChannel, noteNumber, 0);
 
                     fillNoise (ab);
-                    instance.processBlock (ab, mb);
+
+                    {
+                      RTC_REALTIME_CONTEXT_IF_LEVEL_10(ut.getOptions().strictnessLevel)
+                      instance.processBlock (ab, mb);
+                    }
+
                     mb.clear();
 
                     ut.expectEquals (countNaNs (ab), 0, "NaNs found in buffer");
@@ -414,7 +426,12 @@ struct AutomationTest  : public PluginTest
                                                   numSamplesDone,
                                                   numSamplesThisTime);
                     fillNoise (subBuffer);
-                    instance.processBlock (subBuffer, mb);
+
+                    {
+                        RTC_REALTIME_CONTEXT_IF_LEVEL_10(ut.getOptions().strictnessLevel)
+                        instance.processBlock (subBuffer, mb);
+                    }
+
                     numSamplesDone += numSamplesThisTime;
 
                     mb.clear();
@@ -660,7 +677,12 @@ struct ParameterThreadSafetyTest    : public PluginTest
                 param->setValue (r.nextFloat());
 
             fillNoise (ab);
-            instance.processBlock (ab, mb);
+
+            {
+                RTC_REALTIME_CONTEXT_IF_LEVEL_10(ut.getOptions().strictnessLevel)
+                instance.processBlock (ab, mb);
+            }
+
             mb.clear();
         }
 
