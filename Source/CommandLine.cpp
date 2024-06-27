@@ -57,7 +57,7 @@ inline void logAndFlush (const juce::String& m)
 }
 
 //==============================================================================
-#if JUCE_MAC
+/*#if JUCE_MAC
 static void kill9WithSomeMercy (int signal)
 {
    juce::Logger::writeToLog ("pluginval received " + juce::String(::strsignal(signal)) + ", exiting immediately");
@@ -75,16 +75,16 @@ static void setupSignalHandling()
         ::siginterrupt (signals[i], 1);
     }
 }
-#endif
+#endif*/
 
 
 //==============================================================================
 //==============================================================================
 CommandLineValidator::CommandLineValidator()
 {
-   #if JUCE_MAC
+   /*#if JUCE_MAC
     setupSignalHandling();
-   #endif
+   #endif*/
 }
 
 CommandLineValidator::~CommandLineValidator()
