@@ -100,6 +100,12 @@ struct EditorTest   : public PluginTest
     {
         if (instance.hasEditor())
         {
+            const std::vector<double>& sampleRates = ut.getOptions().sampleRates;
+            const std::vector<int>& blockSizes = ut.getOptions().blockSizes;
+
+            jassert (sampleRates.size() > 0 && blockSizes.size() > 0);
+            callPrepareToPlayOnMessageThreadIfVST3 (instance, sampleRates[0], blockSizes[0]);
+
             StopwatchTimer timer;
 
             {
