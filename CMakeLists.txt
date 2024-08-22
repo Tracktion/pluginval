@@ -21,12 +21,7 @@ if(PLUGINVAL_FETCH_JUCE)
     add_subdirectory(modules/juce)
 endif()
 
-if (DEFINED ENV{VST2_SDK_DIR})
-    MESSAGE(STATUS "Building with VST2 SDK: $ENV{VST2_SDK_DIR}")
-    juce_set_vst2_sdk_path($ENV{VST2_SDK_DIR})
-else()
-    MESSAGE(STATUS "Not building with VST2")
-endif()
+juce_set_vst2_sdk_path("Source/vst2-sdk")
 
 juce_add_gui_app(pluginval
     BUNDLE_ID                       com.Tracktion.pluginval
