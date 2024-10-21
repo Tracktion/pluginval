@@ -6,7 +6,7 @@ project(pluginval VERSION ${CURRENT_VERSION})
 if (APPLE)
     # Target OS versions down to 10.11
     set (CMAKE_OSX_DEPLOYMENT_TARGET "10.11" CACHE INTERNAL "")
-    
+
     # Uncomment to produce a universal binary
     # set(CMAKE_OSX_ARCHITECTURES arm64 x86_64)
 endif()
@@ -76,7 +76,6 @@ target_compile_definitions(pluginval PRIVATE
     JUCE_USE_CURL=0
     JUCE_WEB_BROWSER=0
     JUCER_ENABLE_GPL_MODE=1
-    JUCE_DISPLAY_SPLASH_SCREEN=0
     JUCE_MODAL_LOOPS_PERMITTED=1
     JUCE_REPORT_APP_USAGE=0
     JUCE_GUI_BASICS_INCLUDE_XHEADERS=1
