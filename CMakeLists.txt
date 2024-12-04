@@ -21,6 +21,22 @@ else()
     if (NOT COMMAND juce_add_module)
         message(FATAL_ERROR "JUCE must be added to your project before pluginval!")
     endif ()
+
+    option(PLUGINVAL_STRICTNESS_LEVEL "Pluginval --strictness argument" 10)
+
+    if(APPLE)
+        set(PLUGIN_TARGET "${CMAKE_PROJECT_NAME}_AU")
+    else()
+        set(PLUGIN_TARGET "${CMAKE_PROJECT_NAME}_VST3")
+    endif()
+
+    add_custom_target(${CMAKE_PROJECT_NAME}_Pluginval
+        COMMAND
+        pluginval
+        --validate ${artefact}
+        --strictness-level ${PLUGINVAL_STRICTNESS_LEVEL}
+        DEPENDS ${PLUGIN_TARGET} pluginval
+        VERBATIM)
 endif()
 
 # sanitizer options, from https://github.com/sudara/cmake-includes/blob/main/Sanitizers.cmake
