@@ -3,16 +3,24 @@ cmake_minimum_required(VERSION 3.15)
 file(STRINGS VERSION CURRENT_VERSION LIMIT_COUNT 1)
 project(pluginval VERSION ${CURRENT_VERSION})
 
-if (APPLE)
-    # Target OS versions down to 10.11
-    set (CMAKE_OSX_DEPLOYMENT_TARGET "10.11" CACHE INTERNAL "")
+# Executes when not compiling as a "dependency" of another CMake project
+if (pluginval_IS_TOP_LEVEL)
+    if (APPLE)
+        # Target OS versions down to 10.11
+        set (CMAKE_OSX_DEPLOYMENT_TARGET "10.11" CACHE INTERNAL "")
 
-    # Uncomment to produce a universal binary
-    # set(CMAKE_OSX_ARCHITECTURES arm64 x86_64)
-    set(PLUGINVAL_ENABLE_RTCHECK ON)
-elseif (CMAKE_SYSTEM_NAME STREQUAL "Linux")
-    # Disable rtcheck on Linux for now until further testing on real Linux systems has been done
-    # set(PLUGINVAL_ENABLE_RTCHECK ON)
+        # Uncomment to produce a universal binary
+        # set(CMAKE_OSX_ARCHITECTURES arm64 x86_64)
+        set(PLUGINVAL_ENABLE_RTCHECK ON)
+    elseif (CMAKE_SYSTEM_NAME STREQUAL "Linux")
+        # Disable rtcheck on Linux for now until further testing on real Linux systems has been done
+        # set(PLUGINVAL_ENABLE_RTCHECK ON)
+    endif()
+else()
+    # compiling as a "dependency" of another JUCE CMake project
+    if (NOT COMMAND juce_add_module)
+        message(FATAL_ERROR "JUCE must be added to your project before pluginval!")
+    endif ()
 endif()
 
 # sanitizer options, from https://github.com/sudara/cmake-includes/blob/main/Sanitizers.cmake
@@ -52,11 +60,9 @@ if(PLUGINVAL_ENABLE_RTCHECK)
     CPMAddPackage("gh:Tracktion/rtcheck#main")
 endif()
 
-
-option(PLUGINVAL_FETCH_JUCE "Fetch JUCE along with pluginval" ON)
-
-if(PLUGINVAL_FETCH_JUCE)
-    add_subdirectory(modules/juce)
+# Only fetch JUCE when top-level (when used as dependency, JUCE is already available)
+if (pluginval_IS_TOP_LEVEL)
+    CPMAddPackage("gh:juce-framework/juce#8.0.3")
 endif()
 
 if (DEFINED ENV{VST2_SDK_DIR})
@@ -151,11 +157,13 @@ if (PLUGINVAL_ENABLE_RTCHECK)
     endif ()
 endif()
 
-set (cmdline_docs_out "${CMAKE_CURRENT_LIST_DIR}/docs/Command line options.md")
+if (pluginval_IS_TOP_LEVEL)
+    set (cmdline_docs_out "${CMAKE_CURRENT_LIST_DIR}/docs/Command line options.md")
 
-add_custom_command (OUTPUT "${cmdline_docs_out}"
-                    COMMAND pluginval --help > "${cmdline_docs_out}"
-                    COMMENT "Regenerating Command line options.md..."
-                    USES_TERMINAL)
+    add_custom_command (OUTPUT "${cmdline_docs_out}"
+                        COMMAND pluginval --help > "${cmdline_docs_out}"
+                        COMMENT "Regenerating Command line options.md..."
+                        USES_TERMINAL)
 
-add_custom_target (PluginvalDocs DEPENDS "${cmdline_docs_out}")
+    add_custom_target (PluginvalDocs DEPENDS "${cmdline_docs_out}")
+endif()
