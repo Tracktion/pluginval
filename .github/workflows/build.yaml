@@ -48,8 +48,6 @@ jobs:
           apt install -y sudo cmake curl tree
 
       - uses: actions/checkout@v4
-        with:
-          submodules: true
 
       - name: Setup Environment Variables
         shell: bash
