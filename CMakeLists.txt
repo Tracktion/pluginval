@@ -93,6 +93,9 @@ target_link_libraries(pluginval PRIVATE
 if (${CMAKE_SYSTEM_NAME} MATCHES "Linux")
     target_link_libraries(pluginval PRIVATE
         -static-libstdc++)
+elseif (${CMAKE_SYSTEM_NAME} MATCHES "Darwin")
+    target_compile_options(pluginval PRIVATE
+        -Wfloat-equal -Wunused-result)
 endif()
 
 set (cmdline_docs_out "${CMAKE_CURRENT_LIST_DIR}/docs/Command line options.md")

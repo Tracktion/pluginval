@@ -303,7 +303,7 @@ struct ScopedPluginDeinitialiser
 
     ~ScopedPluginDeinitialiser()
     {
-        if (blockSize != 0 && sampleRate != 0)
+        if (blockSize != 0 && sampleRate > 0.0)
             callPrepareToPlayOnMessageThreadIfVST3 (instance, sampleRate, blockSize);
     }
 
