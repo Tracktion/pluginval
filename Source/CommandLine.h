@@ -20,8 +20,8 @@
 //==============================================================================
 struct CommandLineValidator
 {
-    CommandLineValidator();
-    ~CommandLineValidator();
+    CommandLineValidator() =  default;
+    ~CommandLineValidator() = default;
 
     void validate (const juce::String&, PluginTests::Options);
 

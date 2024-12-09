@@ -57,14 +57,6 @@ inline void logAndFlush (const juce::String& m)
 
 //==============================================================================
 //==============================================================================
-CommandLineValidator::CommandLineValidator()
-{
-}
-
-CommandLineValidator::~CommandLineValidator()
-{
-}
-
 void CommandLineValidator::validate (const juce::String& fileOrID, PluginTests::Options options)
 {
     validator = std::make_unique<ValidationPass> (fileOrID, options, ValidationType::inProcess,
