@@ -52,7 +52,7 @@ inline void writeStackTrace (const char* filePath, const int numLinesToSkip = 0)
 {
     // On Linux & Mac this is a signal handler, and therefore only "async-signal-safe" functions should be used.
     // This means nothing that uses malloc (juce::File, juce::String, std::string, std::vector etc.) or buffered I/O.
-    int fd = open (filePath, O_RDWR | O_CREAT | O_TRUNC);
+    int fd = open (filePath, O_RDWR | O_CREAT | O_TRUNC, 00644);
 
     // Write stack traces and images
     {

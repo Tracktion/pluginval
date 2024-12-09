@@ -105,7 +105,7 @@ static inline int countSubnormals (juce::AudioBuffer<float>& ab) noexcept
     int count = 0;
     iterateAudioBuffer (ab, [&count] (float s)
     {
-        if (s != 0.0f && std::fpclassify (s) == FP_SUBNORMAL)
+        if (std::fpclassify (s) != FP_ZERO && std::fpclassify (s) == FP_SUBNORMAL)
             ++count;
     });
 
