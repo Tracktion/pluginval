@@ -47,7 +47,7 @@ namespace
     static void handleCrash (void*)
     {
         const char* header = "\n*** FAILED: VALIDATION CRASHED\n";
-        write (STDERR_FILENO, header, strlen (header));
+        [[ maybe_unused]] auto r = write (STDERR_FILENO, header, strlen (header));
 
         writeStackTrace (crashLogPath, 2); // Skip handleCrash and juce::handleCrash)
 

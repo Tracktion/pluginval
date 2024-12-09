@@ -40,10 +40,10 @@ inline void writeAsyncSignalSafe (int fd, const char* fmt, ...)
     va_end (args);
 
     auto len = strlen (buf);
-    write (STDERR_FILENO, buf, len);
+    [[ maybe_unused]] auto r = write (STDERR_FILENO, buf, len);
 
     if (fd != -1)
-        write (fd, buf, len);
+        [[ maybe_unused]] auto r2 = write (fd, buf, len);
 }
 
 /** Writes the current stack trace and images to a given filepath and stderr.
