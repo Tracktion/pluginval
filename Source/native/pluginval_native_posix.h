@@ -48,7 +48,7 @@ inline void writeAsyncSignalSafe (int fd, const char* fmt, ...)
 
 /** Writes the current stack trace and images to a given filepath and stderr.
 */
-inline void writeStackTrace (const char* filePath, const int numLinesToSkip = 0)
+inline void writeStackTrace (const char* filePath)
 {
     // On Linux & Mac this is a signal handler, and therefore only "async-signal-safe" functions should be used.
     // This means nothing that uses malloc (juce::File, juce::String, std::string, std::vector etc.) or buffered I/O.
@@ -67,7 +67,7 @@ inline void writeStackTrace (const char* filePath, const int numLinesToSkip = 0)
         const char *imageNames[maxNumImages]{};
         int imageCount = 0;
 
-        for (int i = numLinesToSkip; i < stackCount; ++i)
+        for (int i = 0; i < stackCount; ++i)
         {
             Dl_info info{};
 
@@ -75,7 +75,7 @@ inline void writeStackTrace (const char* filePath, const int numLinesToSkip = 0)
             // is adding an image to its list
             if (! dladdr (stacktrace[i], &info))
             {
-                writeAsyncSignalSafe (fd, "%-3d %-35s %p\n", i - numLinesToSkip, "", stacktrace[i]);
+                writeAsyncSignalSafe (fd, "%-3d %-35s %p\n", i, "", stacktrace[i]);
                 continue;
             }
 
@@ -98,12 +98,12 @@ inline void writeStackTrace (const char* filePath, const int numLinesToSkip = 0)
             if (info.dli_saddr)
             {
                 ptrdiff_t offset = static_cast<char*> (stacktrace[i]) - static_cast<char*> (info.dli_saddr);
-                writeAsyncSignalSafe (fd, "%-3d %-35s %p %s + %ld\n", i - numLinesToSkip, imageName, stacktrace[i], info.dli_sname,
+                writeAsyncSignalSafe (fd, "%-3d %-35s %p %s + %ld\n", i, imageName, stacktrace[i], info.dli_sname,
                                       offset);
             }
             else
             {
-                writeAsyncSignalSafe (fd, "%-3d %-35s %p\n", i - numLinesToSkip, imageName, stacktrace[i]);
+                writeAsyncSignalSafe (fd, "%-3d %-35s %p\n", i, imageName, stacktrace[i]);
             }
         }
 

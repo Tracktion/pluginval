@@ -49,7 +49,7 @@ namespace
         const char* header = "\n*** FAILED: VALIDATION CRASHED\n";
         [[ maybe_unused]] auto r = write (STDERR_FILENO, header, strlen (header));
 
-        writeStackTrace (crashLogPath, 2); // Skip handleCrash and juce::handleCrash)
+        writeStackTrace (crashLogPath);
 
         // Terminate normally to work around a bug in juce::ChildProcess::ActiveProcess::getExitStatus()
         // which returns 0 (a "pass" in the host process) if the child process terminates abnormally.
