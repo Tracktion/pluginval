@@ -85,7 +85,7 @@ target_compile_definitions(pluginval PRIVATE
     VERSION="${CURRENT_VERSION}")
 
 if(MSVC)
-    // Statically link the runtime libraries
+    # Statically link the runtime libraries
     target_compile_options(pluginval PRIVATE
         $<$<CONFIG:>:/MT>
         $<$<CONFIG:Debug>:/MTd>
