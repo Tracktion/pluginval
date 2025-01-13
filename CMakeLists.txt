@@ -84,6 +84,14 @@ target_compile_definitions(pluginval PRIVATE
     JUCE_GUI_BASICS_INCLUDE_XHEADERS=1
     VERSION="${CURRENT_VERSION}")
 
+if(MSVC)
+    # Statically link the runtime libraries
+    target_compile_options(pluginval PRIVATE
+        $<$<CONFIG:>:/MT>
+        $<$<CONFIG:Debug>:/MTd>
+        $<$<CONFIG:Release>:/MT>)
+endif()
+
 target_link_libraries(pluginval PRIVATE
     juce::juce_audio_devices
     juce::juce_audio_processors
