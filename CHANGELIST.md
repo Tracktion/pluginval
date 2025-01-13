@@ -1,5 +1,8 @@
 # pluginval Change List
 
+### 1.0.5
+- Added static linking to the Windows runtime so it should run on more Windows systems (particularly non-dev machines)
+
 ### 1.0.4
 - Limit auval's stress test to 20 seconds (vs 600) [#135]
 - Fixed incorrect "ALL TESTS PASSED" message when validating out of process [#125]
