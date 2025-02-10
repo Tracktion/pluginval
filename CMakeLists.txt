@@ -84,12 +84,9 @@ target_compile_definitions(pluginval PRIVATE
     JUCE_GUI_BASICS_INCLUDE_XHEADERS=1
     VERSION="${CURRENT_VERSION}")
 
-if(MSVC)
-    # Statically link the runtime libraries
-    target_compile_options(pluginval PRIVATE
-        $<$<CONFIG:>:/MT>
-        $<$<CONFIG:Debug>:/MTd>
-        $<$<CONFIG:Release>:/MT>)
+if(MSVC AND NOT CMAKE_MSVC_RUNTIME_LIBRARY)
+    # Default to statically linking the runtime libraries
+    set_property(TARGET pluginval PROPERTY MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>")
 endif()
 
 target_link_libraries(pluginval PRIVATE
