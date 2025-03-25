@@ -16,6 +16,7 @@
 #include "../TestUtilities.h"
 #include <future>
 #include <thread>
+#include <chrono>
 
 //==============================================================================
 struct PluginInfoTest   : public PluginTest
