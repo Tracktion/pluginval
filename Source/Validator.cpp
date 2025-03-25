@@ -18,6 +18,7 @@
 #include "CommandLine.h"
 #include <numeric>
 #include <thread>
+#include <chrono>
 
 //==============================================================================
 struct PluginsUnitTestRunner    : public juce::UnitTestRunner,
