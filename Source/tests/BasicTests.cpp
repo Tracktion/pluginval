@@ -486,7 +486,8 @@ namespace ParameterHelpers
         const int numSteps = parameter.getNumSteps();
         const bool isDiscrete = parameter.isDiscrete();
         const bool isBoolean = parameter.isBoolean();
-        const juce::StringArray allValueStrings = parameter.getAllValueStrings();
+        const juce::StringArray allValueStrings = parameter.isDiscrete() ? parameter.getAllValueStrings() : juce::StringArray();
+
 
         const bool isOrientationInverted = parameter.isOrientationInverted();
         const bool isAutomatable = parameter.isAutomatable();
