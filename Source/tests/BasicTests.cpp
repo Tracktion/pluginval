@@ -22,7 +22,8 @@
 struct PluginInfoTest   : public PluginTest
 {
     PluginInfoTest()
-        : PluginTest ("Plugin info", 1)
+        : PluginTest ("Plugin info", 1,
+                      { Requirements::Thread::messageThread })
     {
     }
 

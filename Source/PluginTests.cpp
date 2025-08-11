@@ -193,10 +193,10 @@ void PluginTests::testType (const juce::PluginDescription& pd)
                     {
                         juce::WaitableEvent completionEvent;
                         juce::MessageManager::callAsync ([&, this]() mutable
-                                                   {
-                                                       t->runTest (*this, *instance);
-                                                       completionEvent.signal();
-                                                   });
+                                                          {
+                                                              t->runTest (*this, *instance);
+                                                              completionEvent.signal();
+                                                          });
                         completionEvent.wait();
                     }
                     else
