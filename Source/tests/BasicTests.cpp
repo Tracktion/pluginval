@@ -769,7 +769,7 @@ struct VST3validator    : public PluginTest
         if (ut.getOptions().strictnessLevel > 5)
             cmd.add ("-e");
 
-        cmd.add (desc.fileOrIdentifier);
+        cmd.add (ut.getFileOrID());
 
         juce::ChildProcess cp;
         const auto started = cp.start (cmd);
