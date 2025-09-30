@@ -15,6 +15,10 @@ If you are a plugin user looking to report a problem with a plugin to the develo
   - Run in GUI or headless mode
   - Validation is performed in a separate process to avoid crashing
 
+### Funding
+pluginval is a free, open source project but supporting it via funding is a great way to show your appreciation for it, speed up development and influence the [roadmap](ROADMAP.md).
+
+See [FUNDING.md](FUNDING.md) for more details.
 
 ### Installation
 
@@ -108,6 +112,10 @@ If you have a case you would like tests, please simply write the test in a fork 
 * `git commit -am "Version 1.0.5"`
 * `git tag -a v1.0.5 -m "1.0.5 release"`
 * `git push --tags`
+
+## Roadmap
+Find more information on what's in the pipeline for pluginval [here](ROADMAP.md).
+
 
 License
 ----
