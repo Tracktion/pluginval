@@ -82,6 +82,7 @@ set(SourceFiles
     Source/MainComponent.cpp
     Source/PluginTests.cpp
     Source/tests/BasicTests.cpp
+    Source/tests/LocaleTest.cpp
     Source/tests/BusTests.cpp
     Source/tests/ParameterFuzzTests.cpp
     Source/TestUtilities.cpp
