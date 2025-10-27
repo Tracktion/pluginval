@@ -246,7 +246,7 @@ namespace
 MainComponent::MainComponent (Validator& v)
     : validator (v)
 {
-    formatManager.addDefaultFormats();
+    juce::addDefaultFormatsToManager (formatManager);
 
     const auto tabCol = getLookAndFeel().findColour (juce::ResizableWindow::backgroundColourId);
     addAndMakeVisible (tabbedComponent);

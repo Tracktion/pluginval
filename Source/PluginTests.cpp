@@ -52,7 +52,7 @@ PluginTests::PluginTests (const juce::String& fileOrIdentifier, Options opts)
 {
     jassert (fileOrIdentifier.isNotEmpty());
     jassert (juce::isPositiveAndNotGreaterThan (options.strictnessLevel, 10));
-    formatManager.addDefaultFormats();
+    juce::addDefaultFormatsToManager (formatManager);
 }
 
 PluginTests::PluginTests (const juce::PluginDescription& desc, Options opts)
