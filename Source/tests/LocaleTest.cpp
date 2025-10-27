@@ -19,7 +19,8 @@
 struct LocaleTest   : public PluginTest
 {
     LocaleTest()
-        : PluginTest ("Ensuring that the locale does not change during execution", 1)
+        : PluginTest ("Ensuring that the locale does not change during execution", 1,
+                      { Requirements::Thread::messageThread, Requirements::GUI::requiresGUI })
     {
         startupLocale = std::setlocale(LC_ALL, nullptr);
     }
