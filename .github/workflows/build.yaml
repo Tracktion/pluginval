@@ -23,7 +23,7 @@ jobs:
             test-binary: ./pluginval
             container: ubuntu:22.04
           - name: macOS
-            os: macos-13
+            os: macos-15
             app: pluginval.app
             test-binary: pluginval.app/Contents/MacOS/pluginval
           - name: Windows
