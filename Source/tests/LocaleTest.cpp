@@ -22,7 +22,7 @@ struct LocaleTest   : public PluginTest
         : PluginTest ("Ensuring that the locale does not change during execution", 1,
                       { Requirements::Thread::messageThread, Requirements::GUI::requiresGUI })
     {
-        startupLocale = std::setlocale(LC_ALL, nullptr);
+        startupLocale = setlocale(LC_ALL, nullptr);
     }
 
     void runTest (PluginTests& ut, juce::AudioPluginInstance& instance) override
@@ -40,7 +40,7 @@ struct LocaleTest   : public PluginTest
             }
         }
 
-        std::string newLocale = std::setlocale(LC_ALL, nullptr);
+        std::string newLocale = setlocale(LC_ALL, nullptr);
         ut.expectEquals (startupLocale, newLocale, "Plugin changed locale. This can cause unexpected behavior.");
         ut.logMessage (juce::String ("INFO: Shutdown Locale: [LOC]")
                            .replace ("LOC",juce::String (newLocale), false));
