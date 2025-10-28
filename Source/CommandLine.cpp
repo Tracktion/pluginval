@@ -22,6 +22,7 @@
  #include <unistd.h>
 #endif
 
+#include <magic_enum/magic_enum.hpp>
 
 //==============================================================================
 static void exitWithError (const juce::String& error)
@@ -285,6 +286,7 @@ static Option possibleOptions[] =
     { "--sample-rates",         true    },
     { "--block-sizes",          true    },
     { "--vst3validator",        true    },
+    { "--rtcheck",              false   },
 };
 
 static juce::StringArray mergeEnvironmentVariables (juce::StringArray args, std::function<juce::String (const juce::String& name, const juce::String& defaultValue)> environmentVariableProvider = [] (const juce::String& name, const juce::String& defaultValue) { return juce::SystemStats::getEnvironmentVariable (name, defaultValue); })
@@ -362,6 +364,10 @@ static juce::String getHelpMessage()
          << "    Sets a timout which will stop validation with an error if no output from any" << newLine
          << "    test has happened for this number of ms." << newLine
          << "    By default this is 30s but can be set to \"-1\" (must be quoted) to never timeout." << newLine
+         << "  --rtcheck [empty, disabled, enabled or relaxed]" << newLine
+         << "    Turns on real-time saftey checks using rtcheck (macOS and Linux only)." << newLine
+         << "    relaxed mode doesn't run the checks for the first processing block as a lot of plugins" << newLine
+         << "    use this to allocate or initialise thread-locals (which can allocate)" << newLine
          << newLine
          // repeating tests
          << "  --repeat [num repeats]" << newLine
@@ -552,6 +558,8 @@ std::pair<juce::String, PluginTests::Options> parseCommandLine (const juce::Argu
     options.sampleRates         = getSampleRates (args);
     options.blockSizes          = getBlockSizes (args);
     options.vst3Validator       = getOptionValue (args, "--vst3validator", "", "Expected a path for the --vst3validator option");
+    options.realtimeCheck       = magic_enum::enum_cast<RealtimeCheck> (getOptionValue (args, "--rtcheck", "", "Expected one of [disabled, enabled, relaxed]").toString().toStdString())
+                                    .value_or (RealtimeCheck::disabled);
 
     return { fileOrID, options };
 }
@@ -621,6 +629,12 @@ juce::StringArray createCommandLine (juce::String fileOrID, PluginTests::Options
 
     if (options.vst3Validator != juce::File())
         args.addArray ({ "--vst3validator", options.vst3Validator.getFullPathName().quoted() });
+
+    if (auto rtCheckMode = options.realtimeCheck;
+        rtCheckMode != RealtimeCheck::disabled)
+    {
+        args.addArray ({ "--rtcheck", std::string (magic_enum::enum_name (rtCheckMode)) });
+    }
 
     args.addArray ({ "--validate", fileOrID });
 

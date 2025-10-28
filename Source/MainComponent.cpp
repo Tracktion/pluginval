@@ -13,6 +13,9 @@
  ==============================================================================*/
 
 #include "MainComponent.h"
+
+#include <magic_enum/magic_enum.hpp>
+
 #include "PluginTests.h"
 
 //==============================================================================
@@ -114,6 +117,18 @@ namespace
         return getAppPreferences().getValue ("vst3validator", juce::String());
     }
 
+    void setRealtimeCheckMode (RealtimeCheck rt)
+    {
+        getAppPreferences().setValue ("realtimeCheckMode", juce::String (std::string (magic_enum::enum_name (rt))));
+    }
+
+    RealtimeCheck getRealtimeCheckMode()
+    {
+        auto modeString = getAppPreferences().getValue ("realtimeCheckMode", juce::String());
+        return magic_enum::enum_cast<RealtimeCheck> (modeString.toStdString())
+                .value_or (RealtimeCheck::disabled);
+    }
+
     PluginTests::Options getTestOptions()
     {
         PluginTests::Options options;
@@ -127,6 +142,7 @@ namespace
         options.sampleRates = getSampleRates();
         options.blockSizes = getBlockSizes();
         options.vst3Validator = getVST3Validator();
+        options.realtimeCheck = getRealtimeCheckMode();
 
         return options;
     }
@@ -336,10 +352,25 @@ MainComponent::MainComponent (Validator& v)
                 randomise,
                 chooseOutputDir,
                 showVST3Validator,
-                showSettingsDir
+                showSettingsDir,
+                rtCheck
             };
 
             juce::PopupMenu m;
+
+            {
+                juce::PopupMenu rtCheckMenu;
+
+                for (auto currentMode = getRealtimeCheckMode();
+                     auto mode : magic_enum::enum_values<RealtimeCheck>())
+                {
+                    rtCheckMenu.addItem (getDisplayString (mode), true, mode == currentMode,
+                                         [newMode = mode] { setRealtimeCheckMode (newMode); });
+                }
+
+                m.addSubMenu ("Realtime check mode", rtCheckMenu);
+            }
+
             m.addItem (validateInProcess, TRANS("Validate in process"), true, getValidateInProcess());
             m.addItem (showRandomSeed, TRANS("Set random seed (123)").replace ("123", "0x" + juce::String::toHexString (getRandomSeed()) + "/" + juce::String (getRandomSeed())));
             m.addItem (showTimeout, TRANS("Set timeout (123ms)").replace ("123",juce::String (getTimeoutMs())));

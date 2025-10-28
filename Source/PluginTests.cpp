@@ -16,6 +16,18 @@
 #include "TestUtilities.h"
 #include <random>
 
+juce::String getDisplayString (RealtimeCheck rtc)
+{
+    if (rtc == RealtimeCheck::disabled)
+        return "Disabled (don't check for real-time safety)";
+
+    if (rtc == RealtimeCheck::enabled)
+        return "Enabled (check for real-time safety in all process calls)";
+
+    if (rtc == RealtimeCheck::relaxed)
+        return "Relaxed (check for real-time safety in all but the first process call)";
+}
+
 namespace
 {
     /** Deletes a plugin asyncronously on the message thread */

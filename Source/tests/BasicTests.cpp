@@ -157,16 +157,19 @@ struct EditorWhilstProcessingTest   : public PluginTest
             auto processThread = std::async (std::launch::async,
                                              [&]
                                              {
+                                                 int blockNum = 0;
+
                                                  while (shouldProcess)
                                                  {
                                                      fillNoise (ab);
 
                                                      {
-                                                         RTC_REALTIME_CONTEXT_IF_LEVEL_10(ut.getOptions().strictnessLevel)
+                                                         RTC_REALTIME_CONTEXT_IF_ENABLED(ut.getOptions().realtimeCheck, blockNum)
                                                          instance.processBlock (ab, mb);
                                                      }
 
                                                      mb.clear();
+                                                     ++blockNum;
 
                                                      threadStartedEvent.signal();
                                                  }
@@ -241,7 +244,7 @@ struct AudioProcessingTest  : public PluginTest
                     fillNoise (ab);
 
                     {
-                      RTC_REALTIME_CONTEXT_IF_LEVEL_10(ut.getOptions().strictnessLevel)
+                      RTC_REALTIME_CONTEXT_IF_ENABLED(ut.getOptions().realtimeCheck, i)
                       instance.processBlock (ab, mb);
                     }
 
@@ -403,7 +406,7 @@ struct AutomationTest  : public PluginTest
                 if (isPluginInstrument)
                     addNoteOn (mb, noteChannel, noteNumber, juce::jmin (10, subBlockSize));
 
-                for (;;)
+                for (int blockNum = 0;; ++blockNum)
                 {
                     // Set random parameter values
                     {
@@ -430,7 +433,7 @@ struct AutomationTest  : public PluginTest
                     fillNoise (subBuffer);
 
                     {
-                        RTC_REALTIME_CONTEXT_IF_LEVEL_10(ut.getOptions().strictnessLevel)
+                        RTC_REALTIME_CONTEXT_IF_ENABLED(ut.getOptions().realtimeCheck, blockNum)
                         instance.processBlock (subBuffer, mb);
                     }
 
@@ -682,7 +685,7 @@ struct ParameterThreadSafetyTest    : public PluginTest
             fillNoise (ab);
 
             {
-                RTC_REALTIME_CONTEXT_IF_LEVEL_10(ut.getOptions().strictnessLevel)
+                RTC_REALTIME_CONTEXT_IF_ENABLED(ut.getOptions().realtimeCheck, i)
                 instance.processBlock (ab, mb);
             }
 

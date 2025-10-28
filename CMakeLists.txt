@@ -10,6 +10,8 @@ if (APPLE)
     # Uncomment to produce a universal binary
     # set(CMAKE_OSX_ARCHITECTURES arm64 x86_64)
     set(PLUGINVAL_ENABLE_RTCHECK ON)
+elseif (CMAKE_SYSTEM_NAME STREQUAL "Linux")
+    set(PLUGINVAL_ENABLE_RTCHECK ON)
 endif()
 
 # sanitizer options, from https://github.com/sudara/cmake-includes/blob/main/Sanitizers.cmake
@@ -42,18 +44,20 @@ endif ()
 set_property(GLOBAL PROPERTY USE_FOLDERS YES)
 option(JUCE_ENABLE_MODULE_SOURCE_GROUPS "Enable Module Source Groups" ON)
 
+Include(FetchContent)
+
 if(PLUGINVAL_ENABLE_RTCHECK)
-    Include(FetchContent)
     FetchContent_Declare(rtcheck
-            GIT_REPOSITORY https://github.com/Tracktion/rtcheck.git
+            GIT_REPOSITORY git@github.com:Tracktion/rtcheck.git
             GIT_TAG origin/main
             SOURCE_DIR ${CMAKE_CURRENT_BINARY_DIR}/rtcheck)
     FetchContent_MakeAvailable(rtcheck)
-
-#    execute_process(COMMAND cmake --build ${CMAKE_CURRENT_BINARY_DIR}/rtcheck-build)
-#    execute_process(COMMAND cmake -B ${CMAKE_CURRENT_BINARY_DIR}/rtcheck/build -S ${CMAKE_CURRENT_BINARY_DIR}/rtcheck)
-#    execute_process(COMMAND cmake --build ${CMAKE_CURRENT_BINARY_DIR}/rtcheck)
 endif()
+
+FetchContent_Declare(magic_enum
+    GIT_REPOSITORY git@github.com:Neargye/magic_enum.git)
+FetchContent_MakeAvailable(magic_enum)
+
 
 option(PLUGINVAL_FETCH_JUCE "Fetch JUCE along with pluginval" ON)
 
@@ -77,7 +81,7 @@ juce_add_gui_app(pluginval
 
 juce_generate_juce_header(pluginval)
 
-target_compile_features(pluginval PRIVATE cxx_std_17)
+target_compile_features(pluginval PRIVATE cxx_std_20)
 
 set_target_properties(pluginval PROPERTIES
     C_VISIBILITY_PRESET hidden
@@ -131,7 +135,8 @@ target_link_libraries(pluginval PRIVATE
     juce::juce_audio_devices
     juce::juce_audio_processors
     juce::juce_audio_utils
-    juce::juce_recommended_warning_flags)
+    juce::juce_recommended_warning_flags
+    magic_enum)
 
 if (${CMAKE_SYSTEM_NAME} MATCHES "Linux")
     target_link_libraries(pluginval PRIVATE

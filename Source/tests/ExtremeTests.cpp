@@ -67,7 +67,7 @@ struct AllocationsInRealTimeThreadTest  : public PluginTest
                     fillNoise (ab);
 
                     {
-                        RTC_REALTIME_CONTEXT_IF_LEVEL_10(ut.getOptions().strictnessLevel)
+                        RTC_REALTIME_CONTEXT_IF_ENABLED(ut.getOptions().realtimeCheck, i)
                         ScopedAllocationDisabler sad;
                         instance.processBlock (ab, mb);
                     }
