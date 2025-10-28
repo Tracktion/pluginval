@@ -5,7 +5,7 @@ on:
 
 env:
   BINARY_NAME: pluginval
-  BUILD_TYPE: Debug
+  BUILD_TYPE: Release
   BUILD_DIR: Builds
   GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
   DISPLAY: :0 # Running pluginval GUI on linux needs this
@@ -121,17 +121,17 @@ jobs:
         working-directory: modules/juce
         shell: bash
         run: |
-          cmake -B Builds -DJUCE_BUILD_EXAMPLES=ON -DCMAKE_BUILD_TYPE=Release -DCMAKE_C_COMPILER_LAUNCHER=ccache -DCMAKE_CXX_COMPILER_LAUNCHER=ccache .
+          cmake -B Builds -DJUCE_BUILD_EXAMPLES=ON -DCMAKE_BUILD_TYPE=Debug -DCMAKE_C_COMPILER_LAUNCHER=ccache -DCMAKE_CXX_COMPILER_LAUNCHER=ccache .
           # Full list of targets https://gist.github.com/sudara/05be084efa371f4e43e21eb19ce04c50
           # Be sure to manually break the cache in the previous step if you want to add/remove plugins
-          cmake --build Builds --config Release --target DSPModulePluginDemo_All --target MultiOutSynthPlugin_All
+          cmake --build Builds --config Debug --target DSPModulePluginDemo_All --target MultiOutSynthPlugin_All
 
       - name: Validate JUCE Plugin examples (VST3)
         shell: bash
         run: |
           # Paths must be single quoted for bash not to escape the Windows backslash character \ used in absolute paths 
-          ${{ env.APP_DIR }}/${{ matrix.test-binary }} --strictness-level 10 --rtcheck relaxed --validate '${{ env.PLUGIN_CACHE_PATH }}/DSPModulePluginDemo_artefacts/Release/VST3/DSPModulePluginDemo.vst3'
-          ${{ env.APP_DIR }}/${{ matrix.test-binary }} --strictness-level 10 --rtcheck relaxed --validate '${{ env.PLUGIN_CACHE_PATH }}/MultiOutSynthPlugin_artefacts/Release/VST3/MultiOutSynthPlugin.vst3'
+          ${{ env.APP_DIR }}/${{ matrix.test-binary }} --strictness-level 10 --rtcheck relaxed --validate '${{ env.PLUGIN_CACHE_PATH }}/DSPModulePluginDemo_artefacts/Debug/VST3/DSPModulePluginDemo.vst3'
+          ${{ env.APP_DIR }}/${{ matrix.test-binary }} --strictness-level 10 --rtcheck relaxed --validate '${{ env.PLUGIN_CACHE_PATH }}/MultiOutSynthPlugin_artefacts/Debug/VST3/MultiOutSynthPlugin.vst3'
 
       - name: Validate JUCE Plugin examples (AU)
         shell: bash
