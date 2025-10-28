@@ -108,16 +108,16 @@ jobs:
           ls -ahl
           ${{ matrix.test-binary }} --run-tests
 
-      - name: Cache JUCE example plugin binaries
-        id: cache-plugins
-        uses: actions/cache@v3
-        with:
-          path: ${{ env.PLUGIN_CACHE_PATH }}
-          # Increment the version in the key below to manually break plugin cache
-          key: v7-${{ runner.os }}-${{ env.JUCE_SHA1 }}
+#      - name: Cache JUCE example plugin binaries
+#        id: cache-plugins
+#        uses: actions/cache@v3
+#        with:
+#          path: ${{ env.PLUGIN_CACHE_PATH }}
+#          # Increment the version in the key below to manually break plugin cache
+#          key: v7-${{ runner.os }}-${{ env.JUCE_SHA1 }}
 
       - name: Build JUCE example plugins
-        if: steps.cache-plugins.outputs.cache-hit != 'true'
+#        if: steps.cache-plugins.outputs.cache-hit != 'true'
         working-directory: modules/juce
         shell: bash
         run: |
