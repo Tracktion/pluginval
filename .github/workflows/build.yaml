@@ -5,7 +5,7 @@ on:
 
 env:
   BINARY_NAME: pluginval
-  BUILD_TYPE: Release
+  BUILD_TYPE: Debug
   BUILD_DIR: Builds
   GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
   DISPLAY: :0 # Running pluginval GUI on linux needs this
