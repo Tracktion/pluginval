@@ -41,5 +41,7 @@
           }                                                                                                     \
       }
 #else
-    #define RTC_REALTIME_CONTEXT
+    #define RTC_REALTIME_CONTEXT_IF_ENABLED(realtimeCheckMode, blockNum)    \
+        (void) realtimeCheckMode;                                           \
+        (void) blockNum;
 #endif
