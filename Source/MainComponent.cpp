@@ -194,14 +194,14 @@ namespace
             message << "\n\n" << "\"None set\"";
 
         std::shared_ptr<juce::AlertWindow> aw (juce::LookAndFeel::getDefaultLookAndFeel().createAlertWindow (TRANS("Set Log File Directory"), message,
-                                                                                                 TRANS("Choose dir"), TRANS("Cancel"), TRANS("Don't save logs"),
+                                                                                                 TRANS("Choose dir"), TRANS("Don't save logs"), TRANS("Cancel"),
                                                                                                  juce::AlertWindow::QuestionIcon, 3, nullptr));
         aw->enterModalState (true, juce::ModalCallbackFunction::create ([aw] (int res)
                                                                   {
-                                                                      if (res == 3)
+                                                                      if (res == 1)
                                                                           getAppPreferences().setValue ("outputDir", juce::String());
 
-                                                                      if (res == 1)
+                                                                      if (res == 2)
                                                                       {
                                                                           const auto defaultDir = juce::File::getSpecialLocation (juce::File::userDesktopDirectory).getChildFile ("pluginval logs").getFullPathName();
                                                                           juce::FileChooser fc (TRANS("Directory to save log files"), defaultDir);
@@ -223,11 +223,11 @@ namespace
             message << "\n\n" << "\"None set\"";
 
         std::shared_ptr<juce::AlertWindow> aw (juce::LookAndFeel::getDefaultLookAndFeel().createAlertWindow (TRANS("Set VST3 validator"), message,
-                                                                                                 TRANS("Choose"), TRANS("Cancel"), TRANS("Don't use VST3 validator"),
+                                                                                                 TRANS("Choose"), TRANS("Don't use VST3 validator"), TRANS("Cancel"),
                                                                                                  juce::AlertWindow::QuestionIcon, 3, nullptr));
         aw->enterModalState (true, juce::ModalCallbackFunction::create ([aw] (int res)
                                                                   {
-                                                                      if (res == 3)
+                                                                      if (res == 1)
                                                                           setVST3Validator ({});
 
                                                                       if (res == 1)
@@ -246,7 +246,7 @@ namespace
 MainComponent::MainComponent (Validator& v)
     : validator (v)
 {
-    formatManager.addDefaultFormats();
+    juce::addDefaultFormatsToManager (formatManager);
 
     const auto tabCol = getLookAndFeel().findColour (juce::ResizableWindow::backgroundColourId);
     addAndMakeVisible (tabbedComponent);

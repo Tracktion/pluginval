@@ -1,20 +1,42 @@
 cmake_minimum_required(VERSION 3.15)
 
-file(READ VERSION CURRENT_VERSION)
+file(STRINGS VERSION CURRENT_VERSION LIMIT_COUNT 1)
 project(pluginval VERSION ${CURRENT_VERSION})
 
 if (APPLE)
     # Target OS versions down to 10.11
     set (CMAKE_OSX_DEPLOYMENT_TARGET "10.11" CACHE INTERNAL "")
-    
+
     # Uncomment to produce a universal binary
     # set(CMAKE_OSX_ARCHITECTURES arm64 x86_64)
     set(PLUGINVAL_ENABLE_RTCHECK ON)
 endif()
 
-# Uncomment to enable tsan
-# set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fsanitize=thread")
+# sanitizer options, from https://github.com/sudara/cmake-includes/blob/main/Sanitizers.cmake
+# set the corresponding option ON to turn on Address/Thread Sanitizer
+option(WITH_ADDRESS_SANITIZER "Enable Address Sanitizer" OFF)
+option(WITH_THREAD_SANITIZER "Enable Thread Sanitizer" OFF)
 
+message(STATUS "Sanitizers: ASan=${WITH_ADDRESS_SANITIZER} TSan=${WITH_THREAD_SANITIZER}")
+if (WITH_ADDRESS_SANITIZER)
+    if (MSVC)
+        add_compile_options(/fsanitize=address)
+    elseif (CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang")
+        # also enable UndefinedBehaviorSanitizer
+        # https://clang.llvm.org/docs/UndefinedBehaviorSanitizer.html
+        add_compile_options(-fsanitize=address,undefined -fno-omit-frame-pointer)
+        link_libraries(-fsanitize=address)
+    endif ()
+    message("Address Sanitizer enabled")
+endif ()
+
+if (WITH_THREAD_SANITIZER)
+    if (CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang")
+        add_compile_options(-fsanitize=thread -g -fno-omit-frame-pointer)
+        link_libraries(-fsanitize=thread)
+        message("Thread Sanitizer enabled")
+    endif ()
+endif ()
 
 # Adds all the module sources so they appear correctly in the IDE
 set_property(GLOBAL PROPERTY USE_FOLDERS YES)
@@ -74,6 +96,7 @@ set(SourceFiles
     Source/MainComponent.cpp
     Source/PluginTests.cpp
     Source/tests/BasicTests.cpp
+    Source/tests/LocaleTest.cpp
     Source/tests/BusTests.cpp
     Source/tests/ParameterFuzzTests.cpp
     Source/TestUtilities.cpp
@@ -94,13 +117,15 @@ target_compile_definitions(pluginval PRIVATE
     JUCE_PLUGINHOST_LV2=1
     JUCE_USE_CURL=0
     JUCE_WEB_BROWSER=0
-    JUCER_ENABLE_GPL_MODE=1
-    JUCE_DISPLAY_SPLASH_SCREEN=0
     JUCE_MODAL_LOOPS_PERMITTED=1
-    JUCE_REPORT_APP_USAGE=0
     JUCE_GUI_BASICS_INCLUDE_XHEADERS=1
     $<$<BOOL:${PLUGINVAL_ENABLE_RTCHECK}>:PLUGINVAL_ENABLE_RTCHECK=1>
     VERSION="${CURRENT_VERSION}")
+
+if(MSVC AND NOT CMAKE_MSVC_RUNTIME_LIBRARY)
+    # Default to statically linking the runtime libraries
+    set_property(TARGET pluginval PROPERTY MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>")
+endif()
 
 target_link_libraries(pluginval PRIVATE
     juce::juce_audio_devices

@@ -15,6 +15,10 @@ If you are a plugin user looking to report a problem with a plugin to the develo
   - Run in GUI or headless mode
   - Validation is performed in a separate process to avoid crashing
 
+### Funding
+pluginval is a free, open source project but supporting it via funding is a great way to show your appreciation for it, speed up development and influence the [roadmap](ROADMAP.md).
+
+See [FUNDING.md](FUNDING.md) for more details and the bottom of this file for a list of our diamond sponsors.
 
 ### Installation
 
@@ -100,6 +104,30 @@ If you would like to contribute to the project please do! It's very simple to ad
    ```
 
 If you have a case you would like tests, please simply write the test in a fork and create a pull request. The more tests the better!
+
+### Cutting New Releases
+
+* Update VERSION (an extra newline is fine)
+* Update CHANGELIST.md
+* `git commit -am "Version 1.0.5"`
+* `git tag -a v1.0.5 -m "1.0.5 release"`
+* `git push --tags`
+
+## Roadmap
+Find more information on what's in the pipeline for pluginval [here](ROADMAP.md).
+
+## Sponsors
+Thanks to all those who sponsor pluginval's development and a special thanks to those at the diamond level:
+
+[💎 The Audio Programmer](https://theaudioprogrammer.com/?utm_source=pluginval)
+
+<a href="https://theaudioprogrammer.com/?utm_source=pluginval"><img width="75" height="75" alt="image" src="https://github.com/user-attachments/assets/7a6e2e8e-d4c7-461c-98db-d8c1df67be1b" />
+</a>
+
+[💎 Moonbase](https://moonbase.sh/?utm_source=pluginval)
+
+<a href="https://moonbase.sh/?utm_source=pluginval"><img width="517" height="75" alt="MB-banner" src="https://github.com/user-attachments/assets/80f5d6bf-2606-416d-8bb6-f02c66626377"/></a>
+
 
 License
 ----

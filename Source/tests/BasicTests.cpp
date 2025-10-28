@@ -18,12 +18,14 @@
 
 #include <future>
 #include <thread>
+#include <chrono>
 
 //==============================================================================
 struct PluginInfoTest   : public PluginTest
 {
     PluginInfoTest()
-        : PluginTest ("Plugin info", 1)
+        : PluginTest ("Plugin info", 1,
+                      { Requirements::Thread::messageThread })
     {
     }
 
@@ -502,7 +504,8 @@ namespace ParameterHelpers
         const int numSteps = parameter.getNumSteps();
         const bool isDiscrete = parameter.isDiscrete();
         const bool isBoolean = parameter.isBoolean();
-        const juce::StringArray allValueStrings = parameter.getAllValueStrings();
+        const juce::StringArray allValueStrings = parameter.isDiscrete() ? parameter.getAllValueStrings() : juce::StringArray();
+
 
         const bool isOrientationInverted = parameter.isOrientationInverted();
         const bool isAutomatable = parameter.isAutomatable();
@@ -711,7 +714,7 @@ struct AUvalTest    : public PluginTest
             return;
 
         // Use -stress on strictness levels greater than 5
-        const auto cmd = juce::String ("auval -strict STRESS -v ").replace ("STRESS", ut.getOptions().strictnessLevel > 5 ? "-stress" : "")
+        const auto cmd = juce::String ("auval -strict STRESS -v ").replace ("STRESS", ut.getOptions().strictnessLevel > 5 ? "-stress 20" : "")
                             + desc.fileOrIdentifier.fromLastOccurrenceOf ("/", false, false).replace (",", " ");
 
         juce::ChildProcess cp;
@@ -790,7 +793,7 @@ struct VST3validator    : public PluginTest
         if (ut.getOptions().strictnessLevel > 5)
             cmd.add ("-e");
 
-        cmd.add (desc.fileOrIdentifier);
+        cmd.add (ut.getFileOrID());
 
         juce::ChildProcess cp;
         const auto started = cp.start (cmd);

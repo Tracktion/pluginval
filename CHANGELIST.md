@@ -1,9 +1,15 @@
 # pluginval Change List
 
+### 1.0.5
+- Added static linking to the Windows runtime so it should run on more Windows systems (particularly non-dev machines)
+- Made `PluginInfoTest` run on the message thread as the functions it calls aren't thread-safe 
+
 ### 1.0.4
+- Limit auval's stress test to 20 seconds (vs 600) [#135]
 - Fixed incorrect "ALL TESTS PASSED" message when validating out of process [#125]
-- Updated juce to 113009c074
+- Updated juce to 8.0.3 [#133]
 - Added LV2 support [#25]
+- Provide CMake module for registering pluginval tests with CTest [#123] 
 - Changed minimum Linux version to Ubuntu 22.04
 
 ### 1.0.3
