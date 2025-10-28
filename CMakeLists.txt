@@ -44,19 +44,12 @@ endif ()
 set_property(GLOBAL PROPERTY USE_FOLDERS YES)
 option(JUCE_ENABLE_MODULE_SOURCE_GROUPS "Enable Module Source Groups" ON)
 
-Include(FetchContent)
+include(cmake/CPM.cmake)
+CPMAddPackage("gh:Neargye/magic_enum#v0.9.7")
 
 if(PLUGINVAL_ENABLE_RTCHECK)
-    FetchContent_Declare(rtcheck
-            GIT_REPOSITORY git@github.com:Tracktion/rtcheck.git
-            GIT_TAG origin/main
-            SOURCE_DIR ${CMAKE_CURRENT_BINARY_DIR}/rtcheck)
-    FetchContent_MakeAvailable(rtcheck)
+    CPMAddPackage("gh:Tracktion/rtcheck#main")
 endif()
-
-FetchContent_Declare(magic_enum
-    GIT_REPOSITORY git@github.com:Neargye/magic_enum.git)
-FetchContent_MakeAvailable(magic_enum)
 
 
 option(PLUGINVAL_FETCH_JUCE "Fetch JUCE along with pluginval" ON)
