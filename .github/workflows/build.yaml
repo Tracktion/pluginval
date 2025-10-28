@@ -130,8 +130,8 @@ jobs:
         shell: bash
         run: |
           # Paths must be single quoted for bash not to escape the Windows backslash character \ used in absolute paths 
-          ${{ env.APP_DIR }}/${{ matrix.test-binary }} --strictness-level 10 --rtcheck disabled --validate '${{ env.PLUGIN_CACHE_PATH }}/DSPModulePluginDemo_artefacts/Release/VST3/DSPModulePluginDemo.vst3'
-          ${{ env.APP_DIR }}/${{ matrix.test-binary }} --strictness-level 10 --rtcheck disabled --validate '${{ env.PLUGIN_CACHE_PATH }}/MultiOutSynthPlugin_artefacts/Release/VST3/MultiOutSynthPlugin.vst3'
+          ${{ env.APP_DIR }}/${{ matrix.test-binary }} --strictness-level 10 --rtcheck relaxed --validate '${{ env.PLUGIN_CACHE_PATH }}/DSPModulePluginDemo_artefacts/Release/VST3/DSPModulePluginDemo.vst3'
+          ${{ env.APP_DIR }}/${{ matrix.test-binary }} --strictness-level 10 --rtcheck relaxed --validate '${{ env.PLUGIN_CACHE_PATH }}/MultiOutSynthPlugin_artefacts/Release/VST3/MultiOutSynthPlugin.vst3'
 
       - name: Validate JUCE Plugin examples (AU)
         shell: bash
@@ -143,7 +143,7 @@ jobs:
           mkdir -p ~/Library/Audio/Plug-Ins/Components/
           cp -R ${{ env.PLUGIN_CACHE_PATH }}/DSPModulePluginDemo_artefacts/Release/AU/DSPModulePluginDemo.component ~/Library/Audio/Plug-Ins/Components/
           killall -9 AudioComponentRegistrar # kick the AU registrar
-          ${{ env.APP_DIR }}/${{ matrix.test-binary }} --strictness-level 10 --rtcheck disabled --validate  ~/Library/Audio/Plug-Ins/Components/DSPModulePluginDemo.component
+          ${{ env.APP_DIR }}/${{ matrix.test-binary }} --strictness-level 10 --rtcheck relaxed --validate  ~/Library/Audio/Plug-Ins/Components/DSPModulePluginDemo.component
 
       - name: Codesign (macOS)
         if: ${{ matrix.name == 'macOS' }}

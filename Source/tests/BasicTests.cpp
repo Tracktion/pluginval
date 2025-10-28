@@ -149,6 +149,7 @@ struct EditorWhilstProcessingTest   : public PluginTest
             const int numChannelsRequired = juce::jmax (instance.getTotalNumInputChannels(), instance.getTotalNumOutputChannels());
             juce::AudioBuffer<float> ab (numChannelsRequired, instance.getBlockSize());
             juce::MidiBuffer mb;
+            mb.ensureSize (32);
 
 
             juce::WaitableEvent threadStartedEvent;
@@ -227,6 +228,7 @@ struct AudioProcessingTest  : public PluginTest
                 const int numChannelsRequired = juce::jmax (instance.getTotalNumInputChannels(), instance.getTotalNumOutputChannels());
                 juce::AudioBuffer<float> ab (numChannelsRequired, bs);
                 juce::MidiBuffer mb;
+                mb.ensureSize (32);
 
                 // Add a random note on if the plugin is a synth
                 const int noteChannel = r.nextInt ({ 1, 17 });
@@ -398,6 +400,7 @@ struct AutomationTest  : public PluginTest
                 const int numChannelsRequired = juce::jmax (instance.getTotalNumInputChannels(), instance.getTotalNumOutputChannels());
                 juce::AudioBuffer<float> ab (numChannelsRequired, bs);
                 juce::MidiBuffer mb;
+                mb.ensureSize (32);
 
                 // Add a random note on if the plugin is a synth
                 const int noteChannel = r.nextInt ({ 1, 17 });
@@ -663,6 +666,7 @@ struct ParameterThreadSafetyTest    : public PluginTest
         const int numChannelsRequired = juce::jmax (instance.getTotalNumInputChannels(), instance.getTotalNumOutputChannels());
         juce::AudioBuffer<float> ab (numChannelsRequired, blockSize);
         juce::MidiBuffer mb;
+        mb.ensureSize (32);
 
         // Add a random note on if the plugin is a synth
         const int noteChannel = r.nextInt ({ 1, 17 });

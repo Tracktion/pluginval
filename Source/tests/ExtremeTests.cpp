@@ -50,6 +50,7 @@ struct AllocationsInRealTimeThreadTest  : public PluginTest
                 const int numChannelsRequired = juce::jmax (instance.getTotalNumInputChannels(), instance.getTotalNumOutputChannels());
                 juce::AudioBuffer<float> ab (numChannelsRequired, bs);
                 juce::MidiBuffer mb;
+                mb.ensureSize (32);
 
                 // Add a random note on if the plugin is a synth
                 const int noteChannel = r.nextInt ({ 1, 17 });
@@ -131,6 +132,7 @@ struct LargerThanPreparedBlockSizeTest   : public PluginTest
                 const int numChannelsRequired = juce::jmax (instance.getTotalNumInputChannels(), instance.getTotalNumOutputChannels());
                 juce::AudioBuffer<float> ab (numChannelsRequired, processingBlockSize);
                 juce::MidiBuffer mb;
+                mb.ensureSize (32);
 
                 for (int i = 0; i < 10; ++i)
                 {
