@@ -13,8 +13,10 @@
  ==============================================================================*/
 
 #include "PluginTests.h"
+
 #include "TestUtilities.h"
 #include <random>
+#include <cassert>
 
 juce::String getDisplayString (RealtimeCheck rtc)
 {
@@ -26,6 +28,9 @@ juce::String getDisplayString (RealtimeCheck rtc)
 
     if (rtc == RealtimeCheck::relaxed)
         return "Relaxed (check for real-time safety in all but the first process call)";
+
+    assert(false);
+    return {};
 }
 
 namespace
