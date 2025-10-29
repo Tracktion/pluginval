@@ -142,7 +142,7 @@ jobs:
           ${{ env.APP_DIR }}/${{ matrix.test-binary }} --strictness-level 10 --rtcheck relaxed --validate '${{ env.PLUGIN_CACHE_PATH }}/MultiOutSynthPlugin_artefacts/Debug/VST3/MultiOutSynthPlugin.vst3'
 
 
-- name: Validate JUCE Plugin examples (AU)
+      - name: Validate JUCE Plugin examples (AU)
         shell: bash
         continue-on-error: true
         if: ${{ matrix.name == 'macOS' }}
