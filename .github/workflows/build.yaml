@@ -21,7 +21,7 @@ jobs:
             os: ubuntu-latest
             app: pluginval
             test-binary: ./pluginval
-            container: ubuntu:22.04
+            container: ubuntu:24.04
           - name: macOS
             os: macos-15
             app: pluginval.app
