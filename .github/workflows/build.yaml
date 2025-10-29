@@ -117,7 +117,7 @@ jobs:
           key: v7-${{ runner.os }}-${{ env.JUCE_SHA1 }}
 
       - name: Build JUCE example plugins
-        if: steps.cache-plugins.outputs.cache-hit != 'true'
+#        if: steps.cache-plugins.outputs.cache-hit != 'true'
         working-directory: modules/juce
         shell: bash
         run: |
