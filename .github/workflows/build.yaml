@@ -129,11 +129,20 @@ jobs:
       - name: Validate JUCE Plugin examples (VST3)
         shell: bash
         run: |
-          # Paths must be single quoted for bash not to escape the Windows backslash character \ used in absolute paths 
+          # Paths must be single quoted for bash not to escape the Windows backslash character \ used in absolute paths
+          ulimit -c unlimited
+
           ${{ env.APP_DIR }}/${{ matrix.test-binary }} --strictness-level 10 --rtcheck relaxed --validate '${{ env.PLUGIN_CACHE_PATH }}/DSPModulePluginDemo_artefacts/Debug/VST3/DSPModulePluginDemo.vst3'
+          
+          if [ -f core* ]; then
+            gdb -batch -ex "bt" -ex "bt full" ./pluginval core* > stacktrace.txt
+            cat stacktrace.txt
+          fi
+
           ${{ env.APP_DIR }}/${{ matrix.test-binary }} --strictness-level 10 --rtcheck relaxed --validate '${{ env.PLUGIN_CACHE_PATH }}/MultiOutSynthPlugin_artefacts/Debug/VST3/MultiOutSynthPlugin.vst3'
 
-      - name: Validate JUCE Plugin examples (AU)
+
+- name: Validate JUCE Plugin examples (AU)
         shell: bash
         continue-on-error: true
         if: ${{ matrix.name == 'macOS' }}
