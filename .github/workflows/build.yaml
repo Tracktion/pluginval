@@ -129,8 +129,8 @@ jobs:
       - name: Validate JUCE Plugin examples (VST3)
         shell: bash
         run: |
-          ${{ env.APP_DIR }}/${{ matrix.test-binary }} --strictness-level 10 --rtcheck relaxed --validate '${{ env.PLUGIN_CACHE_PATH }}/DSPModulePluginDemo_artefacts/Release/VST3/DSPModulePluginDemo.vst3'
           ${{ env.APP_DIR }}/${{ matrix.test-binary }} --strictness-level 10 --rtcheck relaxed --validate '${{ env.PLUGIN_CACHE_PATH }}/MultiOutSynthPlugin_artefacts/Release/VST3/MultiOutSynthPlugin.vst3'
+          ${{ env.APP_DIR }}/${{ matrix.test-binary }} --strictness-level 10 --rtcheck relaxed --validate '${{ env.PLUGIN_CACHE_PATH }}/DSPModulePluginDemo_artefacts/Release/VST3/DSPModulePluginDemo.vst3'
 
       - name: Validate JUCE Plugin examples (AU)
         shell: bash
