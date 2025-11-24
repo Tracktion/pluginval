@@ -117,7 +117,7 @@ jobs:
           key: v7-${{ runner.os }}-${{ env.JUCE_SHA1 }}
 
       - name: Build JUCE example plugins
-#        if: steps.cache-plugins.outputs.cache-hit != 'true'
+        if: steps.cache-plugins.outputs.cache-hit != 'true'
         working-directory: modules/juce
         shell: bash
         run: |
@@ -129,8 +129,9 @@ jobs:
       - name: Validate JUCE Plugin examples (VST3)
         shell: bash
         run: |
-          ${{ env.APP_DIR }}/${{ matrix.test-binary }} --strictness-level 10 --validate '${{ env.PLUGIN_CACHE_PATH }}/MultiOutSynthPlugin_artefacts/Release/VST3/MultiOutSynthPlugin.vst3'
+          # Paths must be single quoted for bash not to escape the Windows backslash character \ used in absolute paths 
           ${{ env.APP_DIR }}/${{ matrix.test-binary }} --strictness-level 10 --validate '${{ env.PLUGIN_CACHE_PATH }}/DSPModulePluginDemo_artefacts/Release/VST3/DSPModulePluginDemo.vst3'
+          ${{ env.APP_DIR }}/${{ matrix.test-binary }} --strictness-level 10 --validate '${{ env.PLUGIN_CACHE_PATH }}/MultiOutSynthPlugin_artefacts/Release/VST3/MultiOutSynthPlugin.vst3'
 
       - name: Validate JUCE Plugin examples (AU)
         shell: bash
