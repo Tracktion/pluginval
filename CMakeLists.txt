@@ -11,7 +11,8 @@ if (APPLE)
     # set(CMAKE_OSX_ARCHITECTURES arm64 x86_64)
     set(PLUGINVAL_ENABLE_RTCHECK ON)
 elseif (CMAKE_SYSTEM_NAME STREQUAL "Linux")
-    set(PLUGINVAL_ENABLE_RTCHECK ON)
+    # Disable rtcheck on Linux for now until further testing on real Linux systems has been done
+    # set(PLUGINVAL_ENABLE_RTCHECK ON)
 endif()
 
 # sanitizer options, from https://github.com/sudara/cmake-includes/blob/main/Sanitizers.cmake
