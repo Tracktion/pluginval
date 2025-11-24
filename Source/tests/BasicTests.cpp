@@ -14,6 +14,8 @@
 
 #include "../PluginTests.h"
 #include "../TestUtilities.h"
+#include "../RTCheck.h"
+
 #include <future>
 #include <thread>
 #include <chrono>
@@ -147,6 +149,7 @@ struct EditorWhilstProcessingTest   : public PluginTest
             const int numChannelsRequired = juce::jmax (instance.getTotalNumInputChannels(), instance.getTotalNumOutputChannels());
             juce::AudioBuffer<float> ab (numChannelsRequired, instance.getBlockSize());
             juce::MidiBuffer mb;
+            mb.ensureSize (32);
 
 
             juce::WaitableEvent threadStartedEvent;
@@ -155,11 +158,19 @@ struct EditorWhilstProcessingTest   : public PluginTest
             auto processThread = std::async (std::launch::async,
                                              [&]
                                              {
+                                                 int blockNum = 0;
+
                                                  while (shouldProcess)
                                                  {
                                                      fillNoise (ab);
-                                                     instance.processBlock (ab, mb);
+
+                                                     {
+                                                         RTC_REALTIME_CONTEXT_IF_ENABLED(ut.getOptions().realtimeCheck, blockNum)
+                                                         instance.processBlock (ab, mb);
+                                                     }
+
                                                      mb.clear();
+                                                     ++blockNum;
 
                                                      threadStartedEvent.signal();
                                                  }
@@ -217,6 +228,7 @@ struct AudioProcessingTest  : public PluginTest
                 const int numChannelsRequired = juce::jmax (instance.getTotalNumInputChannels(), instance.getTotalNumOutputChannels());
                 juce::AudioBuffer<float> ab (numChannelsRequired, bs);
                 juce::MidiBuffer mb;
+                mb.ensureSize (32);
 
                 // Add a random note on if the plugin is a synth
                 const int noteChannel = r.nextInt ({ 1, 17 });
@@ -232,7 +244,12 @@ struct AudioProcessingTest  : public PluginTest
                         addNoteOff (mb, noteChannel, noteNumber, 0);
 
                     fillNoise (ab);
-                    instance.processBlock (ab, mb);
+
+                    {
+                      RTC_REALTIME_CONTEXT_IF_ENABLED(ut.getOptions().realtimeCheck, i)
+                      instance.processBlock (ab, mb);
+                    }
+
                     mb.clear();
 
                     ut.expectEquals (countNaNs (ab), 0, "NaNs found in buffer");
@@ -383,6 +400,7 @@ struct AutomationTest  : public PluginTest
                 const int numChannelsRequired = juce::jmax (instance.getTotalNumInputChannels(), instance.getTotalNumOutputChannels());
                 juce::AudioBuffer<float> ab (numChannelsRequired, bs);
                 juce::MidiBuffer mb;
+                mb.ensureSize (32);
 
                 // Add a random note on if the plugin is a synth
                 const int noteChannel = r.nextInt ({ 1, 17 });
@@ -391,7 +409,7 @@ struct AutomationTest  : public PluginTest
                 if (isPluginInstrument)
                     addNoteOn (mb, noteChannel, noteNumber, juce::jmin (10, subBlockSize));
 
-                for (;;)
+                for (int blockNum = 0;; ++blockNum)
                 {
                     // Set random parameter values
                     {
@@ -416,7 +434,12 @@ struct AutomationTest  : public PluginTest
                                                   numSamplesDone,
                                                   numSamplesThisTime);
                     fillNoise (subBuffer);
-                    instance.processBlock (subBuffer, mb);
+
+                    {
+                        RTC_REALTIME_CONTEXT_IF_ENABLED(ut.getOptions().realtimeCheck, blockNum)
+                        instance.processBlock (subBuffer, mb);
+                    }
+
                     numSamplesDone += numSamplesThisTime;
 
                     mb.clear();
@@ -643,6 +666,7 @@ struct ParameterThreadSafetyTest    : public PluginTest
         const int numChannelsRequired = juce::jmax (instance.getTotalNumInputChannels(), instance.getTotalNumOutputChannels());
         juce::AudioBuffer<float> ab (numChannelsRequired, blockSize);
         juce::MidiBuffer mb;
+        mb.ensureSize (32);
 
         // Add a random note on if the plugin is a synth
         const int noteChannel = r.nextInt ({ 1, 17 });
@@ -663,7 +687,12 @@ struct ParameterThreadSafetyTest    : public PluginTest
                 param->setValue (r.nextFloat());
 
             fillNoise (ab);
-            instance.processBlock (ab, mb);
+
+            {
+                RTC_REALTIME_CONTEXT_IF_ENABLED(ut.getOptions().realtimeCheck, i)
+                instance.processBlock (ab, mb);
+            }
+
             mb.clear();
         }
 

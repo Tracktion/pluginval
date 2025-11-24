@@ -9,6 +9,10 @@ if (APPLE)
 
     # Uncomment to produce a universal binary
     # set(CMAKE_OSX_ARCHITECTURES arm64 x86_64)
+    set(PLUGINVAL_ENABLE_RTCHECK ON)
+elseif (CMAKE_SYSTEM_NAME STREQUAL "Linux")
+    # Disable rtcheck on Linux for now until further testing on real Linux systems has been done
+    # set(PLUGINVAL_ENABLE_RTCHECK ON)
 endif()
 
 # sanitizer options, from https://github.com/sudara/cmake-includes/blob/main/Sanitizers.cmake
@@ -41,7 +45,15 @@ endif ()
 set_property(GLOBAL PROPERTY USE_FOLDERS YES)
 option(JUCE_ENABLE_MODULE_SOURCE_GROUPS "Enable Module Source Groups" ON)
 
-option(PLUGINVAL_FETCH_JUCE "Fetch JUCE along with PluginVal" ON)
+include(cmake/CPM.cmake)
+CPMAddPackage("gh:Neargye/magic_enum#v0.9.7")
+
+if(PLUGINVAL_ENABLE_RTCHECK)
+    CPMAddPackage("gh:Tracktion/rtcheck#main")
+endif()
+
+
+option(PLUGINVAL_FETCH_JUCE "Fetch JUCE along with pluginval" ON)
 
 if(PLUGINVAL_FETCH_JUCE)
     add_subdirectory(modules/juce)
@@ -63,7 +75,7 @@ juce_add_gui_app(pluginval
 
 juce_generate_juce_header(pluginval)
 
-target_compile_features(pluginval PRIVATE cxx_std_17)
+target_compile_features(pluginval PRIVATE cxx_std_20)
 
 set_target_properties(pluginval PROPERTIES
     C_VISIBILITY_PRESET hidden
@@ -105,6 +117,7 @@ target_compile_definitions(pluginval PRIVATE
     JUCE_WEB_BROWSER=0
     JUCE_MODAL_LOOPS_PERMITTED=1
     JUCE_GUI_BASICS_INCLUDE_XHEADERS=1
+    $<$<BOOL:${PLUGINVAL_ENABLE_RTCHECK}>:PLUGINVAL_ENABLE_RTCHECK=1>
     VERSION="${CURRENT_VERSION}")
 
 if(MSVC AND NOT CMAKE_MSVC_RUNTIME_LIBRARY)
@@ -116,11 +129,26 @@ target_link_libraries(pluginval PRIVATE
     juce::juce_audio_devices
     juce::juce_audio_processors
     juce::juce_audio_utils
-    juce::juce_recommended_warning_flags)
+    juce::juce_recommended_warning_flags
+    magic_enum)
 
 if (${CMAKE_SYSTEM_NAME} MATCHES "Linux")
     target_link_libraries(pluginval PRIVATE
         -static-libstdc++)
+endif()
+
+if (PLUGINVAL_ENABLE_RTCHECK)
+    target_link_libraries(pluginval PRIVATE
+        rtcheck)
+
+    if (APPLE)
+        add_custom_command(TARGET pluginval POST_BUILD
+                COMMAND ${CMAKE_COMMAND} -E echo "Executable path: $<TARGET_FILE_DIR:pluginval>")
+        add_custom_command(TARGET pluginval POST_BUILD
+            COMMAND ${CMAKE_COMMAND} -E copy
+                    ${CMAKE_CURRENT_BINARY_DIR}/_deps/rtcheck-build/src/librtcheck.dylib
+                    $<TARGET_FILE_DIR:pluginval>/../Libraries/librtcheck.dylib)
+    endif ()
 endif()
 
 set (cmdline_docs_out "${CMAKE_CURRENT_LIST_DIR}/docs/Command line options.md")
