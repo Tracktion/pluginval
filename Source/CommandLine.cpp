@@ -358,14 +358,14 @@ static juce::String getHelpMessage()
          // how to test
          << "  --strictness-level [1-10]" << newLine
          << "    Sets the strictness level to use. A minimum level of 5 (also the default)" << newLine
-         << "    is recomended for compatibility." << newLine
+         << "    is recommended for compatibility." << newLine
          << "    Higher levels include longer, more thorough tests such as fuzzing." << newLine
          << "  --timeout-ms [numMilliseconds]" << newLine
          << "    Sets a timout which will stop validation with an error if no output from any" << newLine
          << "    test has happened for this number of ms." << newLine
          << "    By default this is 30s but can be set to \"-1\" (must be quoted) to never timeout." << newLine
          << "  --rtcheck [empty, disabled, enabled or relaxed]" << newLine
-         << "    Turns on real-time saftey checks using rtcheck (macOS and Linux only)." << newLine
+         << "    Turns on real-time safety checks using rtcheck (macOS and Linux only)." << newLine
          << "    relaxed mode doesn't run the checks for the first processing block as a lot of plugins" << newLine
          << "    use this to allocate or initialise thread-locals (which can allocate)" << newLine
          << newLine
