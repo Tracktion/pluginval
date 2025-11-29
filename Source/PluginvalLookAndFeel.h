@@ -59,7 +59,7 @@ public:
         // Slider colours
         setColour (juce::Slider::backgroundColourId, backgroundDark);
         setColour (juce::Slider::trackColourId, backgroundLight);
-        setColour (juce::Slider::thumbColourId, accentColour);
+        setColour (juce::Slider::thumbColourId, getAccentColour());
         setColour (juce::Slider::textBoxTextColourId, textColour);
         setColour (juce::Slider::textBoxBackgroundColourId, backgroundMid);
         setColour (juce::Slider::textBoxOutlineColourId, backgroundLight);

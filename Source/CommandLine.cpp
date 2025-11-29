@@ -15,6 +15,7 @@
 #include "CommandLine.h"
 #include "Validator.h"
 #include "CrashHandler.h"
+#include "PluginTests.h"
 
 #if JUCE_MAC
  #include <signal.h>
@@ -356,6 +357,8 @@ Usage:
     Sets the strictness level to use. A minimum level of 5 (also the default)
     is recommended for compatibility.
     Higher levels include longer, more thorough tests such as fuzzing.
+  --strictness-help [level]
+    Lists all tests that run at the given strictness level (default: 5).
   --timeout-ms [numMilliseconds]
     Sets a timout which will stop validation with an error if no output from any
     test has happened for this number of ms.
@@ -408,6 +411,41 @@ set for that option.
 static juce::String getVersionText()
 {
     return juce::String ("pluginval") + " - " + VERSION;
+}
+
+static void printStrictnessHelp (int level)
+{
+    level = juce::jlimit (1, 10, level);
+
+    std::cout << "Tests at strictness level " << level << ":\n\n";
+
+    auto& allTests = PluginTest::getAllTests();
+
+    std::vector<PluginTest*> sortedTests;
+    for (auto* test : allTests)
+        sortedTests.push_back (test);
+
+    std::sort (sortedTests.begin(), sortedTests.end(),
+               [] (const PluginTest* a, const PluginTest* b)
+               { return a->strictnessLevel < b->strictnessLevel; });
+
+    for (auto* test : sortedTests)
+    {
+        if (test->strictnessLevel > level)
+            continue;
+
+        auto descriptions = test->getDescription (level);
+
+        for (const auto& desc : descriptions)
+        {
+            std::cout << "  " << desc.title;
+            if (desc.description.isNotEmpty())
+                std::cout << ": " << desc.description;
+            std::cout << "\n";
+        }
+    }
+
+    std::cout << std::endl;
 }
 
 static int getNumTestFailures (juce::UnitTestRunner& testRunner)
@@ -492,6 +530,17 @@ static void performCommandLine (CommandLineValidator& validator, const juce::Arg
                       "--run-tests",
                       "Runs the internal unit tests.", juce::String(),
                       [] (const auto&) { runUnitTests(); }});
+    cli.addCommand ({ "--strictness-help",
+                      "--strictness-help [level]",
+                      "Lists all tests that run at the given strictness level.", juce::String(),
+                      [] (const auto& args)
+                      {
+                          int level = 5;
+                          auto arg = getArgumentAfterOption (args, "--strictness-help");
+                          if (arg.text.isNotEmpty() && ! arg.isShortOption() && ! arg.isLongOption())
+                              level = arg.text.getIntValue();
+                          printStrictnessHelp (level);
+                      }});
 
     if (const auto retValue = cli.findAndRunCommand (args); retValue != 0)
     {
@@ -516,7 +565,8 @@ bool shouldPerformCommandLine (const juce::String& commandLine)
     return args.containsOption ("--help|-h")
         || args.containsOption ("--version")
         || args.containsOption ("--validate")
-        || args.containsOption ("--run-tests");
+        || args.containsOption ("--run-tests")
+        || args.containsOption ("--strictness-help");
 }
 
 //==============================================================================

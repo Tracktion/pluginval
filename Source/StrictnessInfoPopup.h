@@ -248,7 +248,7 @@ public:
         auto content = std::make_unique<StrictnessInfoPopup> (currentLevel, std::move (onLevelChanged));
         setBackgroundColour (content->findColour (juce::ResizableWindow::backgroundColourId));
         setContentOwned (content.release(), true);
-        setUsingNativeTitleBar (false);
+        setUsingNativeTitleBar (true);
         setResizable (false, false);
         centreWithSize (getWidth(), getHeight());
         setVisible (true);
