@@ -259,7 +259,7 @@ public:
         table.setHeader (std::make_unique<juce::TableHeaderComponent>());
         table.getHeader().addColumn ("Name", 1, 200, 100, 400);
         table.getHeader().addColumn ("Manufacturer", 2, 150, 80, 300);
-        table.getHeader().addColumn ("Format", 3, 60, 50, 100);
+        table.getHeader().addColumn ("Format", 3, 80, 60, 120);
         table.getHeader().addColumn ("Category", 4, 100, 60, 200);
         table.setMultipleSelectionEnabled (true);
         addAndMakeVisible (table);
@@ -288,7 +288,9 @@ public:
     void resized() override
     {
         auto r = getLocalBounds();
-        searchBox.setBounds (r.removeFromTop (26).reduced (2));
+        r.removeFromTop (5);
+        searchBox.setBounds (r.removeFromTop (26).reduced (2, 0));
+        r.removeFromTop (5);
         table.setBounds (r);
     }
 
