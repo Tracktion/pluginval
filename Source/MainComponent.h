@@ -261,6 +261,7 @@ public:
         table.getHeader().addColumn ("Manufacturer", 2, 150, 80, 300);
         table.getHeader().addColumn ("Format", 3, 80, 60, 120);
         table.getHeader().addColumn ("Category", 4, 100, 60, 200);
+        table.getHeader().addColumn ("File/Identifier", 5, 250, 100, 600);
         table.setMultipleSelectionEnabled (true);
         addAndMakeVisible (table);
 
@@ -348,6 +349,7 @@ private:
         else if (col == 2) text = desc.manufacturerName;
         else if (col == 3) text = desc.pluginFormatName;
         else if (col == 4) text = desc.category;
+        else if (col == 5) text = desc.fileOrIdentifier;
 
         g.drawText (text, 4, 0, w - 8, h, juce::Justification::centredLeft);
     }
@@ -365,6 +367,7 @@ private:
             else if (col == 2) r = da.manufacturerName.compareIgnoreCase (db.manufacturerName);
             else if (col == 3) r = da.pluginFormatName.compareIgnoreCase (db.pluginFormatName);
             else if (col == 4) r = da.category.compareIgnoreCase (db.category);
+            else if (col == 5) r = da.fileOrIdentifier.compareIgnoreCase (db.fileOrIdentifier);
             return forwards ? r < 0 : r > 0;
         });
         table.updateContent();
