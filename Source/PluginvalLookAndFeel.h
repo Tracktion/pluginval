@@ -91,10 +91,10 @@ public:
         setColour (juce::TableHeaderComponent::outlineColourId, backgroundLight);
 
         // Tabbed component colours
-        setColour (juce::TabbedButtonBar::tabOutlineColourId, backgroundLight);
-        setColour (juce::TabbedButtonBar::frontOutlineColourId, textDimmed);
+        setColour (juce::TabbedButtonBar::tabOutlineColourId, juce::Colours::transparentBlack);
+        setColour (juce::TabbedButtonBar::frontOutlineColourId, juce::Colours::transparentBlack);
         setColour (juce::TabbedComponent::backgroundColourId, backgroundDark);
-        setColour (juce::TabbedComponent::outlineColourId, backgroundLight);
+        setColour (juce::TabbedComponent::outlineColourId, juce::Colours::transparentBlack);
 
         // Popup menu colours
         setColour (juce::PopupMenu::backgroundColourId, backgroundMid);
@@ -199,22 +199,30 @@ public:
         auto area = button.getActiveArea().toFloat();
         auto backgroundColour = findColour (juce::ResizableWindow::backgroundColourId);
 
-        if (button.isFrontTab())
-            backgroundColour = backgroundColour.brighter (0.1f);
-        else if (isMouseOver)
+        if (isMouseOver && ! button.isFrontTab())
             backgroundColour = backgroundColour.brighter (0.05f);
 
         g.setColour (backgroundColour);
         g.fillRect (area);
 
-        g.setColour (findColour (juce::TabbedButtonBar::tabOutlineColourId));
-        g.drawRect (area, 1.0f);
+        // Draw coloured underline for selected tab
+        if (button.isFrontTab())
+        {
+            g.setColour (getAccentColour());
+            g.fillRect (area.removeFromBottom (2.0f));
+        }
 
         auto textColour = button.isFrontTab() ? findColour (juce::Label::textColourId)
-                                               : findColour (juce::Label::textColourId).withAlpha (0.7f);
+                                               : findColour (juce::Label::textColourId).withAlpha (0.6f);
         g.setColour (textColour);
         g.setFont (juce::Font (14.0f));
-        g.drawText (button.getButtonText(), area, juce::Justification::centred);
+        g.drawText (button.getButtonText(), area.reduced (12.0f, 0.0f), juce::Justification::centred);
+    }
+
+    int getTabButtonBestWidth (juce::TabBarButton& button, int tabDepth) override
+    {
+        auto width = juce::Font (14.0f).getStringWidth (button.getButtonText()) + 40;  // Extra padding
+        return juce::jmax (width, 80);
     }
 
     juce::Font getTextButtonFont (juce::TextButton&, int buttonHeight) override

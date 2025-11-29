@@ -104,10 +104,7 @@ private:
 
     void validationStarted (const juce::String& id) override
     {
-        auto name = juce::File (id).getFileNameWithoutExtension();
-        if (name.isEmpty())
-            name = id;
-        updateState (State::validating, "Validating: " + name);
+        updateState (State::validating, "Validating: " + id);
     }
 
     void logMessage (const juce::String&) override
@@ -331,8 +328,15 @@ private:
 
     void paintCell (juce::Graphics& g, int row, int col, int w, int h, bool selected) override
     {
-        if (row < 0 || row >= static_cast<int> (filteredIndices.size())) return;
-        auto& desc = knownPluginList.getTypes().getReference (filteredIndices[static_cast<size_t> (row)]);
+        if (row < 0 || row >= static_cast<int> (filteredIndices.size()))
+            return;
+
+        auto trueIndex = filteredIndices[static_cast<size_t> (row)];
+
+        if (trueIndex < 0 || trueIndex >= knownPluginList.getTypes().size())
+            return;
+
+        auto desc = knownPluginList.getTypes()[trueIndex];
 
         g.setColour (selected ? juce::Colours::white : findColour (juce::Label::textColourId));
         g.setFont (14.0f);
@@ -372,7 +376,8 @@ private:
 */
 class MainComponent   : public juce::Component,
                         public juce::MenuBarModel,
-                        private juce::ChangeListener
+                        private juce::ChangeListener,
+                        private Validator::Listener
 {
 public:
     //==============================================================================
@@ -415,6 +420,12 @@ private:
     juce::PopupMenu createOptionsMenu();
 
     void changeListenerCallback (juce::ChangeBroadcaster*) override;
+
+    // Validator::Listener
+    void validationStarted (const juce::String& idString) override;
+    void logMessage (const juce::String&) override {}
+    void itemComplete (const juce::String&, uint32_t) override {}
+    void allItemsComplete() override {}
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (MainComponent)
 };

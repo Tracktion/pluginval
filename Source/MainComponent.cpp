@@ -130,6 +130,74 @@ namespace
                 .value_or (RealtimeCheck::disabled);
     }
 
+    void setPluginNameFilter (const juce::String& filter)
+    {
+        getAppPreferences().setValue ("pluginNameFilter", filter);
+    }
+
+    juce::String getPluginNameFilter()
+    {
+        return getAppPreferences().getValue ("pluginNameFilter", "");
+    }
+
+    juce::StringArray getPluginNameFilters()
+    {
+        auto filter = getPluginNameFilter();
+        juce::StringArray filters;
+        filters.addTokens (filter, ",", "");
+        filters.trim();
+        filters.removeEmptyStrings();
+        return filters;
+    }
+
+    void showPluginFilterDialog()
+    {
+        const juce::String message = TRANS("Enter plugin names to scan for (comma-separated).\nOnly plugins containing these names will be scanned.");
+        std::shared_ptr<juce::AlertWindow> aw (juce::LookAndFeel::getDefaultLookAndFeel().createAlertWindow (TRANS("Set Plugin Name Filter"), message,
+                                                                                                 TRANS("OK"), TRANS("Clear"), TRANS("Cancel"),
+                                                                                                 juce::AlertWindow::QuestionIcon, 3, nullptr));
+        aw->addTextEditor ("filter", getPluginNameFilter());
+        aw->enterModalState (true, juce::ModalCallbackFunction::create ([aw] (int res)
+                                                                  {
+                                                                      if (res == 1)
+                                                                      {
+                                                                          if (auto te = aw->getTextEditor ("filter"))
+                                                                              setPluginNameFilter (te->getText());
+                                                                      }
+                                                                      else if (res == 2)
+                                                                      {
+                                                                          setPluginNameFilter ({});
+                                                                      }
+                                                                  }));
+    }
+
+    juce::StringArray getFilteredPluginFiles (juce::AudioPluginFormat& format, const juce::StringArray& nameFilters)
+    {
+        juce::StringArray result;
+
+        // Get all plugins - for AU this ignores the path and queries system registry
+        juce::FileSearchPath searchPaths = format.getDefaultLocationsToSearch();
+        auto allPlugins = format.searchPathsForPlugins (searchPaths, true, false);
+
+        for (const auto& pluginId : allPlugins)
+        {
+            // Get the actual plugin name - for file-based formats this extracts from path,
+            // for AU it gets the human-readable name from the identifier
+            auto pluginName = format.getNameOfPluginFromIdentifier (pluginId);
+
+            for (const auto& filter : nameFilters)
+            {
+                if (pluginName.containsIgnoreCase (filter) || pluginId.containsIgnoreCase (filter))
+                {
+                    result.add (pluginId);
+                    break;
+                }
+            }
+        }
+
+        return result;
+    }
+
     PluginTests::Options getTestOptions()
     {
         PluginTests::Options options;
@@ -331,12 +399,14 @@ MainComponent::MainComponent (Validator& v)
         knownPluginList.recreateFromXml (*xml);
 
     knownPluginList.addChangeListener (this);
+    validator.addListener (this);
 
     setSize (1000, 600);
 }
 
 MainComponent::~MainComponent()
 {
+    validator.removeListener (this);
     menuBar.setModel (nullptr);
     savePluginList();
 }
@@ -352,6 +422,7 @@ void MainComponent::resized()
     auto r = getLocalBounds();
 
     menuBar.setBounds (r.removeFromTop (24));
+    r.removeFromTop (10);  // Spacing below menu bar / above tabs
 
     auto bottomR = r.removeFromBottom (48);
     bottomR.reduce (10, 10);  // Indent and add vertical padding
@@ -378,6 +449,11 @@ void MainComponent::changeListenerCallback (juce::ChangeBroadcaster*)
     savePluginList();
 }
 
+void MainComponent::validationStarted (const juce::String&)
+{
+    tabbedComponent.setCurrentTabIndex (1);  // Switch to Console tab
+}
+
 //==============================================================================
 juce::StringArray MainComponent::getMenuBarNames()
 {
@@ -391,7 +467,40 @@ juce::PopupMenu MainComponent::getMenuForIndex (int menuIndex, const juce::Strin
     if (menuIndex == 0)
         menu = createFileMenu();
     else if (menuIndex == 1)
+    {
+        // Start with JUCE's standard plugin list options
         menu = pluginListComponent.createOptionsMenu();
+        menu.addSeparator();
+
+        // Add filter setting
+        auto currentFilter = getPluginNameFilter();
+        auto filterLabel = currentFilter.isEmpty() ? juce::String ("Set plugin filter...")
+                                                   : "Set plugin filter (" + currentFilter + ")...";
+        menu.addItem (filterLabel, [] { showPluginFilterDialog(); });
+
+        menu.addSeparator();
+
+        // Add filtered scanning options (disabled if no filter set)
+        auto filters = getPluginNameFilters();
+        bool hasFilter = ! filters.isEmpty();
+
+        for (auto* format : formatManager.getFormats())
+        {
+            menu.addItem ("Scan " + format->getName() + " (filtered)", hasFilter, false, [this, format, filters]
+            {
+                auto files = getFilteredPluginFiles (*format, filters);
+                if (files.isEmpty())
+                {
+                    juce::AlertWindow::showMessageBoxAsync (juce::AlertWindow::InfoIcon,
+                        "No Matches", "No plugins matching the filter were found.");
+                }
+                else
+                {
+                    pluginListComponent.scanFor (*format, files);
+                }
+            });
+        }
+    }
     else if (menuIndex == 2)
         menu = createTestMenu();
     else if (menuIndex == 3)
