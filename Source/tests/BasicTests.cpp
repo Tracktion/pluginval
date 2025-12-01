@@ -37,6 +37,12 @@ struct PluginInfoTest   : public PluginTest
         ut.logMessage ("Reported latency: " + juce::String (instance.getLatencySamples()));
         ut.logMessage ("Reported taillength: " + juce::String (instance.getTailLengthSeconds()));
     }
+
+    std::vector<TestDescription> getDescription (int) const override
+    {
+        return { { name, "Logs getName(), getAlternateDisplayNames(), supportsDoublePrecisionProcessing(), "
+                         "getLatencySamples(), getTailLengthSeconds()" } };
+    }
 };
 
 static PluginInfoTest pluginInfoTest;
@@ -86,6 +92,12 @@ struct PluginPrgramsTest    : public PluginTest
             }
         }
     }
+
+    std::vector<TestDescription> getDescription (int) const override
+    {
+        return { { name, "Calls getNumPrograms() and getProgramName() for each, "
+                         "then randomly switches programs 5 times via setCurrentProgram()" } };
+    }
 };
 
 static PluginPrgramsTest pluginPrgramsTest;
@@ -119,6 +131,12 @@ struct EditorTest   : public PluginTest
                 ut.logVerboseMessage ("Time taken to open editor (warm): " + timer.getDescription());
             }
         }
+    }
+
+    std::vector<TestDescription> getDescription (int) const override
+    {
+        return { { name, "Calls createEditor() twice (cold and warm), logs time taken, "
+                         "expects non-null editor pointer" } };
     }
 };
 
@@ -184,6 +202,12 @@ struct EditorWhilstProcessingTest   : public PluginTest
 
             shouldProcess = false;
         }
+    }
+
+    std::vector<TestDescription> getDescription (int) const override
+    {
+        return { { name, "Starts async thread calling processBlock() repeatedly, "
+                         "then calls createEditor() on message thread. Tests concurrent access" } };
     }
 };
 
@@ -264,6 +288,12 @@ struct AudioProcessingTest  : public PluginTest
     {
         runAudioProcessingTest (ut, instance, true);
     }
+
+    std::vector<TestDescription> getDescription (int) const override
+    {
+        return { { name, "Processes 10 blocks at each sample rate / block size combo. "
+                         "For instruments, sends noteOn/noteOff. Checks for NaNs, Infs, subnormals" } };
+    }
 };
 
 static AudioProcessingTest audioProcessingTest;
@@ -285,6 +315,12 @@ struct NonReleasingAudioProcessingTest  : public PluginTest
     {
         AudioProcessingTest::runAudioProcessingTest (ut, instance, false);
     }
+
+    std::vector<TestDescription> getDescription (int) const override
+    {
+        return { { name, "Same as audio processing, but calls prepareToPlay() at new sample rate "
+                         "WITHOUT calling releaseResources() first" } };
+    }
 };
 
 static NonReleasingAudioProcessingTest nonReleasingAudioProcessingTest;
@@ -294,7 +330,7 @@ static NonReleasingAudioProcessingTest nonReleasingAudioProcessingTest;
 struct PluginStateTest  : public PluginTest
 {
     PluginStateTest()
-        : PluginTest ("Plugin state", 2)
+    : PluginTest ("Plugin state", 2)
     {
     }
 
@@ -311,6 +347,12 @@ struct PluginStateTest  : public PluginTest
 
         // Restore original state
         callSetStateInformationOnMessageThreadIfVST3 (instance, originalState);
+    }
+
+    std::vector<TestDescription> getDescription (int) const override
+    {
+        return { { name, "Saves state via getStateInformation(), randomises all automatable params, "
+                         "restores via setStateInformation()" } };
     }
 };
 
@@ -355,6 +397,16 @@ struct PluginStateTestRestoration   : public PluginTest
             ut.expect (duplicateState.matches (originalState.getData(), originalState.getSize()),
                        "Returned state differs from that set by host");
         }
+    }
+
+    std::vector<TestDescription> getDescription (int level) const override
+    {
+        if (level >= 8)
+            return { { name, "For each param: saves original value, randomises, restores state, "
+                             "expects value within 0.1 of original. Also requires exact binary state match" } };
+
+        return { { name, "For each param: saves original value, randomises, restores state, "
+                         "expects value within 0.1 of original" } };
     }
 };
 
@@ -460,6 +512,16 @@ struct AutomationTest  : public PluginTest
             }
         }
     }
+
+    std::vector<TestDescription> getDescription (int level) const override
+    {
+        if (level > 5)
+            return { { name, "Processes in 32-sample sub-blocks, randomly changing up to 10 params between each. "
+                             "Subnormals treated as errors" } };
+
+        return { { name, "Processes in 32-sample sub-blocks, randomly changing up to 10 params between each. "
+                         "Checks for NaNs, Infs; subnormals logged as warnings" } };
+    }
 };
 
 static AutomationTest automationTest;
@@ -491,6 +553,16 @@ struct EditorAutomationTest : public PluginTest
             ut.resetTimeout();
             juce::Thread::sleep (10);
         }
+    }
+
+    std::vector<TestDescription> getDescription (int level) const override
+    {
+        if (level > 5)
+            return { { name, "With editor open, loops 1000x calling setValue(random) on ALL parameters "
+                             "with 10ms sleep between iterations" } };
+
+        return { { name, "With editor open, loops 100x calling setValue(random) on ALL parameters "
+                         "with 10ms sleep between iterations" } };
     }
 };
 
@@ -564,6 +636,12 @@ struct AutomatableParametersTest  : public PluginTest
             ParameterHelpers::testParameterDefaults (ut, *parameter);
         }
     }
+
+    std::vector<TestDescription> getDescription (int) const override
+    {
+        return { { name, "For each non-bypass automatable parameter: logs index, name, defaultValue, label, "
+                         "numSteps, isDiscrete, isBoolean, isAutomatable, category" } };
+    }
 };
 
 static AutomatableParametersTest automatableParametersTest;
@@ -585,6 +663,11 @@ struct AllParametersTest    : public PluginTest
             ParameterHelpers::testParameterInfo (ut, *parameter);
             ParameterHelpers::testParameterDefaults (ut, *parameter);
         }
+    }
+
+    std::vector<TestDescription> getDescription (int) const override
+    {
+        return { { name, "Same as automatable parameters test - logs info for all non-bypass automatable parameters" } };
     }
 };
 
@@ -622,6 +705,12 @@ struct BackgroundThreadStateTest    : public PluginTest
 
         // Allow for async reaction to state changes
         juce::Thread::sleep (2000);
+    }
+
+    std::vector<TestDescription> getDescription (int) const override
+    {
+        return { { name, "Opens editor on message thread. From background thread: getStateInformation(), "
+                         "randomise params, setStateInformation(). Sleeps 2s for async updates" } };
     }
 };
 
@@ -698,6 +787,12 @@ struct ParameterThreadSafetyTest    : public PluginTest
 
         endWaiter.wait();
     }
+
+    std::vector<TestDescription> getDescription (int) const override
+    {
+        return { { name, "Message thread calls setValueNotifyingHost() 500x on all params. "
+                         "Simultaneously, this thread calls setValue() and processBlock() 500x" } };
+    }
 };
 
 static ParameterThreadSafetyTest parameterThreadSafetyTest;
@@ -765,6 +860,14 @@ struct AUvalTest    : public PluginTest
 
         if (! exitedCleanly && ! ut.getOptions().verbose)
             ut.logMessage (outputBuffer.toString());
+    }
+
+    std::vector<TestDescription> getDescription (int level) const override
+    {
+        if (level > 5)
+            return { { name, "Runs 'auval -strict -stress 20 -v <type> <subtype> <manu>' (Audio Units only)" } };
+
+        return { { name, "Runs 'auval -strict -v <type> <subtype> <manu>' (Audio Units only)" } };
     }
 };
 
@@ -844,6 +947,14 @@ struct VST3validator    : public PluginTest
 
         if (! exitedCleanly && ! ut.getOptions().verbose)
             ut.logMessage (outputBuffer.toString());
+    }
+
+    std::vector<TestDescription> getDescription (int level) const override
+    {
+        if (level > 5)
+            return { { name, "Runs Steinberg's vstvalidator with -e flag for extended validation (VST3 only)" } };
+
+        return { { name, "Runs Steinberg's vstvalidator on the plugin file (VST3 only)" } };
     }
 };
 

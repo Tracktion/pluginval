@@ -17,6 +17,7 @@
 #include <magic_enum/magic_enum.hpp>
 
 #include "PluginTests.h"
+#include "StrictnessInfoPopup.h"
 
 //==============================================================================
 namespace
@@ -127,6 +128,74 @@ namespace
         auto modeString = getAppPreferences().getValue ("realtimeCheckMode", juce::String());
         return magic_enum::enum_cast<RealtimeCheck> (modeString.toStdString())
                 .value_or (RealtimeCheck::disabled);
+    }
+
+    void setPluginNameFilter (const juce::String& filter)
+    {
+        getAppPreferences().setValue ("pluginNameFilter", filter);
+    }
+
+    juce::String getPluginNameFilter()
+    {
+        return getAppPreferences().getValue ("pluginNameFilter", "");
+    }
+
+    juce::StringArray getPluginNameFilters()
+    {
+        auto filter = getPluginNameFilter();
+        juce::StringArray filters;
+        filters.addTokens (filter, ",", "");
+        filters.trim();
+        filters.removeEmptyStrings();
+        return filters;
+    }
+
+    void showPluginFilterDialog()
+    {
+        const juce::String message = TRANS("Enter plugin names to scan for (comma-separated).\nOnly plugins containing these names will be scanned.");
+        std::shared_ptr<juce::AlertWindow> aw (juce::LookAndFeel::getDefaultLookAndFeel().createAlertWindow (TRANS("Set Plugin Name Filter"), message,
+                                                                                                 TRANS("OK"), TRANS("Clear"), TRANS("Cancel"),
+                                                                                                 juce::AlertWindow::QuestionIcon, 3, nullptr));
+        aw->addTextEditor ("filter", getPluginNameFilter());
+        aw->enterModalState (true, juce::ModalCallbackFunction::create ([aw] (int res)
+                                                                  {
+                                                                      if (res == 1)
+                                                                      {
+                                                                          if (auto te = aw->getTextEditor ("filter"))
+                                                                              setPluginNameFilter (te->getText());
+                                                                      }
+                                                                      else if (res == 2)
+                                                                      {
+                                                                          setPluginNameFilter ({});
+                                                                      }
+                                                                  }));
+    }
+
+    juce::StringArray getFilteredPluginFiles (juce::AudioPluginFormat& format, const juce::StringArray& nameFilters)
+    {
+        juce::StringArray result;
+
+        // Get all plugins - for AU this ignores the path and queries system registry
+        juce::FileSearchPath searchPaths = format.getDefaultLocationsToSearch();
+        auto allPlugins = format.searchPathsForPlugins (searchPaths, true, false);
+
+        for (const auto& pluginId : allPlugins)
+        {
+            // Get the actual plugin name - for file-based formats this extracts from path,
+            // for AU it gets the human-readable name from the identifier
+            auto pluginName = format.getNameOfPluginFromIdentifier (pluginId);
+
+            for (const auto& filter : nameFilters)
+            {
+                if (pluginName.containsIgnoreCase (filter) || pluginId.containsIgnoreCase (filter))
+                {
+                    result.add (pluginId);
+                    break;
+                }
+            }
+        }
+
+        return result;
     }
 
     PluginTests::Options getTestOptions()
@@ -264,29 +333,23 @@ MainComponent::MainComponent (Validator& v)
 {
     juce::addDefaultFormatsToManager (formatManager);
 
+    menuBar.setModel (this);
+    addAndMakeVisible (menuBar);
+
     const auto tabCol = getLookAndFeel().findColour (juce::ResizableWindow::backgroundColourId);
     addAndMakeVisible (tabbedComponent);
-    tabbedComponent.addTab ("Plugin List", tabCol, &pluginListComponent, false);
+    tabbedComponent.addTab ("Plugin List", tabCol, &pluginTable, false);
     tabbedComponent.addTab ("Console", tabCol, &console, false);
 
-    addAndMakeVisible (connectionStatus);
-    addAndMakeVisible (clearButton);
-    addAndMakeVisible (saveButton);
-    addAndMakeVisible (optionsButton);
+    addAndMakeVisible (statusBar);
     addAndMakeVisible (testSelectedButton);
     addAndMakeVisible (testAllButton);
     addAndMakeVisible (testFileButton);
-    addAndMakeVisible (strictnessLabel);
-    addAndMakeVisible (strictnessSlider);
+    addAndMakeVisible (strictnessInfoButton);
 
     testSelectedButton.onClick = [this]
         {
-            auto rows = pluginListComponent.getTableListBox().getSelectedRows();
-            juce::Array<juce::PluginDescription> plugins;
-
-            for (int i = 0; i < rows.size(); ++i)
-                plugins.add (knownPluginList.getTypes()[rows[i]]);
-
+            auto plugins = pluginTable.getSelectedPlugins();
             validator.setValidateInProcess (getValidateInProcess());
             validator.validate (plugins, getTestOptions());
         };
@@ -313,137 +376,38 @@ MainComponent::MainComponent (Validator& v)
             }
         };
 
-    clearButton.onClick = [this]
+    auto updateStrictnessButtonText = [this]
         {
-            console.clearLog();
+            strictnessInfoButton.setButtonText ("Strictness: " + juce::String (getStrictnessLevel()));
         };
 
-    saveButton.onClick = [this]
+    updateStrictnessButtonText();
+
+    strictnessInfoButton.onClick = [this, updateStrictnessButtonText]
         {
-            juce::FileChooser fc (TRANS("Save Log File"),
-                            getAppPreferences().getValue ("lastSaveLocation", juce::File::getSpecialLocation (juce::File::userDesktopDirectory).getFullPathName()),
-                            "*.txt");
-
-            if (fc.browseForFileToSave (true))
-            {
-                const auto f = fc.getResult();
-
-                if (f.replaceWithText (console.getLog()))
+            strictnessDialog = std::make_unique<StrictnessInfoDialog> (
+                getStrictnessLevel(),
+                [this, updateStrictnessButtonText] (int newLevel)
                 {
-                    getAppPreferences().setValue ("lastSaveLocation", f.getFullPathName());
-                }
-                else
-                {
-                    juce::AlertWindow::showMessageBoxAsync (juce::AlertWindow::WarningIcon, TRANS("Unable to Save"),
-                                                      TRANS("Unable to save to the file at location: XYYX").replace ("XYYX", f.getFullPathName()));
-                }
-            }
-        };
-
-    optionsButton.onClick = [this, sp = SafePointer<MainComponent> (this)]
-        {
-            enum MenuItem
-            {
-                validateInProcess = 1,
-                showRandomSeed,
-                showTimeout,
-                verboseLogging,
-                numRepeats,
-                randomise,
-                chooseOutputDir,
-                showVST3Validator,
-                showSettingsDir,
-                rtCheck
-            };
-
-            juce::PopupMenu m;
-
-            {
-                juce::PopupMenu rtCheckMenu;
-
-                for (auto currentMode = getRealtimeCheckMode();
-                     auto mode : magic_enum::enum_values<RealtimeCheck>())
-                {
-                    rtCheckMenu.addItem (getDisplayString (mode), true, mode == currentMode,
-                                         [newMode = mode] { setRealtimeCheckMode (newMode); });
-                }
-
-                m.addSubMenu ("Realtime check mode", rtCheckMenu);
-            }
-
-            m.addItem (validateInProcess, TRANS("Validate in process"), true, getValidateInProcess());
-            m.addItem (showRandomSeed, TRANS("Set random seed (123)").replace ("123", "0x" + juce::String::toHexString (getRandomSeed()) + "/" + juce::String (getRandomSeed())));
-            m.addItem (showTimeout, TRANS("Set timeout (123ms)").replace ("123",juce::String (getTimeoutMs())));
-            m.addItem (verboseLogging, TRANS("Verbose logging"), true, getVerboseLogging());
-            m.addItem (numRepeats, TRANS("Num repeats (123)").replace ("123",juce::String (getNumRepeats())));
-            m.addItem (randomise, TRANS("Randomise tests"), true, getRandomiseTests());
-            m.addItem (chooseOutputDir, TRANS("Choose a location for log files"));
-            m.addItem (showVST3Validator, TRANS("Set the location of the VST3 validator"));
-            m.addSeparator();
-            m.addItem (showSettingsDir, TRANS("Show settings folder"));
-            m.showMenuAsync (juce::PopupMenu::Options().withTargetComponent (&optionsButton),
-                             [sp] (int res) mutable
-                             {
-                                 if (res == validateInProcess)
-                                 {
-                                     setValidateInProcess (! getValidateInProcess());
-                                     sp->validator.setValidateInProcess (getValidateInProcess());
-                                 }
-                                 else if (res == showRandomSeed)
-                                 {
-                                     showRandomSeedDialog();
-                                 }
-                                 else if (res == showTimeout)
-                                 {
-                                     showTimeoutDialog();
-                                 }
-                                 else if (res == verboseLogging)
-                                 {
-                                     setVerboseLogging (! getVerboseLogging());
-                                 }
-                                 else if (res == numRepeats)
-                                 {
-                                     showNumRepeatsDialog();
-                                 }
-                                 else if (res == randomise)
-                                 {
-                                     setRandomiseTests (! getRandomiseTests());
-                                 }
-                                 else if (res == chooseOutputDir)
-                                 {
-                                     showOutputDirDialog();
-                                 }
-                                 else if (res == showVST3Validator)
-                                 {
-                                     showVST3ValidatorDialog();
-                                 }
-                                 else if (res == showSettingsDir)
-                                 {
-                                     getAppPreferences().getFile().revealToUser();
-                                 }
-                             });
-        };
-
-    strictnessSlider.setTextBoxStyle (juce::Slider::TextBoxLeft, false, 35, 24);
-    strictnessSlider.setSliderStyle (juce::Slider::IncDecButtons);
-    strictnessSlider.setRange ({ 1.0, 10.0 }, 1.0);
-    strictnessSlider.setNumDecimalPlacesToDisplay (0);
-    strictnessSlider.setValue (getStrictnessLevel());
-    strictnessSlider.onValueChange = [this]
-        {
-            setStrictnessLevel (juce::roundToInt (strictnessSlider.getValue()));
+                    setStrictnessLevel (newLevel);
+                    updateStrictnessButtonText();
+                },
+                [this] { strictnessDialog.reset(); });
         };
 
     if (auto xml = std::unique_ptr<juce::XmlElement> (getAppPreferences().getXmlValue ("scannedPlugins")))
         knownPluginList.recreateFromXml (*xml);
 
     knownPluginList.addChangeListener (this);
+    validator.addListener (this);
 
-    setSize (800, 600);
+    setSize (1000, 600);
 }
 
 MainComponent::~MainComponent()
 {
+    validator.removeListener (this);
+    menuBar.setModel (nullptr);
     savePluginList();
 }
 
@@ -457,18 +421,18 @@ void MainComponent::resized()
 {
     auto r = getLocalBounds();
 
-    auto bottomR = r.removeFromBottom (28);
-    saveButton.setBounds (bottomR.removeFromRight (80).reduced (2));
-    clearButton.setBounds (bottomR.removeFromRight (80).reduced (2));
-    optionsButton.setBounds (bottomR.removeFromRight (70).reduced (2));
+    menuBar.setBounds (r.removeFromTop (24));
+    r.removeFromTop (10);  // Spacing below menu bar / above tabs
 
-    connectionStatus.setBounds (bottomR.removeFromLeft (bottomR.getHeight()).reduced (2));
+    auto bottomR = r.removeFromBottom (48);
+    bottomR.reduce (10, 10);  // Indent and add vertical padding
+
     testSelectedButton.setBounds (bottomR.removeFromLeft (110).reduced (2));
-    testAllButton.setBounds (bottomR.removeFromLeft (110).reduced (2));
-    testFileButton.setBounds (bottomR.removeFromLeft (110).reduced (2));
+    testAllButton.setBounds (bottomR.removeFromLeft (80).reduced (2));
+    testFileButton.setBounds (bottomR.removeFromLeft (90).reduced (2));
+    strictnessInfoButton.setBounds (bottomR.removeFromLeft (110).reduced (2));
 
-    strictnessLabel.setBounds (bottomR.removeFromLeft (110).reduced (2));
-    strictnessSlider.setBounds (bottomR.removeFromLeft (100).reduced (2));
+    statusBar.setBounds (bottomR.reduced (4, 0));
 
     tabbedComponent.setBounds (r);
 }
@@ -483,4 +447,195 @@ void MainComponent::savePluginList()
 void MainComponent::changeListenerCallback (juce::ChangeBroadcaster*)
 {
     savePluginList();
+}
+
+void MainComponent::validationStarted (const juce::String&)
+{
+    tabbedComponent.setCurrentTabIndex (1);  // Switch to Console tab
+}
+
+//==============================================================================
+juce::StringArray MainComponent::getMenuBarNames()
+{
+    return { "File", "Plugins", "Test", "Log", "Options" };
+}
+
+juce::PopupMenu MainComponent::getMenuForIndex (int menuIndex, const juce::String&)
+{
+    juce::PopupMenu menu;
+
+    if (menuIndex == 0)
+        menu = createFileMenu();
+    else if (menuIndex == 1)
+    {
+        // Start with JUCE's standard plugin list options
+        menu = pluginListComponent.createOptionsMenu();
+        menu.addSeparator();
+
+        // Add filter setting
+        auto currentFilter = getPluginNameFilter();
+        auto filterLabel = currentFilter.isEmpty() ? juce::String ("Set plugin filter...")
+                                                   : "Set plugin filter (" + currentFilter + ")...";
+        menu.addItem (filterLabel, [] { showPluginFilterDialog(); });
+
+        menu.addSeparator();
+
+        // Add filtered scanning options (disabled if no filter set)
+        auto filters = getPluginNameFilters();
+        bool hasFilter = ! filters.isEmpty();
+
+        for (auto* format : formatManager.getFormats())
+        {
+            menu.addItem ("Scan " + format->getName() + " (filtered)", hasFilter, false, [this, format, filters]
+            {
+                auto files = getFilteredPluginFiles (*format, filters);
+                if (files.isEmpty())
+                {
+                    juce::AlertWindow::showMessageBoxAsync (juce::AlertWindow::InfoIcon,
+                        "No Matches", "No plugins matching the filter were found.");
+                }
+                else
+                {
+                    pluginListComponent.scanFor (*format, files);
+                }
+            });
+        }
+    }
+    else if (menuIndex == 2)
+        menu = createTestMenu();
+    else if (menuIndex == 3)
+        menu = createLogMenu();
+    else if (menuIndex == 4)
+        menu = createOptionsMenu();
+
+    return menu;
+}
+
+void MainComponent::menuItemSelected (int, int)
+{
+    // All items use lambdas
+}
+
+juce::PopupMenu MainComponent::createFileMenu()
+{
+    juce::PopupMenu m;
+    m.addItem (TRANS("Exit"), [] { juce::JUCEApplication::getInstance()->systemRequestedQuit(); });
+    return m;
+}
+
+juce::PopupMenu MainComponent::createTestMenu()
+{
+    juce::PopupMenu m;
+
+    m.addItem (TRANS("Test Selected"), [this]
+    {
+        auto plugins = pluginTable.getSelectedPlugins();
+        validator.setValidateInProcess (getValidateInProcess());
+        validator.validate (plugins, getTestOptions());
+    });
+
+    m.addItem (TRANS("Test All"), [this]
+    {
+        validator.setValidateInProcess (getValidateInProcess());
+        validator.validate (knownPluginList.getTypes(), getTestOptions());
+    });
+
+    m.addItem (TRANS("Test File..."), [this]
+    {
+        juce::FileChooser fc (TRANS("Browse for Plug-in File"),
+                        getAppPreferences().getValue ("lastPluginLocation", juce::File::getSpecialLocation (juce::File::userApplicationDataDirectory).getFullPathName()),
+                        "*.vst;*.vst3;*.dll;*.component");
+
+        if (fc.browseForFileToOpen())
+        {
+            const auto path = fc.getResult().getFullPathName();
+            getAppPreferences().setValue ("lastPluginLocation", path);
+
+            validator.setValidateInProcess (getValidateInProcess());
+            validator.validate (path, getTestOptions());
+        }
+    });
+
+    return m;
+}
+
+juce::PopupMenu MainComponent::createLogMenu()
+{
+    juce::PopupMenu m;
+
+    m.addItem (TRANS("Clear Log"), [this] { console.clearLog(); });
+
+    m.addItem (TRANS("Save Log..."), [this]
+    {
+        juce::FileChooser fc (TRANS("Save Log File"),
+                        getAppPreferences().getValue ("lastSaveLocation", juce::File::getSpecialLocation (juce::File::userDesktopDirectory).getFullPathName()),
+                        "*.txt");
+
+        if (fc.browseForFileToSave (true))
+        {
+            const auto f = fc.getResult();
+
+            if (f.replaceWithText (console.getLog()))
+            {
+                getAppPreferences().setValue ("lastSaveLocation", f.getFullPathName());
+            }
+            else
+            {
+                juce::AlertWindow::showMessageBoxAsync (juce::AlertWindow::WarningIcon, TRANS("Unable to Save"),
+                                                  TRANS("Unable to save to the file at location: XYYX").replace ("XYYX", f.getFullPathName()));
+            }
+        }
+    });
+
+    m.addSeparator();
+    m.addItem (TRANS("Verbose logging"), true, getVerboseLogging(),
+               [] { setVerboseLogging (! getVerboseLogging()); });
+
+    m.addItem (TRANS("Choose log file directory..."),
+               [] { showOutputDirDialog(); });
+
+    return m;
+}
+
+juce::PopupMenu MainComponent::createOptionsMenu()
+{
+    juce::PopupMenu m;
+
+    {
+        juce::PopupMenu rtCheckMenu;
+
+        for (auto currentMode = getRealtimeCheckMode();
+             auto mode : magic_enum::enum_values<RealtimeCheck>())
+        {
+            rtCheckMenu.addItem (getDisplayString (mode), true, mode == currentMode,
+                                 [newMode = mode] { setRealtimeCheckMode (newMode); });
+        }
+
+        m.addSubMenu (TRANS("Realtime check mode"), rtCheckMenu);
+    }
+
+    m.addItem (TRANS("Validate in process"), true, getValidateInProcess(),
+               [this] { setValidateInProcess (! getValidateInProcess()); validator.setValidateInProcess (getValidateInProcess()); });
+
+    m.addItem (TRANS("Set random seed (123)").replace ("123", "0x" + juce::String::toHexString (getRandomSeed()) + "/" + juce::String (getRandomSeed())),
+               [] { showRandomSeedDialog(); });
+
+    m.addItem (TRANS("Set timeout (123ms)").replace ("123", juce::String (getTimeoutMs())),
+               [] { showTimeoutDialog(); });
+
+    m.addItem (TRANS("Num repeats (123)").replace ("123", juce::String (getNumRepeats())),
+               [] { showNumRepeatsDialog(); });
+
+    m.addItem (TRANS("Randomise tests"), true, getRandomiseTests(),
+               [] { setRandomiseTests (! getRandomiseTests()); });
+
+    m.addItem (TRANS("Set VST3 validator location..."),
+               [] { showVST3ValidatorDialog(); });
+
+    m.addSeparator();
+
+    m.addItem (TRANS("Show settings folder"),
+               [] { getAppPreferences().getFile().revealToUser(); });
+
+    return m;
 }

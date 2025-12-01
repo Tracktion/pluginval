@@ -23,6 +23,14 @@ struct BasicBusTest   : public PluginTest
     {
     }
 
+    std::vector<TestDescription> getDescription (int) const override
+    {
+        return { { name, "Tests audio bus configuration: lists all supported input/output layouts "
+                         "(named channel sets like stereo/5.1 and discrete channels), "
+                         "tests enableAllBuses() and disableNonMainBuses(), "
+                         "then verifies the default layout can be restored" } };
+    }
+
     void runTest (PluginTests& ut, juce::AudioPluginInstance& instance) override
     {
         const ScopedPluginDeinitialiser deinitialiser (instance);

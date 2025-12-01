@@ -47,6 +47,13 @@ struct LocaleTest   : public PluginTest
 
     }
 
+    std::vector<TestDescription> getDescription (int) const override
+    {
+        return { { "Locale stability", "Checks that the plugin doesn't change the system locale. "
+                   "Some plugins or GUI frameworks change locale settings (e.g., decimal separator from '.' to ','). "
+                   "This can corrupt preset files, break float parsing in other plugins, or crash the host" } };
+    }
+
 private:
     std::string startupLocale;
 };

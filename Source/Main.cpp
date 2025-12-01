@@ -16,6 +16,7 @@
 #include "MainComponent.h"
 #include "Validator.h"
 #include "CommandLine.h"
+#include "PluginvalLookAndFeel.h"
 
 //==============================================================================
 class PluginValidatorApplication  : public juce::JUCEApplication,
@@ -50,6 +51,8 @@ public:
         testRunner.runTestsInCategory ("pluginval");
        #endif
 
+        juce::LookAndFeel::setDefaultLookAndFeel (&lookAndFeel);
+
         validator = std::make_unique<Validator>();
         propertiesFile.reset (getPropertiesFile());
         mainWindow = std::make_unique<MainWindow> (*validator, getApplicationName() + " v" + getApplicationVersion());
@@ -59,6 +62,7 @@ public:
     {
         mainWindow.reset();
         validator.reset();
+        juce::LookAndFeel::setDefaultLookAndFeel (nullptr);
         juce::Logger::setCurrentLogger (nullptr);
     }
 
@@ -119,6 +123,7 @@ public:
     };
 
 private:
+    PluginvalLookAndFeel lookAndFeel;
     std::unique_ptr<Validator> validator;
     std::unique_ptr<juce::PropertiesFile> propertiesFile;
     std::unique_ptr<MainWindow> mainWindow;

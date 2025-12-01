@@ -29,6 +29,13 @@ struct FuzzParametersTest  : public PluginTest
             fuzzTestParameter (ut, *parameter);
     }
 
+    std::vector<TestDescription> getDescription (int) const override
+    {
+        return { { name, "For each parameter, sets 5 random values and calls getValue(), getText(), "
+                         "getValueForText(), getCurrentValueAsText(). Tests that text/value conversion "
+                         "functions don't crash or hang with arbitrary inputs" } };
+    }
+
 private:
     void fuzzTestParameter (PluginTests& ut, juce::AudioProcessorParameter& parameter)
     {

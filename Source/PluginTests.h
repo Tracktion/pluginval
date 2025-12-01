@@ -94,6 +94,16 @@ private:
 
 //==============================================================================
 /**
+    Describes what a test does at a given strictness level.
+*/
+struct TestDescription
+{
+    juce::String title;
+    juce::String description;
+};
+
+//==============================================================================
+/**
     Represents a test to be run on a plugin instance.
     Override the runTest test method to perform the tests.
     Create a static instance of any subclasses to automatically register tests.
@@ -179,6 +189,15 @@ struct PluginTest
         call expect etc.
     */
     virtual void runTest (PluginTests& runningTest, juce::AudioPluginInstance&) = 0;
+
+    /** Override to return a description of what this test does.
+        The strictnessLevel parameter allows tests to describe different behaviour
+        at different levels (e.g., more iterations, stricter checks).
+    */
+    virtual std::vector<TestDescription> getDescription (int /*strictnessLevel*/) const
+    {
+        return { { name, {} } };
+    }
 
     //==============================================================================
     const juce::String name;
