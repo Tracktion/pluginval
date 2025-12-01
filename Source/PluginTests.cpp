@@ -69,7 +69,11 @@ PluginTests::PluginTests (const juce::String& fileOrIdentifier, Options opts)
 {
     jassert (fileOrIdentifier.isNotEmpty());
     jassert (juce::isPositiveAndNotGreaterThan (options.strictnessLevel, 10));
+    #if JUCE_VERSION >= 0x08000B
     juce::addDefaultFormatsToManager (formatManager);
+    #else
+    formatManager.addDefaultFormats();
+    #endif
 }
 
 PluginTests::PluginTests (const juce::PluginDescription& desc, Options opts)
