@@ -146,7 +146,7 @@ if (PLUGINVAL_ENABLE_RTCHECK)
                 COMMAND ${CMAKE_COMMAND} -E echo "Executable path: $<TARGET_FILE_DIR:pluginval>")
         add_custom_command(TARGET pluginval POST_BUILD
             COMMAND ${CMAKE_COMMAND} -E copy
-                    ${CMAKE_CURRENT_BINARY_DIR}/_deps/rtcheck-build/src/librtcheck.dylib
+                    $<TARGET_FILE:rtcheck>
                     $<TARGET_FILE_DIR:pluginval>/../Libraries/librtcheck.dylib)
     endif ()
 endif()
