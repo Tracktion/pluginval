@@ -56,12 +56,11 @@ jobs:
           echo "VERSION=$VERSION" >> $GITHUB_ENV
           echo "APP_DIR=${{ env.BUILD_DIR }}/${{ env.BINARY_NAME }}_artefacts/${{ env.BUILD_TYPE }}" >> $GITHUB_ENV
           echo "ZIP_FILE_NAME=${{ env.BINARY_NAME }}_${{ matrix.name }}.zip" >> $GITHUB_ENV
-          echo "JUCE_SHA1=$(git rev-parse HEAD:modules/juce)" >> $GITHUB_ENV
-          echo "PLUGIN_BUILD_DIR=modules/juce/Builds" >> $GITHUB_ENV
-          
+
           # This needs to be absolute to make action/cache happy
+          # CPM fetches JUCE into the build directory's _deps folder
           WORKING_DIR=$(pwd)
-          echo "PLUGIN_CACHE_PATH=$WORKING_DIR/_deps/juce-build/examples/Plugins" >> $GITHUB_ENV
+          echo "PLUGIN_CACHE_PATH=$WORKING_DIR/${{ env.BUILD_DIR }}/_deps/juce-build/examples/Plugins" >> $GITHUB_ENV
 
       - name: Install dependencies (Linux)
         if: ${{ matrix.name == 'Linux' }}
@@ -112,7 +111,7 @@ jobs:
         with:
           path: ${{ env.PLUGIN_CACHE_PATH }}
           # Increment the version in the key below to manually break plugin cache
-          key: v8-${{ runner.os }}-${{ env.JUCE_SHA1 }}
+          key: v9-${{ runner.os }}
 
       - name: Build JUCE example plugins
         if: steps.cache-plugins.outputs.cache-hit != 'true'
