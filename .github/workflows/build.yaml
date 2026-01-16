@@ -58,9 +58,9 @@ jobs:
           echo "ZIP_FILE_NAME=${{ env.BINARY_NAME }}_${{ matrix.name }}.zip" >> $GITHUB_ENV
 
           # This needs to be absolute to make action/cache happy
-          # CPM fetches JUCE into the build directory's _deps folder
+          # JUCE examples are built from within the CPM-fetched JUCE source directory
           WORKING_DIR=$(pwd)
-          echo "PLUGIN_CACHE_PATH=$WORKING_DIR/${{ env.BUILD_DIR }}/_deps/juce-build/examples/Plugins" >> $GITHUB_ENV
+          echo "PLUGIN_CACHE_PATH=$WORKING_DIR/${{ env.BUILD_DIR }}/_deps/juce-src/Builds/examples/Plugins" >> $GITHUB_ENV
 
       - name: Install dependencies (Linux)
         if: ${{ matrix.name == 'Linux' }}
@@ -115,6 +115,7 @@ jobs:
 
       - name: Build JUCE example plugins
         if: steps.cache-plugins.outputs.cache-hit != 'true'
+        working-directory: ${{ env.BUILD_DIR }}/_deps/juce-src
         shell: bash
         run: |
           cmake -B Builds -DJUCE_BUILD_EXAMPLES=ON -DCMAKE_BUILD_TYPE=Release -DCMAKE_C_COMPILER_LAUNCHER=ccache -DCMAKE_CXX_COMPILER_LAUNCHER=ccache .
