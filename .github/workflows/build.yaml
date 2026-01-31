@@ -76,8 +76,9 @@ jobs:
       - name: Make VST2 SDK available
         shell: bash
         run: |
-          curl -O ${{ secrets.VST2_SDK_URL }}
+          echo "${{ secrets.VST2_SDK }}" | base64 -d > vstsdk2.4.zip
           7z x vstsdk2.4.zip
+          ls -la
           echo "VST2_SDK_DIR=$(pwd)/vstsdk2.4" >> $GITHUB_ENV
 
       - name: Import Certificates
