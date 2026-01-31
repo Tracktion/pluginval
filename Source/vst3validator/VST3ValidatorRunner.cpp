@@ -16,12 +16,12 @@
 
 #include <sstream>
 #include <iostream>
+#include <cstring>
 
 // VST3 SDK includes
 #include "public.sdk/source/vst/hosting/module.h"
 #include "public.sdk/source/vst/hosting/hostclasses.h"
 #include "public.sdk/source/vst/hosting/plugprovider.h"
-#include "public.sdk/source/vst/testsuite/vsttestsuite.h"
 #include "pluginterfaces/vst/ivstaudioprocessor.h"
 #include "pluginterfaces/vst/ivsteditcontroller.h"
 #include "pluginterfaces/vst/ivsthostapplication.h"
@@ -41,10 +41,12 @@ public:
 
     tresult PLUGIN_API getName (String128 name) override
     {
-        return StringCopy (name, u"pluginval VST3 Validator");
+        const char16_t hostName[] = u"pluginval VST3 Validator";
+        std::memcpy (name, hostName, sizeof (hostName));
+        return kResultOk;
     }
 
-    tresult PLUGIN_API createInstance (TUID cid, TUID iid, void** obj) override
+    tresult PLUGIN_API createInstance (TUID /*cid*/, TUID /*_iid*/, void** obj) override
     {
         *obj = nullptr;
         return kResultFalse;
@@ -60,47 +62,6 @@ public:
 
     uint32 PLUGIN_API addRef () override { return 1; }
     uint32 PLUGIN_API release () override { return 1; }
-};
-
-//==============================================================================
-/** Test result handler that captures output. */
-class TestResultHandler : public ITestResult
-{
-public:
-    TestResultHandler (std::ostream& os, bool verbose)
-        : output (os), verboseOutput (verbose)
-    {
-    }
-
-    void PLUGIN_API addErrorMessage (const char8* msg) override
-    {
-        if (msg)
-        {
-            output << "ERROR: " << msg << "\n";
-            hasErrors = true;
-        }
-    }
-
-    void PLUGIN_API addMessage (const char8* msg) override
-    {
-        if (msg && verboseOutput)
-            output << msg << "\n";
-    }
-
-    tresult PLUGIN_API queryInterface (const TUID, void** obj) override
-    {
-        *obj = nullptr;
-        return kNoInterface;
-    }
-
-    uint32 PLUGIN_API addRef () override { return 1; }
-    uint32 PLUGIN_API release () override { return 1; }
-
-    bool hasErrors = false;
-
-private:
-    std::ostream& output;
-    bool verboseOutput;
 };
 
 //==============================================================================
@@ -153,9 +114,6 @@ Result runValidator (const Options& options)
     // Create host application
     ValidatorHostApp hostApp;
 
-    // Create test result handler
-    TestResultHandler testResult (outputStream, options.verbose);
-
     bool allTestsPassed = true;
     int numProcessorClasses = 0;
 
@@ -172,9 +130,9 @@ Result runValidator (const Options& options)
             numProcessorClasses++;
             outputStream << "  [Audio Processor]\n";
 
-            // Create the component
-            IPtr<IComponent> component;
-            if (factory.createInstance (classInfo.ID (), component) != kResultOk || ! component)
+            // Create the component using the template method
+            auto component = factory.createInstance<IComponent> (classInfo.ID ());
+            if (! component)
             {
                 outputStream << "  ERROR: Failed to create component instance\n";
                 allTestsPassed = false;
@@ -192,8 +150,8 @@ Result runValidator (const Options& options)
             outputStream << "  Component created and initialized successfully\n";
 
             // Get audio processor interface
-            IPtr<IAudioProcessor> processor;
-            if (component->queryInterface (IAudioProcessor::iid, (void**)&processor) != kResultOk || ! processor)
+            FUnknownPtr<IAudioProcessor> processor (component);
+            if (! processor)
             {
                 outputStream << "  WARNING: Component does not implement IAudioProcessor\n";
             }
@@ -206,8 +164,8 @@ Result runValidator (const Options& options)
             TUID controllerCID;
             if (component->getControllerClassId (controllerCID) == kResultOk)
             {
-                IPtr<IEditController> controller;
-                if (factory.createInstance (VST3::UID (controllerCID), controller) == kResultOk && controller)
+                auto controller = factory.createInstance<IEditController> (VST3::UID (controllerCID));
+                if (controller)
                 {
                     if (controller->initialize (&hostApp) == kResultOk)
                     {
@@ -244,10 +202,10 @@ Result runValidator (const Options& options)
     outputStream << "----------------------------------------\n";
     outputStream << "Validation Summary:\n";
     outputStream << "  Audio Processor classes found: " << numProcessorClasses << "\n";
-    outputStream << "  Result: " << (allTestsPassed && ! testResult.hasErrors ? "PASSED" : "FAILED") << "\n";
+    outputStream << "  Result: " << (allTestsPassed ? "PASSED" : "FAILED") << "\n";
 
     result.output = outputStream.str ();
-    result.success = allTestsPassed && ! testResult.hasErrors;
+    result.success = allTestsPassed;
     result.exitCode = result.success ? 0 : 1;
 
     return result;

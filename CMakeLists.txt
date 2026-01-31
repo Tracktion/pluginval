@@ -126,6 +126,19 @@ if(PLUGINVAL_VST3_VALIDATOR)
         Source/vst3validator/VST3ValidatorRunner.h
         Source/vst3validator/VST3ValidatorRunner.cpp
     )
+
+    # Add platform-specific module loading sources from the SDK
+    if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
+        list(APPEND VST3ValidatorFiles
+            ${vst3sdk_SOURCE_DIR}/public.sdk/source/vst/hosting/module_linux.cpp)
+    elseif(APPLE)
+        list(APPEND VST3ValidatorFiles
+            ${vst3sdk_SOURCE_DIR}/public.sdk/source/vst/hosting/module_mac.mm)
+    elseif(WIN32)
+        list(APPEND VST3ValidatorFiles
+            ${vst3sdk_SOURCE_DIR}/public.sdk/source/vst/hosting/module_win32.cpp)
+    endif()
+
     target_sources(pluginval PRIVATE ${VST3ValidatorFiles})
     source_group("Source/vst3validator" FILES ${VST3ValidatorFiles})
 
@@ -175,7 +188,8 @@ endif()
 
 if (PLUGINVAL_VST3_VALIDATOR)
     target_link_libraries(pluginval PRIVATE
-        sdk_hosting)
+        sdk_hosting
+        sdk)
 endif()
 
 if (PLUGINVAL_ENABLE_RTCHECK)

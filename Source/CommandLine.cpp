@@ -502,7 +502,11 @@ static juce::ArgumentList createCommandLineArgs (juce::String commandLine)
         const bool hasValidateOrOtherCommand = argList.containsOption ("--validate")
                                                 || argList.containsOption ("--help|-h")
                                                 || argList.containsOption ("--version")
-                                                || argList.containsOption ("--run-tests");
+                                                || argList.containsOption ("--run-tests")
+                                               #if PLUGINVAL_VST3_VALIDATOR
+                                                || argList.containsOption ("--vst3-validator-mode")
+                                               #endif
+                                                ;
 
         if (! hasValidateOrOtherCommand)
             if (isPluginArgument (argList.arguments.getLast().text))
