@@ -132,8 +132,11 @@ if(PLUGINVAL_VST3_VALIDATOR)
         list(APPEND VST3ValidatorFiles
             ${vst3sdk_SOURCE_DIR}/public.sdk/source/vst/hosting/module_linux.cpp)
     elseif(APPLE)
-        list(APPEND VST3ValidatorFiles
-            ${vst3sdk_SOURCE_DIR}/public.sdk/source/vst/hosting/module_mac.mm)
+        set(VST3_MODULE_MAC_FILE ${vst3sdk_SOURCE_DIR}/public.sdk/source/vst/hosting/module_mac.mm)
+        list(APPEND VST3ValidatorFiles ${VST3_MODULE_MAC_FILE})
+        # module_mac.mm requires ARC (Automatic Reference Counting)
+        set_source_files_properties(${VST3_MODULE_MAC_FILE} PROPERTIES
+            COMPILE_FLAGS "-fobjc-arc")
     elseif(WIN32)
         list(APPEND VST3ValidatorFiles
             ${vst3sdk_SOURCE_DIR}/public.sdk/source/vst/hosting/module_win32.cpp)
