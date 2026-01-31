@@ -52,6 +52,23 @@ if(PLUGINVAL_ENABLE_RTCHECK)
     CPMAddPackage("gh:Tracktion/rtcheck#main")
 endif()
 
+# VST3 Validator integration - embeds Steinberg's vstvalidator directly into pluginval
+option(PLUGINVAL_VST3_VALIDATOR "Build with embedded VST3 validator" ON)
+
+if(PLUGINVAL_VST3_VALIDATOR)
+    CPMAddPackage(
+        NAME vst3sdk
+        GITHUB_REPOSITORY steinbergmedia/vst3sdk
+        GIT_TAG v3.7.14_build_55
+        OPTIONS
+            "SMTG_ENABLE_VST3_PLUGIN_EXAMPLES OFF"
+            "SMTG_ENABLE_VST3_HOSTING_EXAMPLES OFF"
+            "SMTG_ENABLE_VSTGUI_SUPPORT OFF"
+            "SMTG_ADD_VSTGUI OFF"
+            "SMTG_RUN_VST_VALIDATOR OFF"
+            "SMTG_CREATE_BUNDLE_FOR_WINDOWS OFF"
+    )
+endif()
 
 option(PLUGINVAL_FETCH_JUCE "Fetch JUCE along with pluginval" ON)
 
@@ -103,6 +120,24 @@ set(SourceFiles
 target_sources(pluginval PRIVATE ${SourceFiles})
 source_group(TREE ${CMAKE_CURRENT_SOURCE_DIR}/Source PREFIX Source FILES ${SourceFiles})
 
+# Add VST3 validator sources if enabled
+if(PLUGINVAL_VST3_VALIDATOR)
+    set(VST3ValidatorFiles
+        Source/vst3validator/VST3ValidatorRunner.h
+        Source/vst3validator/VST3ValidatorRunner.cpp
+    )
+    target_sources(pluginval PRIVATE ${VST3ValidatorFiles})
+    source_group("Source/vst3validator" FILES ${VST3ValidatorFiles})
+
+    target_include_directories(pluginval PRIVATE
+        ${vst3sdk_SOURCE_DIR}
+        ${vst3sdk_SOURCE_DIR}/pluginterfaces
+        ${vst3sdk_SOURCE_DIR}/base
+        ${vst3sdk_SOURCE_DIR}/public.sdk
+        ${vst3sdk_SOURCE_DIR}/public.sdk/source
+    )
+endif()
+
 if (DEFINED ENV{VST2_SDK_DIR})
     target_compile_definitions(pluginval PRIVATE
         JUCE_PLUGINHOST_VST=1)
@@ -118,6 +153,7 @@ target_compile_definitions(pluginval PRIVATE
     JUCE_MODAL_LOOPS_PERMITTED=1
     JUCE_GUI_BASICS_INCLUDE_XHEADERS=1
     $<$<BOOL:${PLUGINVAL_ENABLE_RTCHECK}>:PLUGINVAL_ENABLE_RTCHECK=1>
+    $<$<BOOL:${PLUGINVAL_VST3_VALIDATOR}>:PLUGINVAL_VST3_VALIDATOR=1>
     VERSION="${CURRENT_VERSION}")
 
 if(MSVC AND NOT CMAKE_MSVC_RUNTIME_LIBRARY)
@@ -135,6 +171,11 @@ target_link_libraries(pluginval PRIVATE
 if (${CMAKE_SYSTEM_NAME} MATCHES "Linux")
     target_link_libraries(pluginval PRIVATE
         -static-libstdc++)
+endif()
+
+if (PLUGINVAL_VST3_VALIDATOR)
+    target_link_libraries(pluginval PRIVATE
+        sdk_hosting)
 endif()
 
 if (PLUGINVAL_ENABLE_RTCHECK)

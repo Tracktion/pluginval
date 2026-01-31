@@ -17,6 +17,10 @@
 #include "CrashHandler.h"
 #include "PluginTests.h"
 
+#if PLUGINVAL_VST3_VALIDATOR
+ #include "vst3validator/VST3ValidatorRunner.h"
+#endif
+
 #if JUCE_MAC
  #include <signal.h>
  #include <sys/types.h>
@@ -286,7 +290,6 @@ static Option possibleOptions[] =
     { "--randomise",            false   },
     { "--sample-rates",         true    },
     { "--block-sizes",          true    },
-    { "--vst3validator",        true    },
     { "--rtcheck",              false   },
 };
 
@@ -380,8 +383,6 @@ Usage:
   --disabled-tests [pathToFile]
     If specified, sets a path to a file that should have the names of disabled
     tests on each row.
-  --vst3validator [pathToValidator]
-    If specified, this will run the VST3 validator as part of the test process.
 
   --output-dir [pathToDir]
     If specified, sets a directory to store the log files. This can be useful
@@ -542,6 +543,36 @@ static void performCommandLine (CommandLineValidator& validator, const juce::Arg
                           printStrictnessHelp (level);
                       }});
 
+   #if PLUGINVAL_VST3_VALIDATOR
+    cli.addCommand ({ "--vst3-validator-mode",
+                      "--vst3-validator-mode [pathToPlugin] [-e] [-v]",
+                      "Runs the embedded VST3 validator on the plugin (internal use).", juce::String(),
+                      [] (const auto& args)
+                      {
+                          auto pluginPath = getOptionValue (args, "--vst3-validator-mode", "",
+                                                            "Expected a plugin path for --vst3-validator-mode").toString();
+
+                          if (pluginPath.isEmpty())
+                          {
+                              std::cerr << "Error: No plugin path specified\n";
+                              juce::JUCEApplication::getInstance()->setApplicationReturnValue (1);
+                              juce::JUCEApplication::getInstance()->quit();
+                              return;
+                          }
+
+                          vst3validator::Options opts;
+                          opts.pluginPath = pluginPath.toStdString();
+                          opts.extendedMode = args.containsOption ("-e");
+                          opts.verbose = args.containsOption ("-v");
+
+                          auto result = vst3validator::runValidator (opts);
+
+                          std::cout << result.output;
+                          juce::JUCEApplication::getInstance()->setApplicationReturnValue (result.exitCode);
+                          juce::JUCEApplication::getInstance()->quit();
+                      }});
+   #endif
+
     if (const auto retValue = cli.findAndRunCommand (args); retValue != 0)
     {
         juce::JUCEApplication::getInstance()->setApplicationReturnValue (retValue);
@@ -566,7 +597,11 @@ bool shouldPerformCommandLine (const juce::String& commandLine)
         || args.containsOption ("--version")
         || args.containsOption ("--validate")
         || args.containsOption ("--run-tests")
-        || args.containsOption ("--strictness-help");
+        || args.containsOption ("--strictness-help")
+       #if PLUGINVAL_VST3_VALIDATOR
+        || args.containsOption ("--vst3-validator-mode")
+       #endif
+        ;
 }
 
 //==============================================================================
@@ -595,7 +630,6 @@ std::pair<juce::String, PluginTests::Options> parseCommandLine (const juce::Argu
     options.disabledTests       = getDisabledTests (args);
     options.sampleRates         = getSampleRates (args);
     options.blockSizes          = getBlockSizes (args);
-    options.vst3Validator       = getOptionValue (args, "--vst3validator", "", "Expected a path for the --vst3validator option");
     options.realtimeCheck       = magic_enum::enum_cast<RealtimeCheck> (getOptionValue (args, "--rtcheck", "", "Expected one of [disabled, enabled, relaxed]").toString().toStdString())
                                     .value_or (RealtimeCheck::disabled);
 
@@ -664,9 +698,6 @@ juce::StringArray createCommandLine (juce::String fileOrID, PluginTests::Options
 
         args.addArray ({ "--block-sizes", blockSizes.joinIntoString (",") });
     }
-
-    if (options.vst3Validator != juce::File())
-        args.addArray ({ "--vst3validator", options.vst3Validator.getFullPathName().quoted() });
 
     if (auto rtCheckMode = options.realtimeCheck;
         rtCheckMode != RealtimeCheck::disabled)

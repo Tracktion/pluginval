@@ -49,6 +49,9 @@ pluginval/
 │   ├── PluginvalLookAndFeel.h # Custom UI styling
 │   ├── StrictnessInfoPopup.h # Strictness level info UI
 │   ├── binarydata/           # Binary resources (icons)
+│   ├── vst3validator/        # Embedded VST3 validator integration
+│   │   ├── VST3ValidatorRunner.h
+│   │   └── VST3ValidatorRunner.cpp
 │   └── tests/                # Individual test implementations
 │       ├── BasicTests.cpp    # Core plugin tests (info, state, audio)
 │       ├── BusTests.cpp      # Audio bus configuration tests
@@ -101,6 +104,7 @@ cmake --build Builds/Debug --config Debug
 | Option | Description | Default |
 |--------|-------------|---------|
 | `PLUGINVAL_FETCH_JUCE` | Fetch JUCE with pluginval | ON |
+| `PLUGINVAL_VST3_VALIDATOR` | Build with embedded VST3 validator | ON |
 | `WITH_ADDRESS_SANITIZER` | Enable AddressSanitizer | OFF |
 | `WITH_THREAD_SANITIZER` | Enable ThreadSanitizer | OFF |
 | `VST2_SDK_DIR` | Path to VST2 SDK (env var) | - |
@@ -176,6 +180,27 @@ struct Requirements {
 | `ParameterFuzzTests.cpp` | Random parameter value testing |
 | `LocaleTest.cpp` | Locale handling verification |
 | `ExtremeTests.cpp` | Edge cases, stress tests |
+
+### VST3 Validator Integration
+
+The VST3 validator (Steinberg's vstvalidator) is embedded directly into pluginval when built with `PLUGINVAL_VST3_VALIDATOR=ON` (the default). This eliminates the need to provide an external validator binary path.
+
+**Architecture:**
+1. The VST3 SDK is fetched via CPM during CMake configure
+2. `VST3ValidatorRunner` (`Source/vst3validator/`) wraps the SDK's validation functionality
+3. When the `VST3validator` test runs, it spawns pluginval with `--vst3-validator-mode`
+4. This subprocess runs the embedded validator code in isolation (crash protection)
+
+**Internal CLI mode:**
+```bash
+# Used internally by the VST3validator test - not for direct use
+pluginval --vst3-validator-mode /path/to/plugin.vst3 [-e] [-v]
+```
+
+**Disabling embedded validator:**
+```bash
+cmake -B Builds -DPLUGINAL_VST3_VALIDATOR=OFF .
+```
 
 ## Adding New Tests
 
@@ -312,6 +337,7 @@ add_pluginval_tests(MyPluginTarget
 - **JUCE** (v8.0.x) - Audio application framework (git submodule)
 - **magic_enum** (v0.9.7) - Enum reflection (fetched via CPM)
 - **rtcheck** (optional, macOS) - Real-time safety checking (fetched via CPM)
+- **VST3 SDK** (v3.7.x) - Steinberg VST3 SDK for embedded validator (fetched via CPM, optional)
 
 ### System
 - macOS: CoreAudio, AudioUnit frameworks

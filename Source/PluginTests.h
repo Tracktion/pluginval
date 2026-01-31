@@ -50,7 +50,6 @@ struct PluginTests : public juce::UnitTest
         juce::StringArray disabledTests;                        /**< List of disabled tests. */
         std::vector<double> sampleRates;                        /**< List of sample rates. */
         std::vector<int> blockSizes;                            /**< List of block sizes. */
-        juce::File vst3Validator;                               /**< juce::File to use as the VST3 validator app. */
         RealtimeCheck realtimeCheck = RealtimeCheck::disabled;  /**< The type of real-time safety checking to perform. */
     };
 
