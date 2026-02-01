@@ -138,9 +138,8 @@ if(PLUGINVAL_VST3_VALIDATOR)
         set_source_files_properties(${VST3_MODULE_MAC_FILE} PROPERTIES
             COMPILE_FLAGS "-fobjc-arc")
     elseif(WIN32)
-        # Use wrapper file that sets up preprocessor definitions before including SDK source
         list(APPEND VST3ValidatorFiles
-            Source/vst3validator/module_win32_wrapper.cpp)
+            ${vst3sdk_SOURCE_DIR}/public.sdk/source/vst/hosting/module_win32.cpp)
     endif()
 
     target_sources(pluginval PRIVATE ${VST3ValidatorFiles})
@@ -173,6 +172,17 @@ target_compile_definitions(pluginval PRIVATE
     $<$<BOOL:${PLUGINVAL_ENABLE_RTCHECK}>:PLUGINVAL_ENABLE_RTCHECK=1>
     $<$<BOOL:${PLUGINVAL_VST3_VALIDATOR}>:PLUGINVAL_VST3_VALIDATOR=1>
     VERSION="${CURRENT_VERSION}")
+
+# Windows-specific compile definitions for VST3 SDK compatibility
+if(WIN32 AND PLUGINVAL_VST3_VALIDATOR)
+    target_compile_definitions(pluginval PRIVATE
+        NOMINMAX
+        WIN32_LEAN_AND_MEAN
+        _UNICODE
+        UNICODE
+        _CRT_SECURE_NO_WARNINGS
+        _SILENCE_EXPERIMENTAL_FILESYSTEM_DEPRECATION_WARNING)
+endif()
 
 if(MSVC AND NOT CMAKE_MSVC_RUNTIME_LIBRARY)
     # Default to statically linking the runtime libraries
