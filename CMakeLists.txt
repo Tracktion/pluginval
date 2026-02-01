@@ -151,6 +151,7 @@ if(PLUGINVAL_VST3_VALIDATOR)
         ${vst3sdk_SOURCE_DIR}/base
         ${vst3sdk_SOURCE_DIR}/public.sdk
         ${vst3sdk_SOURCE_DIR}/public.sdk/source
+        ${vst3sdk_SOURCE_DIR}/public.sdk/source/vst/hosting
     )
 endif()
 
@@ -193,6 +194,20 @@ if (PLUGINVAL_VST3_VALIDATOR)
     target_link_libraries(pluginval PRIVATE
         sdk_hosting
         sdk)
+
+    # Windows needs additional libraries for the module loading code
+    if(WIN32)
+        target_link_libraries(pluginval PRIVATE
+            Ole32
+            Shell32)
+    endif()
+
+    # macOS needs Cocoa framework for module loading
+    if(APPLE)
+        find_library(COCOA_FRAMEWORK Cocoa)
+        target_link_libraries(pluginval PRIVATE
+            ${COCOA_FRAMEWORK})
+    endif()
 endif()
 
 if (PLUGINVAL_ENABLE_RTCHECK)
