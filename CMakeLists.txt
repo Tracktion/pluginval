@@ -140,9 +140,14 @@ if(PLUGINVAL_VST3_VALIDATOR)
     elseif(WIN32)
         set(VST3_MODULE_WIN_FILE ${vst3sdk_SOURCE_DIR}/public.sdk/source/vst/hosting/module_win32.cpp)
         list(APPEND VST3ValidatorFiles ${VST3_MODULE_WIN_FILE})
-        # Add Windows-specific compile definitions for compatibility with JUCE
-        set_source_files_properties(${VST3_MODULE_WIN_FILE} PROPERTIES
-            COMPILE_DEFINITIONS "NOMINMAX;WIN32_LEAN_AND_MEAN")
+        # Add Windows-specific compile flags for compatibility
+        if(MSVC)
+            set_source_files_properties(${VST3_MODULE_WIN_FILE} PROPERTIES
+                COMPILE_FLAGS "/DNOMINMAX /DWIN32_LEAN_AND_MEAN /D_SILENCE_EXPERIMENTAL_FILESYSTEM_DEPRECATION_WARNING")
+        else()
+            set_source_files_properties(${VST3_MODULE_WIN_FILE} PROPERTIES
+                COMPILE_DEFINITIONS "NOMINMAX;WIN32_LEAN_AND_MEAN;_SILENCE_EXPERIMENTAL_FILESYSTEM_DEPRECATION_WARNING")
+        endif()
     endif()
 
     target_sources(pluginval PRIVATE ${VST3ValidatorFiles})
