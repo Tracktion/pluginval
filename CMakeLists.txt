@@ -56,6 +56,9 @@ endif()
 option(PLUGINVAL_VST3_VALIDATOR "Build with embedded VST3 validator" ON)
 
 if(PLUGINVAL_VST3_VALIDATOR)
+    # Use static CRT on Windows to match pluginval's settings
+    set(SMTG_USE_STATIC_CRT ON CACHE BOOL "" FORCE)
+
     CPMAddPackage(
         NAME vst3sdk
         GITHUB_REPOSITORY steinbergmedia/vst3sdk
@@ -151,7 +154,9 @@ if(PLUGINVAL_VST3_VALIDATOR)
         ${vst3sdk_SOURCE_DIR}/base
         ${vst3sdk_SOURCE_DIR}/public.sdk
         ${vst3sdk_SOURCE_DIR}/public.sdk/source
+        ${vst3sdk_SOURCE_DIR}/public.sdk/source/vst
         ${vst3sdk_SOURCE_DIR}/public.sdk/source/vst/hosting
+        ${vst3sdk_SOURCE_DIR}/public.sdk/source/vst/utility
     )
 endif()
 
