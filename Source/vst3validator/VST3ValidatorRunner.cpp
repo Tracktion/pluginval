@@ -70,8 +70,10 @@ Result runValidator (const Options& options)
     Result result;
     std::ostringstream outputStream;
 
-    outputStream << "VST3 Validator - pluginval integrated version\n";
-    outputStream << "Validating: " << options.pluginPath << "\n";
+    try
+    {
+        outputStream << "VST3 Validator - pluginval integrated version\n";
+        outputStream << "Validating: " << options.pluginPath << "\n";
 
     if (options.extendedMode)
         outputStream << "Extended validation mode enabled\n";
@@ -85,6 +87,8 @@ Result runValidator (const Options& options)
     if (! module)
     {
         outputStream << "Failed to load module: " << errorStr << "\n";
+        // Also output to stderr for better visibility in case stdout is lost
+        std::cerr << "VST3 Validator Error: Failed to load module: " << errorStr << std::endl;
         result.output = outputStream.str();
         result.exitCode = 1;
         result.success = false;
@@ -198,15 +202,32 @@ Result runValidator (const Options& options)
         outputStream << "\n";
     }
 
-    // Summary
-    outputStream << "----------------------------------------\n";
-    outputStream << "Validation Summary:\n";
-    outputStream << "  Audio Processor classes found: " << numProcessorClasses << "\n";
-    outputStream << "  Result: " << (allTestsPassed ? "PASSED" : "FAILED") << "\n";
+        // Summary
+        outputStream << "----------------------------------------\n";
+        outputStream << "Validation Summary:\n";
+        outputStream << "  Audio Processor classes found: " << numProcessorClasses << "\n";
+        outputStream << "  Result: " << (allTestsPassed ? "PASSED" : "FAILED") << "\n";
 
-    result.output = outputStream.str ();
-    result.success = allTestsPassed;
-    result.exitCode = result.success ? 0 : 1;
+        result.output = outputStream.str ();
+        result.success = allTestsPassed;
+        result.exitCode = result.success ? 0 : 1;
+    }
+    catch (const std::exception& e)
+    {
+        outputStream << "\nException caught: " << e.what() << "\n";
+        std::cerr << "VST3 Validator Exception: " << e.what() << std::endl;
+        result.output = outputStream.str();
+        result.success = false;
+        result.exitCode = 1;
+    }
+    catch (...)
+    {
+        outputStream << "\nUnknown exception caught\n";
+        std::cerr << "VST3 Validator: Unknown exception caught" << std::endl;
+        result.output = outputStream.str();
+        result.success = false;
+        result.exitCode = 1;
+    }
 
     return result;
 }
