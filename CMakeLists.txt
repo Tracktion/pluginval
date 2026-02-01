@@ -138,8 +138,11 @@ if(PLUGINVAL_VST3_VALIDATOR)
         set_source_files_properties(${VST3_MODULE_MAC_FILE} PROPERTIES
             COMPILE_FLAGS "-fobjc-arc")
     elseif(WIN32)
-        list(APPEND VST3ValidatorFiles
-            ${vst3sdk_SOURCE_DIR}/public.sdk/source/vst/hosting/module_win32.cpp)
+        set(VST3_MODULE_WIN_FILE ${vst3sdk_SOURCE_DIR}/public.sdk/source/vst/hosting/module_win32.cpp)
+        list(APPEND VST3ValidatorFiles ${VST3_MODULE_WIN_FILE})
+        # Add Windows-specific compile definitions for compatibility with JUCE
+        set_source_files_properties(${VST3_MODULE_WIN_FILE} PROPERTIES
+            COMPILE_DEFINITIONS "NOMINMAX;WIN32_LEAN_AND_MEAN")
     endif()
 
     target_sources(pluginval PRIVATE ${VST3ValidatorFiles})
