@@ -141,26 +141,9 @@ if(PLUGINVAL_VST3_VALIDATOR)
         set_source_files_properties(${VST3_MODULE_MAC_FILE} PROPERTIES
             COMPILE_FLAGS "-fobjc-arc")
     elseif(WIN32)
-        # Create an OBJECT library for the Windows module to compile it with SDK settings
-        add_library(vst3_module_win32 OBJECT
+        # Add module_win32.cpp directly - compile definitions are set at target level
+        list(APPEND VST3ValidatorFiles
             ${vst3sdk_SOURCE_DIR}/public.sdk/source/vst/hosting/module_win32.cpp)
-        target_compile_features(vst3_module_win32 PRIVATE cxx_std_17)
-        # Link to sdk_hosting to get its include directories (via PUBLIC interface)
-        target_link_libraries(vst3_module_win32 PUBLIC sdk_hosting)
-        # Add additional include directories needed for module_win32.cpp
-        target_include_directories(vst3_module_win32 PRIVATE
-            ${vst3sdk_SOURCE_DIR}
-            ${vst3sdk_SOURCE_DIR}/public.sdk/source/vst/hosting)
-        target_compile_definitions(vst3_module_win32 PRIVATE
-            NOMINMAX
-            WIN32_LEAN_AND_MEAN
-            _UNICODE
-            UNICODE
-            _CRT_SECURE_NO_WARNINGS
-            _SILENCE_EXPERIMENTAL_FILESYSTEM_DEPRECATION_WARNING)
-        # Set static CRT for the object library
-        set_property(TARGET vst3_module_win32 PROPERTY
-            MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>")
     endif()
 
     target_sources(pluginval PRIVATE ${VST3ValidatorFiles})
@@ -229,10 +212,9 @@ if (PLUGINVAL_VST3_VALIDATOR)
         sdk_hosting
         sdk)
 
-    # Windows needs additional libraries and the module object library
+    # Windows needs additional libraries for the module loading code
     if(WIN32)
         target_link_libraries(pluginval PRIVATE
-            vst3_module_win32
             Ole32
             Shell32)
     endif()
