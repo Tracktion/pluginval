@@ -145,15 +145,12 @@ if(PLUGINVAL_VST3_VALIDATOR)
         add_library(vst3_module_win32 OBJECT
             ${vst3sdk_SOURCE_DIR}/public.sdk/source/vst/hosting/module_win32.cpp)
         target_compile_features(vst3_module_win32 PRIVATE cxx_std_17)
+        # Link to sdk_hosting to get its include directories (via PUBLIC interface)
+        target_link_libraries(vst3_module_win32 PUBLIC sdk_hosting)
+        # Add additional include directories needed for module_win32.cpp
         target_include_directories(vst3_module_win32 PRIVATE
             ${vst3sdk_SOURCE_DIR}
-            ${vst3sdk_SOURCE_DIR}/pluginterfaces
-            ${vst3sdk_SOURCE_DIR}/base
-            ${vst3sdk_SOURCE_DIR}/public.sdk
-            ${vst3sdk_SOURCE_DIR}/public.sdk/source
-            ${vst3sdk_SOURCE_DIR}/public.sdk/source/vst
-            ${vst3sdk_SOURCE_DIR}/public.sdk/source/vst/hosting
-            ${vst3sdk_SOURCE_DIR}/public.sdk/source/vst/utility)
+            ${vst3sdk_SOURCE_DIR}/public.sdk/source/vst/hosting)
         target_compile_definitions(vst3_module_win32 PRIVATE
             NOMINMAX
             WIN32_LEAN_AND_MEAN
@@ -161,7 +158,6 @@ if(PLUGINVAL_VST3_VALIDATOR)
             UNICODE
             _CRT_SECURE_NO_WARNINGS
             _SILENCE_EXPERIMENTAL_FILESYSTEM_DEPRECATION_WARNING)
-        target_link_libraries(vst3_module_win32 PRIVATE sdk_hosting)
         # Set static CRT for the object library
         set_property(TARGET vst3_module_win32 PROPERTY
             MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>")
