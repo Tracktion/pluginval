@@ -181,6 +181,9 @@ private:
 
 //==============================================================================
 #if PLUGINVAL_VST3_VALIDATOR
+// Forward declaration for JUCE application factory
+juce::JUCEApplicationBase* juce_CreateApplication();
+
 // Custom main() to intercept --vst3-validator-mode before JUCE starts.
 // This avoids the "Periodic events are already being generated" crash on macOS
 // that occurs when JUCE's event loop conflicts with the validator subprocess.
@@ -220,11 +223,12 @@ int main (int argc, char* argv[])
         }
     }
 
-    // Normal JUCE application startup
+    // Normal JUCE application startup - must set createInstance before calling main()
+    juce::JUCEApplicationBase::createInstance = &juce_CreateApplication;
     return juce::JUCEApplicationBase::main (argc, const_cast<const char**> (argv));
 }
 
-// Provide the JUCE application class
+// Provide the JUCE application class (required by JUCE's application framework)
 juce::JUCEApplicationBase* juce_CreateApplication() { return new PluginValidatorApplication(); }
 
 #else
