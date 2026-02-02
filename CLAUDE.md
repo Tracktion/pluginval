@@ -33,6 +33,44 @@ Follow these guidelines when working on this codebase:
 
 6. **Never speculate about unread code**: Never make claims about code you haven't opened. If the user references a specific file, you MUST read the file before answering. Investigate and read relevant files BEFORE answering questions about the codebase. Give grounded, hallucination-free answers based on actual file contents.
 
+## Getting CI Run Logs
+
+### Configuration
+
+- **Organisation:** `<organisation>`
+- **Repository:** `<repo>`
+
+For this project:
+- **Organisation:** `Tracktion`
+- **Repository:** `pluginval`
+
+### Setup
+
+Install the GitHub CLI:
+```bash
+brew install gh  # macOS
+# or
+sudo apt install gh  # Ubuntu/Debian
+```
+
+Authentication is handled via the `GH_TOKEN` environment variable (already configured).
+
+### Workflow
+
+1. **List recent workflow runs:**
+   ```bash
+   gh run list -R <organisation>/<repo>
+   ```
+
+2. **Find the most recent run for your branch** from the output above.
+
+3. **View failed log details:**
+   ```bash
+   gh run view -R <organisation>/<repo> <run_id> --log-failed
+   ```
+
+Replace `<run_id>` with the ID from step 2.
+
 ## Directory Structure
 
 ```
