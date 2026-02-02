@@ -141,9 +141,14 @@ if(PLUGINVAL_VST3_VALIDATOR)
         set_source_files_properties(${VST3_MODULE_MAC_FILE} PROPERTIES
             COMPILE_FLAGS "-fobjc-arc")
     elseif(WIN32)
-        # Add module_win32.cpp directly - compile definitions are set at target level
-        list(APPEND VST3ValidatorFiles
-            ${vst3sdk_SOURCE_DIR}/public.sdk/source/vst/hosting/module_win32.cpp)
+        set(VST3_MODULE_WIN32_FILE ${vst3sdk_SOURCE_DIR}/public.sdk/source/vst/hosting/module_win32.cpp)
+        list(APPEND VST3ValidatorFiles ${VST3_MODULE_WIN32_FILE})
+        # module_win32.cpp requires C++17 (not C++20) because generic_u8string() returns
+        # std::u8string in C++20 but std::string in C++17, and the SDK code expects std::string.
+        # Also set UNICODE definitions only for this file to avoid affecting JUCE's LV2/lilv code.
+        set_source_files_properties(${VST3_MODULE_WIN32_FILE} PROPERTIES
+            COMPILE_FLAGS "/std:c++17"
+            COMPILE_DEFINITIONS "NOMINMAX;WIN32_LEAN_AND_MEAN;_UNICODE;UNICODE")
     endif()
 
     target_sources(pluginval PRIVATE ${VST3ValidatorFiles})
@@ -180,14 +185,13 @@ target_compile_definitions(pluginval PRIVATE
     VERSION="${CURRENT_VERSION}")
 
 # Windows-specific compile definitions for VST3 SDK compatibility
+# Note: _UNICODE and UNICODE are NOT set here - they're set only for module_win32.cpp
+# to avoid breaking JUCE's LV2/lilv code which uses ANSI Windows APIs
 if(WIN32 AND PLUGINVAL_VST3_VALIDATOR)
     target_compile_definitions(pluginval PRIVATE
         NOMINMAX
         WIN32_LEAN_AND_MEAN
-        _UNICODE
-        UNICODE
-        _CRT_SECURE_NO_WARNINGS
-        _SILENCE_EXPERIMENTAL_FILESYSTEM_DEPRECATION_WARNING)
+        _CRT_SECURE_NO_WARNINGS)
 endif()
 
 if(MSVC AND NOT CMAKE_MSVC_RUNTIME_LIBRARY)
