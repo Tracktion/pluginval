@@ -241,7 +241,11 @@ namespace
     bool isPluginArgument (juce::String arg)
     {
         juce::AudioPluginFormatManager formatManager;
+        #if JUCE_VERSION >= 0x08000B
         juce::addDefaultFormatsToManager (formatManager);
+        #else
+        formatManager.addDefaultFormats();
+        #endif
 
         for (auto format : formatManager.getFormats())
             if (format->fileMightContainThisPluginType (arg))

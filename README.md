@@ -32,6 +32,25 @@ cmake -B Builds/Debug -DCMAKE_BUILD_TYPE=Debug . # configure
 cmake --build Builds/Debug --config Debug # build
 ```
 
+### Including within an existing JUCE project
+
+Instead of running as a separate app, you can add pluginval as a CMake target to your existing JUCE plugin project. This not only makes for a convenient debugging workflow, it gives you better stack traces.
+
+For example, if you add pluginval as a git submodule like so:
+```
+git submodule add -b develop git@github.com:Tracktion/pluginval.git modules/pluginval
+```
+
+or added with CPM like so:
+
+```
+CPMAddPackage("gh:tracktion/pluginval#develop")
+```
+
+Then all you need to do is call `add_subdirectory ("modules/pluginval")` in your `CMakeLists.txt`. This should be done **after** your call to `juce_add_plugin`. 
+
+Note that only JUCE 8 is currently supported/tested for this method. 
+
 ### Third-party Installation
 ###### _Chocolatey (Windows):_
 ```shell

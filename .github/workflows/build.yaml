@@ -48,8 +48,6 @@ jobs:
           apt install -y sudo cmake curl tree
 
       - uses: actions/checkout@v4
-        with:
-          submodules: true
 
       - name: Setup Environment Variables
         shell: bash
@@ -58,12 +56,11 @@ jobs:
           echo "VERSION=$VERSION" >> $GITHUB_ENV
           echo "APP_DIR=${{ env.BUILD_DIR }}/${{ env.BINARY_NAME }}_artefacts/${{ env.BUILD_TYPE }}" >> $GITHUB_ENV
           echo "ZIP_FILE_NAME=${{ env.BINARY_NAME }}_${{ matrix.name }}.zip" >> $GITHUB_ENV
-          echo "JUCE_SHA1=$(git rev-parse HEAD:modules/juce)" >> $GITHUB_ENV
-          echo "PLUGIN_BUILD_DIR=modules/juce/Builds" >> $GITHUB_ENV
-          
+
           # This needs to be absolute to make action/cache happy
+          # JUCE examples are built from within the CPM-fetched JUCE source directory
           WORKING_DIR=$(pwd)
-          echo "PLUGIN_CACHE_PATH=$WORKING_DIR/modules/juce/Builds/examples/Plugins" >> $GITHUB_ENV
+          echo "PLUGIN_CACHE_PATH=$WORKING_DIR/${{ env.BUILD_DIR }}/_deps/juce-src/Builds/examples/Plugins" >> $GITHUB_ENV
 
       - name: Install dependencies (Linux)
         if: ${{ matrix.name == 'Linux' }}
@@ -91,7 +88,7 @@ jobs:
       - name: ccache
         uses: hendrikmuhs/ccache-action@v1.2
         with:
-          key: v2-${{ matrix.name }}-${{ env.BUILD_TYPE }}
+          key: v3-${{ matrix.name }}-${{ env.BUILD_TYPE }}
 
       - name: Configure
         shell: bash
@@ -115,11 +112,11 @@ jobs:
         with:
           path: ${{ env.PLUGIN_CACHE_PATH }}
           # Increment the version in the key below to manually break plugin cache
-          key: v7-${{ runner.os }}-${{ env.JUCE_SHA1 }}
+          key: v9-${{ runner.os }}
 
       - name: Build JUCE example plugins
         if: steps.cache-plugins.outputs.cache-hit != 'true'
-        working-directory: modules/juce
+        working-directory: ${{ env.BUILD_DIR }}/_deps/juce-src
         shell: bash
         run: |
           cmake -B Builds -DJUCE_BUILD_EXAMPLES=ON -DCMAKE_BUILD_TYPE=Release -DCMAKE_C_COMPILER_LAUNCHER=ccache -DCMAKE_CXX_COMPILER_LAUNCHER=ccache .
@@ -170,6 +167,33 @@ jobs:
         with:
           name: ${{ env.ZIP_FILE_NAME }}
           path: ${{ env.APP_DIR }}/${{ env.ZIP_FILE_NAME }}
+
+  # Test pluginval as a dependency in another JUCE project
+  as_dependency:
+    name: Pluginval as Dependency
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-15, windows-latest]
+        juce: ["8.0.3", "8.0.11"]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install dependencies (Linux)
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libasound2-dev libfreetype6-dev libx11-dev libxcomposite-dev libxcursor-dev libxinerama-dev libxrandr-dev mesa-common-dev libwebkit2gtk-4.1-dev ladspa-sdk
+
+      - name: Configure
+        run: cmake -B build -S tests/pluginval_as_dependency -DJUCE_VERSION="${{ matrix.juce }}"
+
+      - name: Build
+        run: cmake --build build --target pluginval --parallel 4
+
+      - name: Verify
+        run: cmake --build build --target verify_pluginval
 
   # Create release for tagged refs
   deploy:
