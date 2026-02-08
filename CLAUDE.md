@@ -100,7 +100,8 @@ pluginval/
 ├── modules/
 │   └── juce/                 # JUCE framework (git submodule)
 ├── cmake/
-│   └── CPM.cmake             # CMake Package Manager
+│   ├── CPM.cmake             # CMake Package Manager
+│   └── GenerateBinaryHeader.cmake  # Binary-to-C-header converter
 ├── tests/
 │   ├── AddPluginvalTests.cmake  # CMake module for CTest integration
 │   ├── test_plugins/         # Test plugin files
@@ -221,23 +222,22 @@ struct Requirements {
 
 ### VST3 Validator Integration
 
-The VST3 validator (Steinberg's vstvalidator) is embedded directly into pluginval when built with `PLUGINVAL_VST3_VALIDATOR=ON` (the default). This eliminates the need to provide an external validator binary path.
+The VST3 validator (Steinberg's vstvalidator) is embedded into pluginval when built with `PLUGINVAL_VST3_VALIDATOR=ON` (the default). This provides single-file distribution while keeping vstvalidator completely isolated from pluginval's link dependencies.
 
 **Architecture:**
 1. The VST3 SDK is fetched via CPM during CMake configure
-2. `VST3ValidatorRunner` (`Source/vst3validator/`) wraps the SDK's validation functionality
-3. When the `VST3validator` test runs, it spawns pluginval with `--vst3-validator-mode`
-4. This subprocess runs the embedded validator code in isolation (crash protection)
+2. The SDK's own `validator` target is built as a separate executable
+3. A CMake script (`cmake/GenerateBinaryHeader.cmake`) converts the compiled binary into a C byte array header
+4. `VST3ValidatorRunner` (`Source/vst3validator/`) extracts the embedded binary to a temp file on first use
+5. When the `VST3validator` test runs, it spawns the extracted validator as a subprocess
 
-**Internal CLI mode:**
-```bash
-# Used internally by the VST3validator test - not for direct use
-pluginval --vst3-validator-mode /path/to/plugin.vst3 [-e] [-v]
-```
+**Key files:**
+- `cmake/GenerateBinaryHeader.cmake` — binary-to-C-header conversion script
+- `Source/vst3validator/VST3ValidatorRunner.h/cpp` — extracts embedded binary, returns `juce::File`
 
 **Disabling embedded validator:**
 ```bash
-cmake -B Builds -DPLUGINAL_VST3_VALIDATOR=OFF .
+cmake -B Builds -DPLUGINVAL_VST3_VALIDATOR=OFF .
 ```
 
 ## Adding New Tests

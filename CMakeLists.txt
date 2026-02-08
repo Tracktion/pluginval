@@ -87,12 +87,6 @@ if(PLUGINVAL_VST3_VALIDATOR)
     )
 endif()
 
-option(PLUGINVAL_FETCH_JUCE "Fetch JUCE along with pluginval" ON)
-
-if(PLUGINVAL_FETCH_JUCE)
-    add_subdirectory(modules/juce)
-endif()
-
 if (DEFINED ENV{VST2_SDK_DIR})
     MESSAGE(STATUS "Building with VST2 SDK: $ENV{VST2_SDK_DIR}")
     juce_set_vst2_sdk_path($ENV{VST2_SDK_DIR})
@@ -137,47 +131,14 @@ set(SourceFiles
 target_sources(pluginval PRIVATE ${SourceFiles})
 source_group(TREE ${CMAKE_CURRENT_SOURCE_DIR}/Source PREFIX Source FILES ${SourceFiles})
 
-# Add VST3 validator sources if enabled
+# Add VST3 validator runner sources to pluginval (extracts embedded binary at runtime)
 if(PLUGINVAL_VST3_VALIDATOR)
     set(VST3ValidatorFiles
         Source/vst3validator/VST3ValidatorRunner.h
         Source/vst3validator/VST3ValidatorRunner.cpp
     )
-
-    # Add platform-specific module loading sources from the SDK
-    if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
-        list(APPEND VST3ValidatorFiles
-            ${vst3sdk_SOURCE_DIR}/public.sdk/source/vst/hosting/module_linux.cpp)
-    elseif(APPLE)
-        set(VST3_MODULE_MAC_FILE ${vst3sdk_SOURCE_DIR}/public.sdk/source/vst/hosting/module_mac.mm)
-        list(APPEND VST3ValidatorFiles ${VST3_MODULE_MAC_FILE})
-        # module_mac.mm requires ARC (Automatic Reference Counting)
-        set_source_files_properties(${VST3_MODULE_MAC_FILE} PROPERTIES
-            COMPILE_FLAGS "-fobjc-arc")
-    elseif(WIN32)
-        set(VST3_MODULE_WIN32_FILE ${vst3sdk_SOURCE_DIR}/public.sdk/source/vst/hosting/module_win32.cpp)
-        list(APPEND VST3ValidatorFiles ${VST3_MODULE_WIN32_FILE})
-        # module_win32.cpp requires C++17 (not C++20) because generic_u8string() returns
-        # std::u8string in C++20 but std::string in C++17, and the SDK code expects std::string.
-        # Also set UNICODE definitions only for this file to avoid affecting JUCE's LV2/lilv code.
-        set_source_files_properties(${VST3_MODULE_WIN32_FILE} PROPERTIES
-            COMPILE_FLAGS "/std:c++17"
-            COMPILE_DEFINITIONS "NOMINMAX;WIN32_LEAN_AND_MEAN;_UNICODE;UNICODE")
-    endif()
-
     target_sources(pluginval PRIVATE ${VST3ValidatorFiles})
     source_group("Source/vst3validator" FILES ${VST3ValidatorFiles})
-
-    target_include_directories(pluginval PRIVATE
-        ${vst3sdk_SOURCE_DIR}
-        ${vst3sdk_SOURCE_DIR}/pluginterfaces
-        ${vst3sdk_SOURCE_DIR}/base
-        ${vst3sdk_SOURCE_DIR}/public.sdk
-        ${vst3sdk_SOURCE_DIR}/public.sdk/source
-        ${vst3sdk_SOURCE_DIR}/public.sdk/source/vst
-        ${vst3sdk_SOURCE_DIR}/public.sdk/source/vst/hosting
-        ${vst3sdk_SOURCE_DIR}/public.sdk/source/vst/utility
-    )
 endif()
 
 if (DEFINED ENV{VST2_SDK_DIR})
@@ -198,15 +159,6 @@ target_compile_definitions(pluginval PRIVATE
     $<$<BOOL:${PLUGINVAL_VST3_VALIDATOR}>:PLUGINVAL_VST3_VALIDATOR=1>
     VERSION="${CURRENT_VERSION}")
 
-# Windows-specific compile definitions for VST3 SDK compatibility
-# Note: _UNICODE and UNICODE are NOT set here - they're set only for module_win32.cpp
-# to avoid breaking JUCE's LV2/lilv code which uses ANSI Windows APIs
-if(WIN32 AND PLUGINVAL_VST3_VALIDATOR)
-    target_compile_definitions(pluginval PRIVATE
-        NOMINMAX
-        WIN32_LEAN_AND_MEAN
-        _CRT_SECURE_NO_WARNINGS)
-endif()
 
 if(MSVC AND NOT CMAKE_MSVC_RUNTIME_LIBRARY)
     # Default to statically linking the runtime libraries
@@ -225,24 +177,20 @@ if (${CMAKE_SYSTEM_NAME} MATCHES "Linux")
         -static-libstdc++)
 endif()
 
-if (PLUGINVAL_VST3_VALIDATOR)
-    target_link_libraries(pluginval PRIVATE
-        sdk_hosting
-        sdk)
+# Embed the SDK's validator binary into pluginval
+if(PLUGINVAL_VST3_VALIDATOR)
+    set(VSTVALIDATOR_HEADER "${CMAKE_BINARY_DIR}/generated/vstvalidator_data.h")
+    add_custom_command(
+        OUTPUT "${VSTVALIDATOR_HEADER}"
+        COMMAND ${CMAKE_COMMAND}
+            -DINPUT_FILE=$<TARGET_FILE:validator>
+            -DOUTPUT_FILE=${VSTVALIDATOR_HEADER}
+            -P ${CMAKE_CURRENT_SOURCE_DIR}/cmake/GenerateBinaryHeader.cmake
+        DEPENDS validator
+        COMMENT "Embedding vstvalidator binary into header...")
 
-    # Windows needs additional libraries for the module loading code
-    if(WIN32)
-        target_link_libraries(pluginval PRIVATE
-            Ole32
-            Shell32)
-    endif()
-
-    # macOS needs Cocoa framework for module loading
-    if(APPLE)
-        find_library(COCOA_FRAMEWORK Cocoa)
-        target_link_libraries(pluginval PRIVATE
-            ${COCOA_FRAMEWORK})
-    endif()
+    target_sources(pluginval PRIVATE "${VSTVALIDATOR_HEADER}")
+    target_include_directories(pluginval PRIVATE "${CMAKE_BINARY_DIR}/generated")
 endif()
 
 if (PLUGINVAL_ENABLE_RTCHECK)

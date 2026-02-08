@@ -14,35 +14,13 @@
 
 #pragma once
 
-#include <string>
+#include <juce_core/juce_core.h>
 
 namespace vst3validator {
 
-/** Options for running the VST3 validator. */
-struct Options
-{
-    std::string pluginPath;     /**< Path to the VST3 plugin to validate. */
-    bool extendedMode = false;  /**< If true, run extended validation tests. */
-    bool verbose = false;       /**< If true, output verbose information. */
-};
-
-/** Result of running the VST3 validator. */
-struct Result
-{
-    bool success = false;       /**< True if all tests passed. */
-    std::string output;         /**< Captured output from the validator. */
-    int exitCode = 1;           /**< Exit code (0 = success). */
-};
-
-/**
-    Runs the Steinberg VST3 validator on a plugin.
-
-    This function calls the embedded VST3 SDK validator code directly,
-    capturing its output and returning the results.
-
-    @param options  The validation options including plugin path
-    @return         The validation result including captured output
-*/
-Result runValidator (const Options& options);
+/** Extracts the embedded vstvalidator binary to a temporary file.
+    The returned TemporaryFile auto-deletes when destroyed, so the caller
+    must keep it alive while the child process runs. */
+std::unique_ptr<juce::TemporaryFile> getValidatorExecutable();
 
 }  // namespace vst3validator

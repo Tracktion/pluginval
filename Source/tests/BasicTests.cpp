@@ -16,6 +16,10 @@
 #include "../TestUtilities.h"
 #include "../RTCheck.h"
 
+#if PLUGINVAL_VST3_VALIDATOR
+ #include "../vst3validator/VST3ValidatorRunner.h"
+#endif
+
 #include <future>
 #include <thread>
 #include <chrono>
@@ -895,19 +899,25 @@ struct VST3validator    : public PluginTest
         ut.logMessage ("INFO: Skipping vst3 validator (not built with VST3 validator support)");
         return;
        #else
-        // Use the current pluginval executable with --vst3-validator-mode
-        auto pluginvalExe = juce::File::getSpecialLocation (juce::File::currentExecutableFile);
+        auto tempFile = vst3validator::getValidatorExecutable();
+        auto vstvalidatorExe = tempFile->getFile();
+
+        if (! vstvalidatorExe.existsAsFile())
+        {
+            ut.logMessage ("WARNING: Could not extract vstvalidator binary");
+            return;
+        }
 
         juce::StringArray cmd;
-        cmd.add (pluginvalExe.getFullPathName());
-        cmd.add ("--vst3-validator-mode");
-        cmd.add (ut.getFileOrID());
+        cmd.add (vstvalidatorExe.getFullPathName());
 
         if (ut.getOptions().strictnessLevel > 5)
             cmd.add ("-e");
 
-        if (ut.getOptions().verbose)
-            cmd.add ("-v");
+        if (! ut.getOptions().verbose)
+            cmd.add ("-q");
+
+        cmd.add (ut.getFileOrID());
 
         juce::ChildProcess cp;
         const auto started = cp.start (cmd);
@@ -967,4 +977,4 @@ struct VST3validator    : public PluginTest
     }
 };
 
-static VST3validator vst3validator;
+static VST3validator vst3validatorTest;

@@ -18,11 +18,6 @@
 #include "CommandLine.h"
 #include "PluginvalLookAndFeel.h"
 
-#if PLUGINVAL_VST3_VALIDATOR
- #include "vst3validator/VST3ValidatorRunner.h"
- #include <cstring>
- #include <iostream>
-#endif
 
 //==============================================================================
 class PluginValidatorApplication  : public juce::JUCEApplication,
@@ -180,61 +175,7 @@ private:
 };
 
 //==============================================================================
-#if PLUGINVAL_VST3_VALIDATOR
-// Forward declaration for JUCE application factory
-juce::JUCEApplicationBase* juce_CreateApplication();
-
-// Custom main() to intercept --vst3-validator-mode before JUCE starts.
-// This avoids the "Periodic events are already being generated" crash on macOS
-// that occurs when JUCE's event loop conflicts with the validator subprocess.
-int main (int argc, char* argv[])
-{
-    // Check for --vst3-validator-mode before starting JUCE
-    for (int i = 1; i < argc; ++i)
-    {
-        if (std::strcmp (argv[i], "--vst3-validator-mode") == 0)
-        {
-            // Parse arguments for validator mode
-            vst3validator::Options opts;
-
-            // The plugin path should be the next argument
-            if (i + 1 < argc && argv[i + 1][0] != '-')
-                opts.pluginPath = argv[i + 1];
-
-            // Check for optional flags
-            for (int j = 1; j < argc; ++j)
-            {
-                if (std::strcmp (argv[j], "-e") == 0)
-                    opts.extendedMode = true;
-                else if (std::strcmp (argv[j], "-v") == 0)
-                    opts.verbose = true;
-            }
-
-            if (opts.pluginPath.empty())
-            {
-                std::cerr << "Error: No plugin path specified for --vst3-validator-mode\n";
-                return 1;
-            }
-
-            // Run the validator directly without JUCE
-            auto result = vst3validator::runValidator (opts);
-            std::cout << result.output;
-            return result.exitCode;
-        }
-    }
-
-    // Normal JUCE application startup - must set createInstance before calling main()
-    juce::JUCEApplicationBase::createInstance = &juce_CreateApplication;
-    return juce::JUCEApplicationBase::main (argc, const_cast<const char**> (argv));
-}
-
-// Provide the JUCE application class (required by JUCE's application framework)
-juce::JUCEApplicationBase* juce_CreateApplication() { return new PluginValidatorApplication(); }
-
-#else
-// Standard JUCE application macro when VST3 validator is disabled
 START_JUCE_APPLICATION (PluginValidatorApplication)
-#endif
 
 juce::PropertiesFile& getAppPreferences()
 {
