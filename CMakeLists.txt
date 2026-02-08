@@ -3,16 +3,24 @@ cmake_minimum_required(VERSION 3.15)
 file(STRINGS VERSION CURRENT_VERSION LIMIT_COUNT 1)
 project(pluginval VERSION ${CURRENT_VERSION})
 
-if (APPLE)
-    # Target OS versions down to 10.11
-    set (CMAKE_OSX_DEPLOYMENT_TARGET "10.11" CACHE INTERNAL "")
+# Just compliing pluginval
+if (pluginval_IS_TOP_LEVEL)
+    if (APPLE)
+        # Target OS versions down to 10.11
+        set (CMAKE_OSX_DEPLOYMENT_TARGET "10.11" CACHE INTERNAL "")
 
-    # Uncomment to produce a universal binary
-    # set(CMAKE_OSX_ARCHITECTURES arm64 x86_64)
-    set(PLUGINVAL_ENABLE_RTCHECK ON)
-elseif (CMAKE_SYSTEM_NAME STREQUAL "Linux")
-    # Disable rtcheck on Linux for now until further testing on real Linux systems has been done
-    # set(PLUGINVAL_ENABLE_RTCHECK ON)
+        # Uncomment to produce a universal binary
+        # set(CMAKE_OSX_ARCHITECTURES arm64 x86_64)
+        set(PLUGINVAL_ENABLE_RTCHECK ON)
+    elseif (CMAKE_SYSTEM_NAME STREQUAL "Linux")
+        # Disable rtcheck on Linux for now until further testing on real Linux systems has been done
+        # set(PLUGINVAL_ENABLE_RTCHECK ON)
+    endif()
+else()
+    # compiling as a "dependency" of another JUCE CMake project
+    if (NOT COMMAND juce_add_module)
+        message(FATAL_ERROR "JUCE must be added to your project before pluginval!")
+    endif ()
 endif()
 
 # sanitizer options, from https://github.com/sudara/cmake-includes/blob/main/Sanitizers.cmake
@@ -51,6 +59,12 @@ CPMAddPackage("gh:Neargye/magic_enum#v0.9.7")
 if(PLUGINVAL_ENABLE_RTCHECK)
     CPMAddPackage("gh:Tracktion/rtcheck#main")
 endif()
+
+# Only fetch JUCE when top-level (when used as dependency, JUCE is already available)
+if (pluginval_IS_TOP_LEVEL)
+    CPMAddPackage("gh:juce-framework/juce#8.0.3")
+endif()
+
 
 # VST3 Validator integration - embeds Steinberg's vstvalidator directly into pluginval
 option(PLUGINVAL_VST3_VALIDATOR "Build with embedded VST3 validator" ON)
@@ -245,11 +259,34 @@ if (PLUGINVAL_ENABLE_RTCHECK)
     endif ()
 endif()
 
-set (cmdline_docs_out "${CMAKE_CURRENT_LIST_DIR}/docs/Command line options.md")
+if (pluginval_IS_TOP_LEVEL)
+    set (cmdline_docs_out "${CMAKE_CURRENT_LIST_DIR}/docs/Command line options.md")
 
-add_custom_command (OUTPUT "${cmdline_docs_out}"
-                    COMMAND pluginval --help > "${cmdline_docs_out}"
-                    COMMENT "Regenerating Command line options.md..."
-                    USES_TERMINAL)
+    add_custom_command (OUTPUT "${cmdline_docs_out}"
+                        COMMAND pluginval --help > "${cmdline_docs_out}"
+                        COMMENT "Regenerating Command line options.md..."
+                        USES_TERMINAL)
+    add_custom_target (PluginvalDocs DEPENDS "${cmdline_docs_out}")
+else()
+    # Custom pluginval CLI target
+    set(PLUGINVAL_STRICTNESS_LEVEL 10 CACHE STRING "Pluginval --strictness argument (1-10)")
+    set_property(CACHE PLUGINVAL_STRICTNESS_LEVEL PROPERTY STRINGS 1 2 3 4 5 6 7 8 9 10)
 
-add_custom_target (PluginvalDocs DEPENDS "${cmdline_docs_out}")
+    # Set the target based on the platform
+    # Makes the assumption both are being built
+    if(APPLE)
+        set(PLUGINVAL_TARGET "${CMAKE_PROJECT_NAME}_AU")
+    else()
+        set(PLUGINVAL_TARGET "${CMAKE_PROJECT_NAME}_VST3")
+    endif()
+
+    get_target_property(artefact ${PLUGINVAL_TARGET} JUCE_PLUGIN_ARTEFACT_FILE)
+
+    # TODO: This doesn't populate the executable in clion
+    add_custom_target(${CMAKE_PROJECT_NAME}_pluginval_cli
+            COMMAND $<TARGET_FILE:pluginval>
+            --validate ${artefact}
+            --strictness-level 10
+            DEPENDS pluginval ${PLUGINVAL_TARGET}
+            COMMENT "Run pluginval CLI with strict validation")
+endif()

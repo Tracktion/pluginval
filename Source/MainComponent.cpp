@@ -292,7 +292,11 @@ namespace
 MainComponent::MainComponent (Validator& v)
     : validator (v)
 {
+    #if JUCE_VERSION >= 0x08000B
     juce::addDefaultFormatsToManager (formatManager);
+    #else
+    formatManager.addDefaultFormats();
+    #endif
 
     menuBar.setModel (this);
     addAndMakeVisible (menuBar);
