@@ -16,6 +16,10 @@
 #include "../TestUtilities.h"
 #include "../RTCheck.h"
 
+#if PLUGINVAL_VST3_VALIDATOR
+ #include "../vst3validator/VST3ValidatorRunner.h"
+#endif
+
 #include <future>
 #include <thread>
 #include <chrono>
@@ -875,6 +879,7 @@ static AUvalTest auvalTest;
 
 //==============================================================================
 /** Runs Steinberg's validator on the plugin if it's a VST3.
+    Uses the embedded VST3 validator when built with PLUGINVAL_VST3_VALIDATOR.
  */
 struct VST3validator    : public PluginTest
 {
@@ -890,24 +895,33 @@ struct VST3validator    : public PluginTest
         if (desc.pluginFormatName != "VST3")
             return;
 
-        auto vst3Validator = ut.getOptions().vst3Validator;
+       #if ! PLUGINVAL_VST3_VALIDATOR
+        ut.logMessage ("INFO: Skipping vst3 validator (not built with VST3 validator support)");
+        return;
+       #else
+        auto tempFile = vst3validator::getValidatorExecutable();
+        auto vstvalidatorExe = tempFile->getFile();
 
-        if (vst3Validator == juce::File())
+        if (! vstvalidatorExe.existsAsFile())
         {
-            ut.logMessage ("INFO: Skipping vst3 validator as validator path hasn't been set");
+            ut.logMessage ("WARNING: Could not extract vstvalidator binary");
             return;
         }
 
-        juce::StringArray cmd (vst3Validator.getFullPathName());
+        juce::StringArray cmd;
+        cmd.add (vstvalidatorExe.getFullPathName());
 
         if (ut.getOptions().strictnessLevel > 5)
             cmd.add ("-e");
+
+        if (! ut.getOptions().verbose)
+            cmd.add ("-q");
 
         cmd.add (ut.getFileOrID());
 
         juce::ChildProcess cp;
         const auto started = cp.start (cmd);
-        ut.expect (started, "VST3 validator app has been set but is unable to start");
+        ut.expect (started, "Failed to start VST3 validator mode");
 
         if (! started)
             return;
@@ -947,15 +961,20 @@ struct VST3validator    : public PluginTest
 
         if (! exitedCleanly && ! ut.getOptions().verbose)
             ut.logMessage (outputBuffer.toString());
+       #endif
     }
 
     std::vector<TestDescription> getDescription (int level) const override
     {
+       #if ! PLUGINVAL_VST3_VALIDATOR
+        return { { name, "Disabled (not built with VST3 validator support)" } };
+       #else
         if (level > 5)
             return { { name, "Runs Steinberg's vstvalidator with -e flag for extended validation (VST3 only)" } };
 
         return { { name, "Runs Steinberg's vstvalidator on the plugin file (VST3 only)" } };
+       #endif
     }
 };
 
-static VST3validator vst3validator;
+static VST3validator vst3validatorTest;

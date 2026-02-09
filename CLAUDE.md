@@ -33,6 +33,44 @@ Follow these guidelines when working on this codebase:
 
 6. **Never speculate about unread code**: Never make claims about code you haven't opened. If the user references a specific file, you MUST read the file before answering. Investigate and read relevant files BEFORE answering questions about the codebase. Give grounded, hallucination-free answers based on actual file contents.
 
+## Getting CI Run Logs
+
+### Configuration
+
+- **Organisation:** `<organisation>`
+- **Repository:** `<repo>`
+
+For this project:
+- **Organisation:** `Tracktion`
+- **Repository:** `pluginval`
+
+### Setup
+
+Install the GitHub CLI:
+```bash
+brew install gh  # macOS
+# or
+sudo apt install gh  # Ubuntu/Debian
+```
+
+Authentication is handled via the `GH_TOKEN` environment variable (already configured).
+
+### Workflow
+
+1. **List recent workflow runs:**
+   ```bash
+   gh run list -R <organisation>/<repo>
+   ```
+
+2. **Find the most recent run for your branch** from the output above.
+
+3. **View failed log details:**
+   ```bash
+   gh run view -R <organisation>/<repo> <run_id> --log-failed
+   ```
+
+Replace `<run_id>` with the ID from step 2.
+
 ## Directory Structure
 
 ```
@@ -49,6 +87,9 @@ pluginval/
 │   ├── PluginvalLookAndFeel.h # Custom UI styling
 │   ├── StrictnessInfoPopup.h # Strictness level info UI
 │   ├── binarydata/           # Binary resources (icons)
+│   ├── vst3validator/        # Embedded VST3 validator integration
+│   │   ├── VST3ValidatorRunner.h
+│   │   └── VST3ValidatorRunner.cpp
 │   └── tests/                # Individual test implementations
 │       ├── BasicTests.cpp    # Core plugin tests (info, state, audio)
 │       ├── BusTests.cpp      # Audio bus configuration tests
@@ -59,7 +100,8 @@ pluginval/
 ├── modules/
 │   └── juce/                 # JUCE framework (git submodule)
 ├── cmake/
-│   └── CPM.cmake             # CMake Package Manager
+│   ├── CPM.cmake             # CMake Package Manager
+│   └── GenerateBinaryHeader.cmake  # Binary-to-C-header converter
 ├── tests/
 │   ├── AddPluginvalTests.cmake  # CMake module for CTest integration
 │   ├── test_plugins/         # Test plugin files
@@ -101,6 +143,7 @@ cmake --build Builds/Debug --config Debug
 | Option | Description | Default |
 |--------|-------------|---------|
 | `PLUGINVAL_FETCH_JUCE` | Fetch JUCE with pluginval | ON |
+| `PLUGINVAL_VST3_VALIDATOR` | Build with embedded VST3 validator | ON |
 | `WITH_ADDRESS_SANITIZER` | Enable AddressSanitizer | OFF |
 | `WITH_THREAD_SANITIZER` | Enable ThreadSanitizer | OFF |
 | `VST2_SDK_DIR` | Path to VST2 SDK (env var) | - |
@@ -176,6 +219,26 @@ struct Requirements {
 | `ParameterFuzzTests.cpp` | Random parameter value testing |
 | `LocaleTest.cpp` | Locale handling verification |
 | `ExtremeTests.cpp` | Edge cases, stress tests |
+
+### VST3 Validator Integration
+
+The VST3 validator (Steinberg's vstvalidator) is embedded into pluginval when built with `PLUGINVAL_VST3_VALIDATOR=ON` (the default). This provides single-file distribution while keeping vstvalidator completely isolated from pluginval's link dependencies.
+
+**Architecture:**
+1. The VST3 SDK is fetched via CPM during CMake configure
+2. The SDK's own `validator` target is built as a separate executable
+3. A CMake script (`cmake/GenerateBinaryHeader.cmake`) converts the compiled binary into a C byte array header
+4. `VST3ValidatorRunner` (`Source/vst3validator/`) extracts the embedded binary to a temp file on first use
+5. When the `VST3validator` test runs, it spawns the extracted validator as a subprocess
+
+**Key files:**
+- `cmake/GenerateBinaryHeader.cmake` — binary-to-C-header conversion script
+- `Source/vst3validator/VST3ValidatorRunner.h/cpp` — extracts embedded binary, returns `juce::File`
+
+**Disabling embedded validator:**
+```bash
+cmake -B Builds -DPLUGINVAL_VST3_VALIDATOR=OFF .
+```
 
 ## Adding New Tests
 
@@ -312,6 +375,7 @@ add_pluginval_tests(MyPluginTarget
 - **JUCE** (v8.0.x) - Audio application framework (git submodule)
 - **magic_enum** (v0.9.7) - Enum reflection (fetched via CPM)
 - **rtcheck** (optional, macOS) - Real-time safety checking (fetched via CPM)
+- **VST3 SDK** (v3.7.x) - Steinberg VST3 SDK for embedded validator (fetched via CPM, optional)
 
 ### System
 - macOS: CoreAudio, AudioUnit frameworks

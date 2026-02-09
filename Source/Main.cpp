@@ -18,6 +18,7 @@
 #include "CommandLine.h"
 #include "PluginvalLookAndFeel.h"
 
+
 //==============================================================================
 class PluginValidatorApplication  : public juce::JUCEApplication,
                                    private juce::AsyncUpdater
@@ -174,7 +175,6 @@ private:
 };
 
 //==============================================================================
-// This macro generates the main() routine that launches the app.
 START_JUCE_APPLICATION (PluginValidatorApplication)
 
 juce::PropertiesFile& getAppPreferences()

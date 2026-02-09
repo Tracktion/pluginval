@@ -108,16 +108,6 @@ namespace
         return { 64, 128, 256, 512, 1024 };
     }
 
-    void setVST3Validator (juce::File f)
-    {
-        getAppPreferences().setValue ("vst3validator", f.getFullPathName());
-    }
-
-    juce::File getVST3Validator()
-    {
-        return getAppPreferences().getValue ("vst3validator", juce::String());
-    }
-
     void setRealtimeCheckMode (RealtimeCheck rt)
     {
         getAppPreferences().setValue ("realtimeCheckMode", juce::String (std::string (magic_enum::enum_name (rt))));
@@ -210,7 +200,6 @@ namespace
         options.outputDir = getOutputDir();
         options.sampleRates = getSampleRates();
         options.blockSizes = getBlockSizes();
-        options.vst3Validator = getVST3Validator();
         options.realtimeCheck = getRealtimeCheckMode();
 
         return options;
@@ -293,34 +282,6 @@ namespace
 
                                                                           if (fc.browseForDirectory())
                                                                               getAppPreferences().setValue ("outputDir", fc.getResult().getFullPathName());
-                                                                      }
-                                                                  }));
-    }
-
-    void showVST3ValidatorDialog()
-    {
-        juce::String message = TRANS("Set the location of the VST3 validator app");
-        auto app = getVST3Validator();
-
-        if (app.getFullPathName().isNotEmpty())
-            message << "\n\n" << app.getFullPathName().quoted();
-        else
-            message << "\n\n" << "\"None set\"";
-
-        std::shared_ptr<juce::AlertWindow> aw (juce::LookAndFeel::getDefaultLookAndFeel().createAlertWindow (TRANS("Set VST3 validator"), message,
-                                                                                                 TRANS("Choose"), TRANS("Don't use VST3 validator"), TRANS("Cancel"),
-                                                                                                 juce::AlertWindow::QuestionIcon, 3, nullptr));
-        aw->enterModalState (true, juce::ModalCallbackFunction::create ([aw] (int res)
-                                                                  {
-                                                                      if (res == 1)
-                                                                          setVST3Validator ({});
-
-                                                                      if (res == 1)
-                                                                      {
-                                                                          juce::FileChooser fc (TRANS("Choose VST3 validator"), {});
-
-                                                                          if (fc.browseForFileToOpen())
-                                                                              setVST3Validator (fc.getResult().getFullPathName());
                                                                       }
                                                                   }));
     }
@@ -632,9 +593,6 @@ juce::PopupMenu MainComponent::createOptionsMenu()
 
     m.addItem (TRANS("Randomise tests"), true, getRandomiseTests(),
                [] { setRandomiseTests (! getRandomiseTests()); });
-
-    m.addItem (TRANS("Set VST3 validator location..."),
-               [] { showVST3ValidatorDialog(); });
 
     m.addSeparator();
 

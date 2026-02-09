@@ -79,3 +79,4 @@ pluginval.build/
 pluginval.xcodeproj/
 pluginval_artefacts/
 
+.claude/*local*

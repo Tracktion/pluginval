@@ -65,6 +65,28 @@ if (pluginval_IS_TOP_LEVEL)
     CPMAddPackage("gh:juce-framework/juce#8.0.3")
 endif()
 
+
+# VST3 Validator integration - embeds Steinberg's vstvalidator directly into pluginval
+option(PLUGINVAL_VST3_VALIDATOR "Build with embedded VST3 validator" ON)
+
+if(PLUGINVAL_VST3_VALIDATOR)
+    # Use static CRT on Windows to match pluginval's settings
+    set(SMTG_USE_STATIC_CRT ON CACHE BOOL "" FORCE)
+
+    CPMAddPackage(
+        NAME vst3sdk
+        GITHUB_REPOSITORY steinbergmedia/vst3sdk
+        GIT_TAG v3.7.14_build_55
+        OPTIONS
+            "SMTG_ENABLE_VST3_PLUGIN_EXAMPLES OFF"
+            "SMTG_ENABLE_VST3_HOSTING_EXAMPLES OFF"
+            "SMTG_ENABLE_VSTGUI_SUPPORT OFF"
+            "SMTG_ADD_VSTGUI OFF"
+            "SMTG_RUN_VST_VALIDATOR OFF"
+            "SMTG_CREATE_BUNDLE_FOR_WINDOWS OFF"
+    )
+endif()
+
 if (DEFINED ENV{VST2_SDK_DIR})
     MESSAGE(STATUS "Building with VST2 SDK: $ENV{VST2_SDK_DIR}")
     juce_set_vst2_sdk_path($ENV{VST2_SDK_DIR})
@@ -109,6 +131,16 @@ set(SourceFiles
 target_sources(pluginval PRIVATE ${SourceFiles})
 source_group(TREE ${CMAKE_CURRENT_SOURCE_DIR}/Source PREFIX Source FILES ${SourceFiles})
 
+# Add VST3 validator runner sources to pluginval (extracts embedded binary at runtime)
+if(PLUGINVAL_VST3_VALIDATOR)
+    set(VST3ValidatorFiles
+        Source/vst3validator/VST3ValidatorRunner.h
+        Source/vst3validator/VST3ValidatorRunner.cpp
+    )
+    target_sources(pluginval PRIVATE ${VST3ValidatorFiles})
+    source_group("Source/vst3validator" FILES ${VST3ValidatorFiles})
+endif()
+
 if (DEFINED ENV{VST2_SDK_DIR})
     target_compile_definitions(pluginval PRIVATE
         JUCE_PLUGINHOST_VST=1)
@@ -124,7 +156,9 @@ target_compile_definitions(pluginval PRIVATE
     JUCE_MODAL_LOOPS_PERMITTED=1
     JUCE_GUI_BASICS_INCLUDE_XHEADERS=1
     $<$<BOOL:${PLUGINVAL_ENABLE_RTCHECK}>:PLUGINVAL_ENABLE_RTCHECK=1>
+    $<$<BOOL:${PLUGINVAL_VST3_VALIDATOR}>:PLUGINVAL_VST3_VALIDATOR=1>
     VERSION="${CURRENT_VERSION}")
+
 
 if(MSVC AND NOT CMAKE_MSVC_RUNTIME_LIBRARY)
     # Default to statically linking the runtime libraries
@@ -141,6 +175,22 @@ target_link_libraries(pluginval PRIVATE
 if (${CMAKE_SYSTEM_NAME} MATCHES "Linux")
     target_link_libraries(pluginval PRIVATE
         -static-libstdc++)
+endif()
+
+# Embed the SDK's validator binary into pluginval
+if(PLUGINVAL_VST3_VALIDATOR)
+    set(VSTVALIDATOR_HEADER "${CMAKE_BINARY_DIR}/generated/vstvalidator_data.h")
+    add_custom_command(
+        OUTPUT "${VSTVALIDATOR_HEADER}"
+        COMMAND ${CMAKE_COMMAND}
+            -DINPUT_FILE=$<TARGET_FILE:validator>
+            -DOUTPUT_FILE=${VSTVALIDATOR_HEADER}
+            -P ${CMAKE_CURRENT_SOURCE_DIR}/cmake/GenerateBinaryHeader.cmake
+        DEPENDS validator
+        COMMENT "Embedding vstvalidator binary into header...")
+
+    target_sources(pluginval PRIVATE "${VSTVALIDATOR_HEADER}")
+    target_include_directories(pluginval PRIVATE "${CMAKE_BINARY_DIR}/generated")
 endif()
 
 if (PLUGINVAL_ENABLE_RTCHECK)

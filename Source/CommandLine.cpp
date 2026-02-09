@@ -290,7 +290,6 @@ static Option possibleOptions[] =
     { "--randomise",            false   },
     { "--sample-rates",         true    },
     { "--block-sizes",          true    },
-    { "--vst3validator",        true    },
     { "--rtcheck",              false   },
 };
 
@@ -384,8 +383,6 @@ Usage:
   --disabled-tests [pathToFile]
     If specified, sets a path to a file that should have the names of disabled
     tests on each row.
-  --vst3validator [pathToValidator]
-    If specified, this will run the VST3 validator as part of the test process.
 
   --output-dir [pathToDir]
     If specified, sets a directory to store the log files. This can be useful
@@ -599,7 +596,6 @@ std::pair<juce::String, PluginTests::Options> parseCommandLine (const juce::Argu
     options.disabledTests       = getDisabledTests (args);
     options.sampleRates         = getSampleRates (args);
     options.blockSizes          = getBlockSizes (args);
-    options.vst3Validator       = getOptionValue (args, "--vst3validator", "", "Expected a path for the --vst3validator option");
     options.realtimeCheck       = magic_enum::enum_cast<RealtimeCheck> (getOptionValue (args, "--rtcheck", "", "Expected one of [disabled, enabled, relaxed]").toString().toStdString())
                                     .value_or (RealtimeCheck::disabled);
 
@@ -668,9 +664,6 @@ juce::StringArray createCommandLine (juce::String fileOrID, PluginTests::Options
 
         args.addArray ({ "--block-sizes", blockSizes.joinIntoString (",") });
     }
-
-    if (options.vst3Validator != juce::File())
-        args.addArray ({ "--vst3validator", options.vst3Validator.getFullPathName().quoted() });
 
     if (auto rtCheckMode = options.realtimeCheck;
         rtCheckMode != RealtimeCheck::disabled)
