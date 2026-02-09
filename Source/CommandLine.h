@@ -16,6 +16,7 @@
 
 #include "juce_core/juce_core.h"
 #include "Validator.h"
+#include "PluginvalSettings.h"
 
 //==============================================================================
 struct CommandLineValidator
@@ -32,8 +33,3 @@ private:
 //==============================================================================
 void performCommandLine (CommandLineValidator&, const juce::String& commandLine);
 bool shouldPerformCommandLine (const juce::String& commandLine);
-
-//==============================================================================
-std::pair<juce::String, PluginTests::Options> parseCommandLine (const juce::String&);
-std::pair<juce::String, PluginTests::Options> parseCommandLine (const juce::ArgumentList&);
-juce::StringArray createCommandLine (juce::String fileOrID, PluginTests::Options);

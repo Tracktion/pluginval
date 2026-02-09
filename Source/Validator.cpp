@@ -272,7 +272,7 @@ private:
     //==============================================================================
     void run()
     {
-        isRunning = childProcess.start (createCommandLine (fileOrID, options));
+        isRunning = childProcess.start (PluginvalSettings::fromTestOptions (fileOrID, options).toCommandLineArgs());
 
         if (! isRunning)
             return;

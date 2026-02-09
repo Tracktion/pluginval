@@ -17,107 +17,125 @@
 #include <magic_enum/magic_enum.hpp>
 
 #include "PluginTests.h"
+#include "PluginvalSettings.h"
 #include "StrictnessInfoPopup.h"
 
 //==============================================================================
 namespace
 {
+    PluginvalSettings loadSettings()
+    {
+        return PluginvalSettings::loadFromProperties (getAppPreferences());
+    }
+
+    void saveSettings (const PluginvalSettings& s)
+    {
+        s.saveToProperties (getAppPreferences());
+    }
+
     void setStrictnessLevel (int newLevel)
     {
-        getAppPreferences().setValue ("strictnessLevel", juce::jlimit (1, 10, newLevel));
+        auto s = loadSettings();
+        s.strictnessLevel = juce::jlimit (1, 10, newLevel);
+        saveSettings (s);
     }
 
     int getStrictnessLevel()
     {
-        return juce::jlimit (1, 10, getAppPreferences().getIntValue ("strictnessLevel", 5));
+        return loadSettings().strictnessLevel;
     }
 
     void setRandomSeed (juce::int64 newSeed)
     {
-        getAppPreferences().setValue ("randomSeed", newSeed);
+        auto s = loadSettings();
+        s.randomSeed = newSeed;
+        saveSettings (s);
     }
 
     juce::int64 getRandomSeed()
     {
-        return getAppPreferences().getIntValue ("randomSeed", 0);
+        return loadSettings().randomSeed;
     }
 
     void setValidateInProcess (bool shouldValidateInProcess)
     {
-        getAppPreferences().setValue ("validateInProcess", shouldValidateInProcess);
+        auto s = loadSettings();
+        s.validateInProcess = shouldValidateInProcess;
+        saveSettings (s);
     }
 
     bool getValidateInProcess()
     {
-        return getAppPreferences().getBoolValue ("validateInProcess", false);
+        return loadSettings().validateInProcess;
     }
 
     void setTimeoutMs (juce::int64 newTimeout)
     {
-        getAppPreferences().setValue ("timeoutMs", newTimeout);
+        auto s = loadSettings();
+        s.timeoutMs = newTimeout;
+        saveSettings (s);
     }
 
     juce::int64 getTimeoutMs()
     {
-        return getAppPreferences().getIntValue ("timeoutMs", 30000);
+        return loadSettings().timeoutMs;
     }
 
     void setVerboseLogging (bool verbose)
     {
-        getAppPreferences().setValue ("verbose", verbose);
+        auto s = loadSettings();
+        s.verbose = verbose;
+        saveSettings (s);
     }
 
     bool getVerboseLogging()
     {
-        return getAppPreferences().getBoolValue ("verbose", false);
+        return loadSettings().verbose;
     }
 
     void setNumRepeats (int numRepeats)
     {
         if (numRepeats >= 1)
-            getAppPreferences().setValue ("numRepeats", numRepeats);
+        {
+            auto s = loadSettings();
+            s.numRepeats = numRepeats;
+            saveSettings (s);
+        }
     }
 
     int getNumRepeats()
     {
-        return juce::jmax (1, getAppPreferences().getIntValue ("numRepeats", 1));
+        return loadSettings().numRepeats;
     }
 
     void setRandomiseTests (bool shouldRandomiseTests)
     {
-        getAppPreferences().setValue ("randomiseTests", shouldRandomiseTests);
+        auto s = loadSettings();
+        s.randomise = shouldRandomiseTests;
+        saveSettings (s);
     }
 
     bool getRandomiseTests()
     {
-        return getAppPreferences().getBoolValue ("randomiseTests", false);
+        return loadSettings().randomise;
     }
 
     juce::File getOutputDir()
     {
-        return getAppPreferences().getValue ("outputDir", juce::String());
-    }
-
-    std::vector<double> getSampleRates() // from UI no setting of sampleRates yet
-    {
-        return {44100., 48000., 96000. };
-    }
-
-    std::vector<int> getBlockSizes() // from UI no setting of block sizes yet
-    {
-        return { 64, 128, 256, 512, 1024 };
+        auto s = loadSettings();
+        return s.outputDir.empty() ? juce::File() : juce::File (juce::String (s.outputDir));
     }
 
     void setRealtimeCheckMode (RealtimeCheck rt)
     {
-        getAppPreferences().setValue ("realtimeCheckMode", juce::String (std::string (magic_enum::enum_name (rt))));
+        auto s = loadSettings();
+        s.realtimeCheck = rt;
+        saveSettings (s);
     }
 
     RealtimeCheck getRealtimeCheckMode()
     {
-        auto modeString = getAppPreferences().getValue ("realtimeCheckMode", juce::String());
-        return magic_enum::enum_cast<RealtimeCheck> (modeString.toStdString())
-                .value_or (RealtimeCheck::disabled);
+        return loadSettings().realtimeCheck;
     }
 
     void setPluginNameFilter (const juce::String& filter)
@@ -190,19 +208,7 @@ namespace
 
     PluginTests::Options getTestOptions()
     {
-        PluginTests::Options options;
-        options.strictnessLevel = getStrictnessLevel();
-        options.randomSeed = getRandomSeed();
-        options.timeoutMs = getTimeoutMs();
-        options.verbose = getVerboseLogging();
-        options.numRepeats = getNumRepeats();
-        options.randomiseTestOrder = getRandomiseTests();
-        options.outputDir = getOutputDir();
-        options.sampleRates = getSampleRates();
-        options.blockSizes = getBlockSizes();
-        options.realtimeCheck = getRealtimeCheckMode();
-
-        return options;
+        return loadSettings().toTestOptions();
     }
 
     //==============================================================================

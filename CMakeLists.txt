@@ -6,8 +6,8 @@ project(pluginval VERSION ${CURRENT_VERSION})
 # Just compliing pluginval
 if (pluginval_IS_TOP_LEVEL)
     if (APPLE)
-        # Target OS versions down to 10.11
-        set (CMAKE_OSX_DEPLOYMENT_TARGET "10.11" CACHE INTERNAL "")
+        # Target OS versions down to 13.3 (required for C++23 std::format/std::filesystem)
+        set (CMAKE_OSX_DEPLOYMENT_TARGET "13.3" CACHE INTERNAL "")
 
         # Uncomment to produce a universal binary
         # set(CMAKE_OSX_ARCHITECTURES arm64 x86_64)
@@ -55,6 +55,8 @@ option(JUCE_ENABLE_MODULE_SOURCE_GROUPS "Enable Module Source Groups" ON)
 
 include(cmake/CPM.cmake)
 CPMAddPackage("gh:Neargye/magic_enum#v0.9.7")
+CPMAddPackage("gh:fredemmott/magic_args#v0.2.1")
+CPMAddPackage("gh:nlohmann/json@3.11.3")
 
 if(PLUGINVAL_ENABLE_RTCHECK)
     CPMAddPackage("gh:Tracktion/rtcheck#main")
@@ -62,7 +64,7 @@ endif()
 
 # Only fetch JUCE when top-level (when used as dependency, JUCE is already available)
 if (pluginval_IS_TOP_LEVEL)
-    CPMAddPackage("gh:juce-framework/juce#8.0.3")
+    CPMAddPackage("gh:juce-framework/juce#8.0.12")
 endif()
 
 
@@ -103,7 +105,7 @@ juce_add_gui_app(pluginval
 
 juce_generate_juce_header(pluginval)
 
-target_compile_features(pluginval PRIVATE cxx_std_20)
+target_compile_features(pluginval PRIVATE cxx_std_23)
 
 set_target_properties(pluginval PROPERTIES
     C_VISIBILITY_PRESET hidden
@@ -114,6 +116,7 @@ set(SourceFiles
     Source/CrashHandler.h
     Source/MainComponent.h
     Source/PluginTests.h
+    Source/PluginvalSettings.h
     Source/TestUtilities.h
     Source/Validator.h
     Source/CommandLine.cpp
@@ -121,6 +124,7 @@ set(SourceFiles
     Source/Main.cpp
     Source/MainComponent.cpp
     Source/PluginTests.cpp
+    Source/PluginvalSettings.cpp
     Source/tests/BasicTests.cpp
     Source/tests/LocaleTest.cpp
     Source/tests/BusTests.cpp
@@ -170,7 +174,9 @@ target_link_libraries(pluginval PRIVATE
     juce::juce_audio_processors
     juce::juce_audio_utils
     juce::juce_recommended_warning_flags
-    magic_enum)
+    magic_enum
+    magic_args::magic_args
+    nlohmann_json::nlohmann_json)
 
 if (${CMAKE_SYSTEM_NAME} MATCHES "Linux")
     target_link_libraries(pluginval PRIVATE
