@@ -24,6 +24,8 @@ CPMAddPackage(
     SOURCE_DIR ${CMAKE_CURRENT_LIST_DIR}/../..
 )
 
+target_compile_definitions(pluginval PRIVATE JUCE_DISABLE_JUCE_VERSION_PRINTING=1)
+
 # Verify pluginval runs and reports the expected JUCE version
 add_custom_target(verify_pluginval
     COMMAND $<TARGET_FILE:pluginval> --help | grep "JUCE v${JUCE_VERSION}"

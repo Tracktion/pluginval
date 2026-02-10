@@ -163,14 +163,19 @@ static int getNumTestFailures (juce::UnitTestRunner& testRunner)
     return numFailures;
 }
 
-static void runUnitTests()
+static int runUnitTests()
 {
     juce::UnitTestRunner testRunner;
     testRunner.runTestsInCategory ("pluginval");
     const int numFailures = getNumTestFailures (testRunner);
 
     if (numFailures > 0)
-        juce::ConsoleApplication::fail (juce::String (numFailures) + " tests failed!!!");
+    {
+        std::cerr << numFailures << " tests failed!!!" << std::endl;
+        return 1;
+    }
+
+    return 0;
 }
 
 //==============================================================================
@@ -186,7 +191,11 @@ static bool handleSpecialCommands (const juce::String& commandLine)
     if (tokens.contains ("--run-tests"))
     {
         hideDockIcon();
-        runUnitTests();
+        int failures = runUnitTests();
+
+        if (failures > 0)
+            juce::JUCEApplication::getInstance()->setApplicationReturnValue (1);
+
         juce::JUCEApplication::getInstance()->quit();
         return true;
     }

@@ -373,8 +373,8 @@ PluginvalSettings PluginvalSettings::fromJson (const nlohmann::json& j)
 void PluginvalSettings::saveToProperties (juce::PropertiesFile& props) const
 {
     props.setValue ("strictnessLevel", strictnessLevel);
-    props.setValue ("randomSeed", randomSeed);
-    props.setValue ("timeoutMs", timeoutMs);
+    props.setValue ("randomSeed", static_cast<juce::int64> (randomSeed));
+    props.setValue ("timeoutMs", static_cast<juce::int64> (timeoutMs));
     props.setValue ("verbose", verbose);
     props.setValue ("numRepeats", numRepeats);
     props.setValue ("randomiseTests", randomise);

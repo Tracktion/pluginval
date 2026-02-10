@@ -41,6 +41,8 @@ public:
     //==============================================================================
     void initialise (const juce::String& commandLine) override
     {
+        std::cout << juce::SystemStats::getJUCEVersion() << std::endl;
+
         if (shouldPerformCommandLine (commandLine))
         {
             triggerAsyncUpdate();
