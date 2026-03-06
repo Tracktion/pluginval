@@ -49,6 +49,12 @@ if (WITH_THREAD_SANITIZER)
     endif ()
 endif ()
 
+# Disable rtcheck if sanitizers is enabled
+if (WITH_ADDRESS_SANITIZER OR WITH_THREAD_SANITIZER)
+    set(PLUGINVAL_ENABLE_RTCHECK OFF CACHE BOOL "Disable rtcheck when using sanitizers" FORCE)
+    message(STATUS "Disabling rtcheck because a sanitizer is enabled")
+endif()
+
 # Adds all the module sources so they appear correctly in the IDE
 set_property(GLOBAL PROPERTY USE_FOLDERS YES)
 option(JUCE_ENABLE_MODULE_SOURCE_GROUPS "Enable Module Source Groups" ON)
