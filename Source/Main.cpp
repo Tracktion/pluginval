@@ -20,8 +20,7 @@
 
 
 //==============================================================================
-class PluginValidatorApplication  : public juce::JUCEApplication,
-                                   private juce::AsyncUpdater
+class PluginValidatorApplication  : public juce::JUCEApplication
 {
 public:
     //==============================================================================
@@ -41,11 +40,7 @@ public:
     //==============================================================================
     void initialise (const juce::String& commandLine) override
     {
-        if (shouldPerformCommandLine (commandLine))
-        {
-            triggerAsyncUpdate();
-            return;
-        }
+        juce::ignoreUnused (commandLine);
 
        #if JUCE_DEBUG
         juce::UnitTestRunner testRunner;
@@ -129,7 +124,6 @@ private:
     std::unique_ptr<juce::PropertiesFile> propertiesFile;
     std::unique_ptr<MainWindow> mainWindow;
     std::unique_ptr<juce::FileLogger> fileLogger;
-    std::unique_ptr<CommandLineValidator> commandLineValidator;
 
     static juce::PropertiesFile::Options getPropertiesFileOptions()
     {
@@ -166,16 +160,22 @@ private:
         auto opts = getPropertiesFileOptions();
         return new juce::PropertiesFile (opts.getDefaultFile(), opts);
     }
-
-    void handleAsyncUpdate() override
-    {
-        commandLineValidator = std::make_unique<CommandLineValidator>();
-        performCommandLine (*commandLineValidator, juce::JUCEApplication::getCommandLineParameters());
-    }
 };
 
 //==============================================================================
-START_JUCE_APPLICATION (PluginValidatorApplication)
+static juce::JUCEApplicationBase* juce_CreateApplication()
+{
+    return new PluginValidatorApplication();
+}
+
+int main (int argc, char* argv[])
+{
+    if (shouldPerformCommandLine (argc, argv))
+        return runCommandLineApplication (argc, argv);
+
+    juce::JUCEApplicationBase::createInstance = &juce_CreateApplication;
+    return juce::JUCEApplicationBase::main (argc, (const char**) argv);
+}
 
 juce::PropertiesFile& getAppPreferences()
 {

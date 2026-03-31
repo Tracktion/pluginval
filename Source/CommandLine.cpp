@@ -18,6 +18,7 @@
 #include "PluginTests.h"
 
 #if JUCE_MAC
+ #include <CoreFoundation/CoreFoundation.h>
  #include <signal.h>
  #include <sys/types.h>
  #include <unistd.h>
@@ -26,18 +27,38 @@
 #include <magic_enum/magic_enum.hpp>
 
 //==============================================================================
+namespace
+{
+    struct CommandLineExecutionContext
+    {
+        void requestQuit (int code)
+        {
+            returnValue = code;
+            shouldQuit = true;
+        }
+
+        [[nodiscard]] int getReturnValue() const noexcept   { return returnValue.load(); }
+        [[nodiscard]] bool quitRequested() const noexcept   { return shouldQuit.load(); }
+
+    private:
+        std::atomic<int> returnValue { 0 };
+        std::atomic<bool> shouldQuit { false };
+    };
+
+    CommandLineExecutionContext* currentExecutionContext = nullptr;
+
+    void requestCommandLineQuit (int returnValue)
+    {
+        if (currentExecutionContext != nullptr)
+            currentExecutionContext->requestQuit (returnValue);
+    }
+}
+
+//==============================================================================
 static void exitWithError (const juce::String& error)
 {
     std::cout << error << std::endl << std::endl;
-    juce::JUCEApplication::getInstance()->setApplicationReturnValue (1);
-    juce::JUCEApplication::getInstance()->quit();
-}
-
-static void hideDockIcon()
-{
-   #if JUCE_MAC
-     juce::Process::setDockIconVisible (false);
-   #endif
+    requestCommandLineQuit (1);
 }
 
 inline std::mutex& getCoutMutex()
@@ -84,7 +105,8 @@ static void setupSignalHandling()
 
 //==============================================================================
 //==============================================================================
-CommandLineValidator::CommandLineValidator()
+CommandLineValidator::CommandLineValidator (std::function<void (int)> completionCallback)
+    : completion (std::move (completionCallback))
 {
    #if JUCE_MAC
     setupSignalHandling();
@@ -102,12 +124,13 @@ void CommandLineValidator::validate (const juce::String& fileOrID, PluginTests::
                                                   {
                                                       logLine ("Started validating: " + id);
                                                   },
-                                                  [] (auto, uint32_t exitCode)
+                                                  [this] (auto, uint32_t exitCode)
                                                   {
                                                       if (exitCode > 0)
                                                           exitWithError ("*** FAILED");
-                                                      else
-                                                          juce::JUCEApplication::getInstance()->quit();
+
+                                                      if (completion != nullptr)
+                                                          completion (exitCode > 0 ? 1 : 0);
                                                   },
                                                   [] (auto m)
                                                   {
@@ -325,7 +348,7 @@ static juce::StringArray mergeEnvironmentVariables (juce::StringArray args, std:
 //==============================================================================
 static juce::String getHelpMessage()
 {
-    const juce::String appName (juce::JUCEApplication::getInstance()->getApplicationName());
+    const juce::String appName ("pluginval");
     const juce::String juceVersion (juce::SystemStats::getJUCEVersion());
 
     return juce::String (R"(//==============================================================================
@@ -512,10 +535,38 @@ static juce::ArgumentList createCommandLineArgs (juce::String commandLine)
     return argList;
 }
 
+static juce::ArgumentList createCommandLineArgs (const juce::ArgumentList& args)
+{
+    juce::StringArray tokens;
+
+    for (const auto& argument : args.arguments)
+        tokens.add (argument.text);
+
+    tokens = mergeEnvironmentVariables (tokens);
+    tokens.trim();
+
+    for (auto& token : tokens)
+        token = token.unquoted();
+
+    juce::ArgumentList argList (args.executableName, tokens);
+
+    if (argList.size() > 0)
+    {
+        const bool hasValidateOrOtherCommand = argList.containsOption ("--validate")
+                                            || argList.containsOption ("--help|-h")
+                                            || argList.containsOption ("--version")
+                                            || argList.containsOption ("--run-tests");
+
+        if (! hasValidateOrOtherCommand)
+            if (isPluginArgument (argList.arguments.getLast().text))
+                argList.arguments.insert (argList.arguments.size() - 1, { "--validate" });
+    }
+
+    return argList;
+}
+
 static void performCommandLine (CommandLineValidator& validator, const juce::ArgumentList& args)
 {
-    hideDockIcon();
-
     juce::ConsoleApplication cli;
     cli.addVersionCommand ("--version", getVersionText());
     cli.addHelpCommand ("--help|-h", getHelpMessage(), true);
@@ -534,10 +585,10 @@ static void performCommandLine (CommandLineValidator& validator, const juce::Arg
     cli.addCommand ({ "--strictness-help",
                       "--strictness-help [level]",
                       "Lists all tests that run at the given strictness level.", juce::String(),
-                      [] (const auto& args)
+                      [] (const auto& strictnessArgs)
                       {
                           int level = 5;
-                          auto arg = getArgumentAfterOption (args, "--strictness-help");
+                          auto arg = getArgumentAfterOption (strictnessArgs, "--strictness-help");
                           if (arg.text.isNotEmpty() && ! arg.isShortOption() && ! arg.isLongOption())
                               level = arg.text.getIntValue();
                           printStrictnessHelp (level);
@@ -545,13 +596,13 @@ static void performCommandLine (CommandLineValidator& validator, const juce::Arg
 
     if (const auto retValue = cli.findAndRunCommand (args); retValue != 0)
     {
-        juce::JUCEApplication::getInstance()->setApplicationReturnValue (retValue);
-        juce::JUCEApplication::getInstance()->quit();
+        requestCommandLineQuit (retValue);
+        return;
     }
 
     // --validate runs async so will quit itself when done
     if (! args.containsOption ("--validate"))
-        juce::JUCEApplication::getInstance()->quit();
+        requestCommandLineQuit (0);
 }
 
 //==============================================================================
@@ -568,6 +619,44 @@ bool shouldPerformCommandLine (const juce::String& commandLine)
         || args.containsOption ("--validate")
         || args.containsOption ("--run-tests")
         || args.containsOption ("--strictness-help");
+}
+
+bool shouldPerformCommandLine (int argc, char* argv[])
+{
+    const auto args = createCommandLineArgs (juce::ArgumentList (argc, argv));
+    return args.containsOption ("--help|-h")
+        || args.containsOption ("--version")
+        || args.containsOption ("--validate")
+        || args.containsOption ("--run-tests")
+        || args.containsOption ("--strictness-help");
+}
+
+int runCommandLineApplication (int argc, char* argv[])
+{
+    CommandLineExecutionContext executionContext;
+    const auto executionContextGuard = juce::ScopedValueSetter<CommandLineExecutionContext*> (currentExecutionContext, &executionContext, nullptr);
+    const auto args = createCommandLineArgs (juce::ArgumentList (argc, argv));
+
+    juce::ScopedJuceInitialiser_GUI juceInitialiser;
+    CommandLineValidator validator ([&executionContext] (int returnValue)
+                                    {
+                                        executionContext.requestQuit (returnValue);
+                                    });
+
+    // Avoid dock/presentation changes in CLI mode. On recent macOS versions these
+    // can force application registration and break headless execution.
+    performCommandLine (validator, args);
+
+    while (! executionContext.quitRequested())
+    {
+       #if JUCE_MAC
+        CFRunLoopRunInMode (kCFRunLoopDefaultMode, 0.05, true);
+       #else
+        juce::MessageManager::getInstance()->runDispatchLoopUntil (50);
+       #endif
+    }
+
+    return executionContext.getReturnValue();
 }
 
 //==============================================================================
