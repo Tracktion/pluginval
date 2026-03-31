@@ -20,18 +20,21 @@
 //==============================================================================
 struct CommandLineValidator
 {
-    CommandLineValidator();
+    explicit CommandLineValidator (std::function<void (int)> completionCallback = {});
     ~CommandLineValidator();
 
     void validate (const juce::String&, PluginTests::Options);
 
 private:
     std::unique_ptr<ValidationPass> validator;
+    std::function<void (int)> completion;
 };
 
 //==============================================================================
 void performCommandLine (CommandLineValidator&, const juce::String& commandLine);
 bool shouldPerformCommandLine (const juce::String& commandLine);
+bool shouldPerformCommandLine (int argc, char* argv[]);
+int runCommandLineApplication (int argc, char* argv[]);
 
 //==============================================================================
 std::pair<juce::String, PluginTests::Options> parseCommandLine (const juce::String&);

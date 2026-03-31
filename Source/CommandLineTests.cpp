@@ -154,6 +154,22 @@ struct CommandLineTests : public juce::UnitTest
             expect (shouldPerformCommandLine (temp.getFile().getFullPathName()));
         }
 
+        beginTest ("Raw argv version detection");
+        {
+            char arg0[] = "pluginval";
+            char arg1[] = "--version";
+            char* argv[] = { arg0, arg1 };
+            expect (shouldPerformCommandLine (2, argv));
+        }
+
+        beginTest ("Raw argv implicit validate detection");
+        {
+            char arg0[] = "pluginval";
+            char arg1[] = "MyPlugin.vst3";
+            char* argv[] = { arg0, arg1 };
+            expect (shouldPerformCommandLine (2, argv));
+        }
+
         beginTest ("Allows for other options after explicit --validate");
         {
             const auto currentDir = juce::File::getCurrentWorkingDirectory();
