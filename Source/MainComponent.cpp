@@ -352,7 +352,7 @@ MainComponent::MainComponent (Validator& v)
         {
             strictnessDialog = std::make_unique<StrictnessInfoDialog> (
                 getStrictnessLevel(),
-                [this, updateStrictnessButtonText] (int newLevel)
+                [updateStrictnessButtonText] (int newLevel)
                 {
                     setStrictnessLevel (newLevel);
                     updateStrictnessButtonText();
