@@ -119,3 +119,179 @@ struct BasicBusTest   : public PluginTest
 };
 
 static BasicBusTest basicBusTest;
+
+//==============================================================================
+/** Exhaustively tries every supported combination of main + auxiliary (e.g.
+    sidechain) channel layouts and calls prepareToPlay / processBlock for each.
+
+    This is intended to catch crashes that only occur for non-default channel
+    counts — typically a plugin that hardcodes assumptions about its sidechain
+    being stereo and then accesses out-of-range channels when the host
+    reconfigures it to mono. auval exercises this with its "1 Channel Test"
+    but pluginval's other tests only process at the plugin's default layout.
+*/
+struct BusLayoutProcessingTest   : public PluginTest
+{
+    BusLayoutProcessingTest()
+        : PluginTest ("Bus layout processing", 4)
+    {
+    }
+
+    std::vector<TestDescription> getDescription (int) const override
+    {
+        return { { name, "For every supported combination of mono/stereo on each "
+                         "input and output bus (including sidechain), calls "
+                         "setBusesLayout(), prepareToPlay() and processBlock(). "
+                         "Detects crashes in plugins that mis-handle non-default "
+                         "channel counts (e.g. mono main with stereo sidechain)." } };
+    }
+
+    void runTest (PluginTests& ut, juce::AudioPluginInstance& instance) override
+    {
+        const ScopedPluginDeinitialiser deinitialiser (instance);
+        const auto originalLayout = instance.getBusesLayout();
+
+        const std::vector<double>& sampleRates = ut.getOptions().sampleRates;
+        const std::vector<int>& blockSizes = ut.getOptions().blockSizes;
+        jassert (sampleRates.size() > 0 && blockSizes.size() > 0);
+
+        const double sampleRate = sampleRates.front();
+        const int blockSize = blockSizes.front();
+
+        const auto candidateSets = getCandidateChannelSets();
+
+        // Build all candidate layouts by varying each bus independently across
+        // the candidate sets, keeping the bus enabled or disabling it.
+        std::vector<juce::AudioProcessor::BusesLayout> layouts;
+        layouts.push_back (originalLayout);
+        enumerateLayouts (instance, originalLayout, candidateSets, layouts);
+
+        ut.logMessage ("Total candidate layouts to test: " + juce::String ((int) layouts.size()));
+
+        int numTested = 0;
+        int numAccepted = 0;
+
+        for (const auto& layout : layouts)
+        {
+            ++numTested;
+
+            ut.logVerboseMessage ("Trying layout: " + describeLayout (layout));
+
+            callReleaseResourcesOnMessageThreadIfVST3 (instance);
+
+            if (! instance.setBusesLayout (layout))
+            {
+                ut.logVerboseMessage ("  setBusesLayout() rejected the layout");
+                continue;
+            }
+
+            ++numAccepted;
+
+            callPrepareToPlayOnMessageThreadIfVST3 (instance, sampleRate, blockSize);
+
+            const int numChannelsRequired = juce::jmax (instance.getTotalNumInputChannels(),
+                                                        instance.getTotalNumOutputChannels());
+
+            if (numChannelsRequired <= 0)
+                continue;
+
+            juce::AudioBuffer<float> ab (numChannelsRequired, blockSize);
+            juce::MidiBuffer mb;
+            mb.ensureSize (32);
+
+            for (int i = 0; i < 4; ++i)
+            {
+                fillNoise (ab);
+                instance.processBlock (ab, mb);
+                mb.clear();
+            }
+        }
+
+        ut.logMessage ("Layouts tested: " + juce::String (numTested)
+                          + ", accepted by setBusesLayout: " + juce::String (numAccepted));
+
+        // Restore the original configuration
+        callReleaseResourcesOnMessageThreadIfVST3 (instance);
+        instance.setBusesLayout (originalLayout);
+    }
+
+private:
+    static juce::Array<juce::AudioChannelSet> getCandidateChannelSets()
+    {
+        // Keep the set small to avoid combinatorial explosion. These cover the
+        // common cases that hosts use and that plugin authors most often get
+        // wrong: mono and stereo, with the option of disabling the bus.
+        juce::Array<juce::AudioChannelSet> sets;
+        sets.add (juce::AudioChannelSet::disabled());
+        sets.add (juce::AudioChannelSet::mono());
+        sets.add (juce::AudioChannelSet::stereo());
+        return sets;
+    }
+
+    static void enumerateLayouts (juce::AudioPluginInstance& instance,
+                                  const juce::AudioProcessor::BusesLayout& base,
+                                  const juce::Array<juce::AudioChannelSet>& candidates,
+                                  std::vector<juce::AudioProcessor::BusesLayout>& out)
+    {
+        const int numInputs  = base.inputBuses.size();
+        const int numOutputs = base.outputBuses.size();
+
+        // Guard against combinatorial blow-up on plugins with many buses.
+        // 3 ^ 6 = 729 which is already plenty; anything bigger we skip to keep
+        // the test runtime reasonable.
+        const int totalBuses = numInputs + numOutputs;
+
+        if (totalBuses == 0 || totalBuses > 6)
+            return;
+
+        const int numCandidates = candidates.size();
+        juce::int64 total = 1;
+
+        for (int i = 0; i < totalBuses; ++i)
+            total *= numCandidates;
+
+        for (juce::int64 combo = 0; combo < total; ++combo)
+        {
+            juce::AudioProcessor::BusesLayout layout = base;
+            juce::int64 remaining = combo;
+
+            for (int i = 0; i < numInputs; ++i)
+            {
+                layout.inputBuses.getReference (i) = candidates[(int) (remaining % numCandidates)];
+                remaining /= numCandidates;
+            }
+
+            for (int i = 0; i < numOutputs; ++i)
+            {
+                layout.outputBuses.getReference (i) = candidates[(int) (remaining % numCandidates)];
+                remaining /= numCandidates;
+            }
+
+            // Most effect plugins require the main output bus to be enabled.
+            // Don't bother trying layouts that disable bus 0 of either side.
+            if (numOutputs > 0 && layout.outputBuses.getReference (0).isDisabled())
+                continue;
+
+            if (numInputs > 0 && layout.inputBuses.getReference (0).isDisabled()
+                && ! instance.getPluginDescription().isInstrument)
+                continue;
+
+            out.push_back (layout);
+        }
+    }
+
+    static juce::String describeLayout (const juce::AudioProcessor::BusesLayout& layout)
+    {
+        juce::StringArray ins, outs;
+
+        for (auto& s : layout.inputBuses)
+            ins.add (s.getDescription());
+
+        for (auto& s : layout.outputBuses)
+            outs.add (s.getDescription());
+
+        return "in [" + ins.joinIntoString (", ") + "] out [" + outs.joinIntoString (", ") + "]";
+    }
+};
+
+static BusLayoutProcessingTest busLayoutProcessingTest;
