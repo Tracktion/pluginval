@@ -381,6 +381,7 @@ private:
 */
 class MainComponent   : public juce::Component,
                         public juce::MenuBarModel,
+                        public juce::FileDragAndDropTarget,
                         private juce::ChangeListener,
                         private Validator::Listener
 {
@@ -391,6 +392,7 @@ public:
 
     //==============================================================================
     void paint (juce::Graphics&) override;
+    void paintOverChildren (juce::Graphics&) override;
     void resized() override;
 
     //==============================================================================
@@ -398,6 +400,13 @@ public:
     juce::StringArray getMenuBarNames() override;
     juce::PopupMenu getMenuForIndex (int menuIndex, const juce::String& menuName) override;
     void menuItemSelected (int menuItemID, int topLevelMenuIndex) override;
+
+    //==============================================================================
+    // FileDragAndDropTarget
+    bool isInterestedInFileDrag (const juce::StringArray& files) override;
+    void fileDragEnter (const juce::StringArray& files, int x, int y) override;
+    void fileDragExit (const juce::StringArray& files) override;
+    void filesDropped (const juce::StringArray& files, int x, int y) override;
 
 private:
     //==============================================================================
@@ -417,6 +426,9 @@ private:
                strictnessInfoButton { "Strictness" };
     StatusBar statusBar { validator };
     std::unique_ptr<StrictnessInfoDialog> strictnessDialog;
+    bool dragHighlight = false;
+
+    static bool isPluginFile (const juce::String& path);
 
     void savePluginList();
     juce::PopupMenu createFileMenu();
