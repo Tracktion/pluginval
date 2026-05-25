@@ -458,6 +458,9 @@ bool MainComponent::isPluginFile (const juce::String& path)
 
 bool MainComponent::isInterestedInFileDrag (const juce::StringArray& files)
 {
+    if (validator.isValidating())
+        return false;
+
     for (const auto& f : files)
         if (isPluginFile (f))
             return true;
