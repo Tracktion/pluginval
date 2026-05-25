@@ -507,6 +507,10 @@ void MainComponent::filesDropped (const juce::StringArray& files, int, int)
 
     getAppPreferences().setValue ("lastPluginLocation", pluginFiles[pluginFiles.size() - 1]);
 
+    juce::OwnedArray<juce::PluginDescription> typesFound;
+    knownPluginList.scanAndAddDragAndDroppedFiles (formatManager, pluginFiles, typesFound);
+    savePluginList();
+
     validator.setValidateInProcess (getValidateInProcess());
     validator.validate (pluginFiles, getTestOptions());
 }
