@@ -215,24 +215,24 @@ public:
         auto textColour = button.isFrontTab() ? findColour (juce::Label::textColourId)
                                                : findColour (juce::Label::textColourId).withAlpha (0.6f);
         g.setColour (textColour);
-        g.setFont (juce::Font (14.0f));
+        g.setFont (juce::Font (juce::FontOptions (14.0f)));
         g.drawText (button.getButtonText(), area.reduced (12.0f, 0.0f), juce::Justification::centred);
     }
 
     int getTabButtonBestWidth (juce::TabBarButton& button, int tabDepth) override
     {
-        auto width = juce::Font (14.0f).getStringWidth (button.getButtonText()) + 40;  // Extra padding
+        auto width = juce::GlyphArrangement::getStringWidthInt (juce::Font (juce::FontOptions (14.0f)), button.getButtonText()) + 40;  // Extra padding
         return juce::jmax (width, 80);
     }
 
     juce::Font getTextButtonFont (juce::TextButton&, int buttonHeight) override
     {
-        return juce::Font (juce::jmin (14.0f, (float) buttonHeight * 0.6f));
+        return juce::Font (juce::FontOptions (juce::jmin (14.0f, (float) buttonHeight * 0.6f)));
     }
 
     juce::Font getLabelFont (juce::Label&) override
     {
-        return juce::Font (14.0f);
+        return juce::Font (juce::FontOptions (14.0f));
     }
 
     void drawTableHeaderColumn (juce::Graphics& g, juce::TableHeaderComponent& header,

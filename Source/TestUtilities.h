@@ -145,7 +145,7 @@ static std::unique_ptr<juce::AudioProcessorEditor> createAndShowEditorOnMessageT
             return {};
 
         jassert (instance.getActiveEditor() == nullptr);
-        editor.reset (instance.createEditor());
+        editor.reset (instance.createEditorAndMakeActive());
 
         if (editor)
         {
@@ -177,6 +177,7 @@ static void deleteEditorOnMessageThread (std::unique_ptr<juce::AudioProcessorEdi
 {
     if (juce::MessageManager::getInstance()->isThisTheMessageThread())
     {
+        editor->processor.editorBeingDeleted (editor.get());
         editor.reset();
         return;
     }
@@ -184,6 +185,8 @@ static void deleteEditorOnMessageThread (std::unique_ptr<juce::AudioProcessorEdi
     juce::WaitableEvent waiter;
     juce::MessageManager::callAsync ([&]
                                {
+                                   if (editor != nullptr)
+                                       editor->processor.editorBeingDeleted (editor.get());
                                    editor.reset();
                                    waiter.signal();
                                });
