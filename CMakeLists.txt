@@ -6,8 +6,9 @@ project(pluginval VERSION ${CURRENT_VERSION})
 # Just compliing pluginval
 if (pluginval_IS_TOP_LEVEL)
     if (APPLE)
-        # Target OS versions down to 10.11
-        set (CMAKE_OSX_DEPLOYMENT_TARGET "10.11" CACHE INTERNAL "")
+        # Target OS versions down to 13.3. std::format (used by magic_args) pulls in
+        # libc++'s floating-point formatter, whose to_chars is only available on 13.3+.
+        set (CMAKE_OSX_DEPLOYMENT_TARGET "13.3" CACHE INTERNAL "")
 
         # Uncomment to produce a universal binary
         # set(CMAKE_OSX_ARCHITECTURES arm64 x86_64)
@@ -122,6 +123,9 @@ set(SourceFiles
     Source/CrashHandler.h
     Source/MainComponent.h
     Source/PluginTests.h
+    Source/PluginvalSettings.h
+    Source/SettingsParser.h
+    Source/SettingsSerializer.h
     Source/TestUtilities.h
     Source/Validator.h
     Source/CommandLine.cpp
@@ -129,6 +133,8 @@ set(SourceFiles
     Source/Main.cpp
     Source/MainComponent.cpp
     Source/PluginTests.cpp
+    Source/SettingsParser.cpp
+    Source/SettingsSerializer.cpp
     Source/tests/BasicTests.cpp
     Source/tests/LocaleTest.cpp
     Source/tests/BusTests.cpp
