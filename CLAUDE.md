@@ -7,7 +7,7 @@
 - **Version**: 1.0.4 (see `VERSION` file)
 - **License**: GPLv3
 - **Framework**: Built on JUCE (v8.0.x)
-- **Language**: C++20
+- **Language**: C++23
 
 ### Key Features
 - Tests VST/VST2/VST3/AU/LV2/LADSPA plugins
@@ -80,7 +80,10 @@ pluginval/
 │   ├── MainComponent.cpp/h   # GUI main window component
 │   ├── Validator.cpp/h       # Core validation orchestration
 │   ├── PluginTests.cpp/h     # Test framework and base classes
-│   ├── CommandLine.cpp/h     # CLI argument parsing
+│   ├── CommandLine.cpp/h     # Thin CLI adapter (delegates to SettingsParser)
+│   ├── PluginvalSettings.h   # Unified settings struct + JSON mapping + toPluginTestOptions()
+│   ├── SettingsParser.cpp/h  # CLI/env/config -> merged JSON -> settings; child-process handoff
+│   ├── SettingsSerializer.cpp/h # JSON load/save + value coercions (comma lists, hex seed)
 │   ├── CrashHandler.cpp/h    # Crash reporting utilities
 │   ├── TestUtilities.cpp/h   # Helper functions for tests
 │   ├── RTCheck.h             # Real-time safety checking macros
@@ -122,7 +125,7 @@ pluginval/
 
 ### Prerequisites
 - CMake 3.15+
-- C++20 compatible compiler
+- C++23 compatible compiler
 - Git (for submodules)
 
 ### Building
@@ -156,7 +159,7 @@ VST2_SDK_DIR=/path/to/vst2sdk cmake -B Builds/Debug .
 ```
 
 ### Target Platforms
-- **macOS**: 10.11+ (deployment target), supports Apple Silicon via universal binary
+- **macOS**: 13.3+ (deployment target — required by std::format used in magic_args), supports Apple Silicon via universal binary
 - **Windows**: MSVC with static runtime linking
 - **Linux**: Ubuntu 22.04+, statically links libstdc++
 
@@ -187,6 +190,29 @@ VST2_SDK_DIR=/path/to/vst2sdk cmake -B Builds/Debug .
    - Base class for individual tests
    - Auto-registers via static instance pattern
    - Defines requirements (thread, GUI needs)
+
+### CLI Settings Pipeline
+
+Command-line parsing is a layered JSON-merge pipeline rather than a bespoke
+parser. The flow (in `SettingsParser`):
+
+1. **preprocess** the raw command line — rewrite the deprecated `strictnessLevel`,
+   strip the macOS `-NSDocumentRevisionsDebugMode YES` flag, and insert an
+   implicit `--validate` when the last argument is a bare plugin path.
+2. Build a **sparse `nlohmann::json` per layer**: `--config` file, environment
+   variables, and the CLI options (parsed with **magic_args** into a struct of
+   `std::optional` fields, then coerced — comma lists → arrays, hex/int seed →
+   number, etc. via `SettingsSerializer`).
+3. **Merge** with `merge_patch` in precedence order (defaults < config < env <
+   CLI; **CLI wins**), then deserialise into `PluginvalSettings`
+   (`NLOHMANN_DEFINE_TYPE..._WITH_DEFAULT` fills missing keys from defaults).
+4. `PluginvalSettings::toPluginTestOptions()` converts to the JUCE-flavoured
+   `PluginTests::Options` at the boundary.
+
+The child validation process receives a fully-resolved, **authoritative**
+settings set via a base64-encoded JSON argument (`--config-base64`), avoiding
+per-flag re-serialisation and command-line quoting hazards. `--help`/`--version`
+are handled by magic_args (auto usage + an appended env-var trailer).
 
 ### Test Framework
 
@@ -327,6 +353,7 @@ Basic usage:
 
 Key options:
 - `--validate [path]` - Validate plugin at path
+- `--config [file.json]` - Load a full settings set from JSON (overridden by env vars and CLI options)
 - `--strictness-level [1-10]` - Test thoroughness (default: 5)
 - `--skip-gui-tests` - Skip GUI tests (for headless CI)
 - `--validate-in-process` - Don't use child process (for debugging)
@@ -374,6 +401,8 @@ add_pluginval_tests(MyPluginTarget
 ### External
 - **JUCE** (v8.0.x) - Audio application framework (git submodule)
 - **magic_enum** (v0.9.7) - Enum reflection (fetched via CPM)
+- **magic_args** (v0.2.1) - C++23 CLI argument parsing, header-only (fetched via CPM); requires macOS 13.3+ due to std::format
+- **nlohmann/json** (3.12.0) - JSON settings layering/serialisation (fetched via CPM)
 - **rtcheck** (optional, macOS) - Real-time safety checking (fetched via CPM)
 - **VST3 SDK** (v3.7.x) - Steinberg VST3 SDK for embedded validator (fetched via CPM, optional)
 
