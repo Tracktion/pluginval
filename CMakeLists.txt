@@ -61,6 +61,8 @@ option(JUCE_ENABLE_MODULE_SOURCE_GROUPS "Enable Module Source Groups" ON)
 
 include(cmake/CPM.cmake)
 CPMAddPackage("gh:Neargye/magic_enum#v0.9.7")
+CPMAddPackage("gh:fredemmott/magic_args#v0.2.1")
+CPMAddPackage("gh:nlohmann/json@3.12.0")
 
 if(PLUGINVAL_ENABLE_RTCHECK)
     CPMAddPackage("gh:Tracktion/rtcheck#main")
@@ -109,7 +111,7 @@ juce_add_gui_app(pluginval
 
 juce_generate_juce_header(pluginval)
 
-target_compile_features(pluginval PRIVATE cxx_std_20)
+target_compile_features(pluginval PRIVATE cxx_std_23)
 
 set_target_properties(pluginval PROPERTIES
     C_VISIBILITY_PRESET hidden
@@ -176,7 +178,9 @@ target_link_libraries(pluginval PRIVATE
     juce::juce_audio_processors
     juce::juce_audio_utils
     juce::juce_recommended_warning_flags
-    magic_enum)
+    magic_enum
+    magic_args::magic_args
+    nlohmann_json::nlohmann_json)
 
 if (${CMAKE_SYSTEM_NAME} MATCHES "Linux")
     target_link_libraries(pluginval PRIVATE
