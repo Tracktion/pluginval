@@ -19,11 +19,11 @@
 
 #include <cstdint>
 #include <string>
+#include <vector>
 
 /**
-    JSON (de)serialisation for PluginvalSettings plus the small value coercions
-    shared by the CLI and environment-variable layers (which arrive as raw
-    strings and must become typed JSON values).
+    JSON (de)serialisation for PluginvalSettings plus the couple of value
+    conversions the CLI parser still needs (hex seed, disabled-tests file).
 */
 namespace settings_serializer
 {
@@ -43,14 +43,8 @@ namespace settings_serializer
     */
     std::int64_t parseRandomSeed (const juce::String& raw);
 
-    /** Splits a comma-separated list into a JSON array of doubles. */
-    nlohmann::json commaToDoubleArray (const juce::String& raw);
-
-    /** Splits a comma-separated list into a JSON array of ints. */
-    nlohmann::json commaToIntArray (const juce::String& raw);
-
     /** Resolves --disabled-tests: an absolute path is read line-by-line, otherwise
-        the value is treated as a comma-separated list. Returns a JSON string array.
+        the value is treated as a comma-separated list.
     */
-    nlohmann::json disabledTestsToArray (const juce::String& raw);
+    std::vector<std::string> disabledTestsToList (const juce::String& raw);
 }

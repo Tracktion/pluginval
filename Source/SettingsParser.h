@@ -17,21 +17,17 @@
 #include "PluginvalSettings.h"
 #include "PluginTests.h"
 
-#include <functional>
-
 /**
     The command-line -> settings pipeline.
 
-    Raw command line is preprocessed into argv tokens, then each input layer
-    (config file, environment, CLI) becomes a sparse JSON object. The layers are
-    merged (CLI wins last) and deserialised into a single PluginvalSettings.
+    CLI11 binds each option directly to a member of a single PluginvalSettings
+    instance (environment variables via ->envname() on the same line). A
+    --config JSON file seeds the struct before parsing so precedence is
+    defaults < config < env < CLI. Conversion to the JUCE-flavoured
+    PluginTests::Options happens at the boundary via toPluginTestOptions().
 */
 namespace settings_parser
 {
-    /** Returns the value of an environment variable, or "" if unset. */
-    using EnvProvider = std::function<juce::String (const juce::String& name)>;
-    juce::String systemEnv (const juce::String& name);
-
     //==============================================================================
     /** Tokenises + preprocesses a raw command line: rewrites the deprecated
         "strictnessLevel", strips the macOS "-NSDocumentRevisionsDebugMode YES"
@@ -43,29 +39,31 @@ namespace settings_parser
     /** True if the tokens contain a recognised command that triggers CLI mode. */
     bool isCommandLine (const juce::StringArray& tokens);
 
-    //==============================================================================
-    /** Resolves the merged settings from preprocessed tokens + environment. */
-    PluginvalSettings resolveSettings (const juce::StringArray& tokens, const EnvProvider& env = systemEnv);
-
-    /** Convenience: preprocess + resolveSettings from a raw command line. */
-    PluginvalSettings parse (const juce::String& commandLine, const EnvProvider& env = systemEnv);
-
     /** Resolves a relative/home plugin path against the working directory,
         leaving absolute paths and bare component IDs untouched.
     */
     juce::String resolvePluginPath (const juce::String& raw);
 
     //==============================================================================
+    /** The outcome of parsing the option tokens. */
+    struct ParseResult
+    {
+        PluginvalSettings settings;
+        bool handled = false;   /**< true if --help/--version/parse-error was handled and the app should exit. */
+        int exitCode = 0;       /**< the exit code to use when handled is true. */
+    };
+
+    /** Parses preprocessed option tokens into settings (and handles --help/--version). */
+    ParseResult parseTokens (const juce::StringArray& tokens);
+
+    /** Convenience: preprocess + parse from a raw command line, returning settings. */
+    PluginvalSettings parse (const juce::String& commandLine);
+
+    //==============================================================================
     /** Serialises options for the child validation process as a base64 JSON
         handoff: { exe, --config-base64 <b64>, --validate <fileOrID> }.
     */
     juce::StringArray createChildProcessCommandLine (const juce::String& fileOrID, const PluginTests::Options&);
-
-    //==============================================================================
-    /** Prints the auto-generated usage (magic_args) plus the environment-variable
-        and commands trailer to stdout.
-    */
-    void printHelp (const juce::String& exeName);
 
     /** The "--version" output string. */
     juce::String getVersionString();

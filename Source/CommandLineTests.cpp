@@ -12,6 +12,7 @@
 
  ==============================================================================*/
 
+#include <cstdlib>
 
 struct CommandLineTests : public juce::UnitTest
 {
@@ -20,22 +21,49 @@ struct CommandLineTests : public juce::UnitTest
     {
     }
 
-    // A deterministic, empty environment so tests don't pick up the host's env vars.
-    static settings_parser::EnvProvider emptyEnv()
+    static constexpr const char* knownEnvVars[] = {
+        "STRICTNESS_LEVEL", "RANDOM_SEED", "TIMEOUT_MS", "VERBOSE", "REPEAT",
+        "RANDOMISE", "SKIP_GUI_TESTS", "DATA_FILE", "OUTPUT_DIR", "OUTPUT_FILENAME",
+        "SAMPLE_RATES", "BLOCK_SIZES", "RTCHECK"
+    };
+
+    static void setEnv (const char* name, const char* value)
     {
-        return [] (const juce::String&) { return juce::String(); };
+       #if JUCE_WINDOWS
+        _putenv_s (name, value);
+       #else
+        ::setenv (name, value, 1);
+       #endif
     }
 
-    static PluginvalSettings parse (const juce::String& cmd, settings_parser::EnvProvider env)
+    static void unsetEnv (const char* name)
     {
-        return settings_parser::resolveSettings (settings_parser::preprocess (cmd), env);
+       #if JUCE_WINDOWS
+        _putenv_s (name, "");
+       #else
+        ::unsetenv (name);
+       #endif
+    }
+
+    static void clearKnownEnv()
+    {
+        for (auto* n : knownEnvVars)
+            unsetEnv (n);
+    }
+
+    static PluginvalSettings parse (const juce::String& cmd)
+    {
+        return settings_parser::parse (cmd);
     }
 
     void runTest() override
     {
+        // Start from a clean environment so host env vars don't affect the deterministic tests.
+        clearKnownEnv();
+
         beginTest ("Command line defaults");
         {
-            const auto opts = parse ("", emptyEnv()).toPluginTestOptions();
+            const auto opts = parse ("").toPluginTestOptions();
             expectEquals (opts.strictnessLevel, 5);
             expectEquals (opts.randomSeed, (juce::int64) 0);
             expectEquals (opts.timeoutMs, (juce::int64) 30000);
@@ -53,8 +81,7 @@ struct CommandLineTests : public juce::UnitTest
         beginTest ("Command line parser");
         {
             const auto settings = parse ("--strictness-level 7 --random-seed 1234 --timeout-ms 20000 --repeat 11 "
-                                         "--data-file /path/to/file --output-dir /path/to/dir --validate /path/to/plugin",
-                                         emptyEnv());
+                                         "--data-file /path/to/file --output-dir /path/to/dir --validate /path/to/plugin");
             const auto opts = settings.toPluginTestOptions();
             expectEquals (opts.strictnessLevel, 7);
             expectEquals (opts.randomSeed, (juce::int64) 1234);
@@ -65,31 +92,36 @@ struct CommandLineTests : public juce::UnitTest
             expectEquals (juce::String (settings.validatePath), juce::String ("/path/to/plugin"));
         }
 
+        beginTest ("Negative timeout");
+        {
+            expectEquals (parse ("--timeout-ms -1 --validate x").timeoutMs, (juce::int64) -1);
+        }
+
         beginTest ("Command line random (hex and int)");
         {
-            expectEquals (parse ("--random-seed 0x7f2da1 --validate x", emptyEnv()).randomSeed, (juce::int64) 8334753);
-            expectEquals (parse ("--random-seed 0x692bc1f --validate x", emptyEnv()).randomSeed, (juce::int64) 110279711);
-            expectEquals (parse ("--random-seed 1234 --validate x", emptyEnv()).randomSeed, (juce::int64) 1234);
+            expectEquals (parse ("--random-seed 0x7f2da1 --validate x").randomSeed, (juce::int64) 8334753);
+            expectEquals (parse ("--random-seed 0x692bc1f --validate x").randomSeed, (juce::int64) 110279711);
+            expectEquals (parse ("--random-seed 1234 --validate x").randomSeed, (juce::int64) 1234);
         }
 
         beginTest ("Comma-separated lists");
         {
-            const auto opts = parse ("--sample-rates 22050,44100 --block-sizes 32,64,128 --validate x", emptyEnv()).toPluginTestOptions();
+            const auto opts = parse ("--sample-rates 22050,44100 --block-sizes 32,64,128 --validate x").toPluginTestOptions();
             expect (opts.sampleRates == std::vector<double> ({ 22050.0, 44100.0 }));
             expect (opts.blockSizes == std::vector<int> ({ 32, 64, 128 }));
         }
 
         beginTest ("rtcheck enum parsing");
         {
-            expect (parse ("--rtcheck relaxed --validate x", emptyEnv()).realtimeCheck == RealtimeCheck::relaxed);
-            expect (parse ("--rtcheck enabled --validate x", emptyEnv()).realtimeCheck == RealtimeCheck::enabled);
-            expect (parse ("--validate x", emptyEnv()).realtimeCheck == RealtimeCheck::disabled);
+            expect (parse ("--rtcheck relaxed --validate x").realtimeCheck == RealtimeCheck::relaxed);
+            expect (parse ("--rtcheck enabled --validate x").realtimeCheck == RealtimeCheck::enabled);
+            expect (parse ("--validate x").realtimeCheck == RealtimeCheck::disabled);
         }
 
         beginTest ("Handles an absolute path to the plugin");
         {
             const auto homeDir = juce::File::getSpecialLocation (juce::File::userHomeDirectory).getFullPathName();
-            expectEquals (juce::String (parse ("--validate " + homeDir + "/path/to/MyPlugin", emptyEnv()).validatePath),
+            expectEquals (juce::String (parse ("--validate " + homeDir + "/path/to/MyPlugin").validatePath),
                           homeDir + "/path/to/MyPlugin");
         }
 
@@ -97,21 +129,21 @@ struct CommandLineTests : public juce::UnitTest
         {
             const auto homeDir = juce::File::getSpecialLocation (juce::File::userHomeDirectory).getFullPathName();
             const auto pathToQuote = homeDir + "/path/to/MyPlugin";
-            expectEquals (juce::String (parse ("--validate " + pathToQuote.quoted(), emptyEnv()).validatePath),
+            expectEquals (juce::String (parse ("--validate " + pathToQuote.quoted()).validatePath),
                           homeDir + "/path/to/MyPlugin");
         }
 
         beginTest ("Handles a relative path");
         {
             const auto currentDir = juce::File::getCurrentWorkingDirectory();
-            expectEquals (juce::String (parse ("--validate MyPlugin.vst3", emptyEnv()).validatePath),
+            expectEquals (juce::String (parse ("--validate MyPlugin.vst3").validatePath),
                           currentDir.getChildFile ("MyPlugin.vst3").getFullPathName());
         }
 
         beginTest ("Handles a quoted relative path with spaces to the plugin");
         {
             const auto currentDir = juce::File::getCurrentWorkingDirectory();
-            expectEquals (juce::String (parse (R"(--validate "My Plugin.vst3")", emptyEnv()).validatePath),
+            expectEquals (juce::String (parse (R"(--validate "My Plugin.vst3")").validatePath),
                           currentDir.getChildFile ("My Plugin.vst3").getFullPathName());
         }
 
@@ -119,20 +151,20 @@ struct CommandLineTests : public juce::UnitTest
         beginTest ("Handles a relative path with ./ to the plugin");
         {
             const auto currentDir = juce::File::getCurrentWorkingDirectory().getFullPathName();
-            expectEquals (juce::String (parse ("--validate ./path/to/MyPlugin", emptyEnv()).validatePath),
+            expectEquals (juce::String (parse ("--validate ./path/to/MyPlugin").validatePath),
                           currentDir + "/path/to/MyPlugin");
         }
 
         beginTest ("Handles a home directory relative path to the plugin");
         {
-            expectEquals (juce::String (parse ("--validate ~/path/to/MyPlugin", emptyEnv()).validatePath),
+            expectEquals (juce::String (parse ("--validate ~/path/to/MyPlugin").validatePath),
                           juce::File::getSpecialLocation (juce::File::userHomeDirectory).getFullPathName() + "/path/to/MyPlugin");
         }
 
         beginTest ("Handles quoted strings, spaces, and home directory relative path to the plugin");
         {
             const auto cmd = R"(--data-file "~/path/to/My File" --output-dir "~/path/to/My Directory" --validate "~/path/to/My Plugin")";
-            expectEquals (juce::String (parse (cmd, emptyEnv()).validatePath),
+            expectEquals (juce::String (parse (cmd).validatePath),
                           juce::File::getSpecialLocation (juce::File::userHomeDirectory).getFullPathName() + "/path/to/My Plugin");
         }
        #endif
@@ -140,19 +172,19 @@ struct CommandLineTests : public juce::UnitTest
         beginTest ("Implicit validate with a relative path");
         {
             const auto currentDir = juce::File::getCurrentWorkingDirectory();
-            expectEquals (juce::String (parse ("MyPlugin.vst3", emptyEnv()).validatePath),
+            expectEquals (juce::String (parse ("MyPlugin.vst3").validatePath),
                           currentDir.getChildFile ("MyPlugin.vst3").getFullPathName());
         }
 
         beginTest ("Doesn't alter component IDs");
         {
-            expectEquals (juce::String (parse ("--validate MyPluginID", emptyEnv()).validatePath), juce::String ("MyPluginID"));
+            expectEquals (juce::String (parse ("--validate MyPluginID").validatePath), juce::String ("MyPluginID"));
         }
 
         beginTest ("Allows for other options after explicit --validate");
         {
             const auto currentDir = juce::File::getCurrentWorkingDirectory();
-            const auto settings = parse ("--validate MyPlugin.vst3 --randomise", emptyEnv());
+            const auto settings = parse ("--validate MyPlugin.vst3 --randomise");
             expectEquals (juce::String (settings.validatePath), currentDir.getChildFile ("MyPlugin.vst3").getFullPathName());
             expect (settings.randomiseTestOrder);
         }
@@ -169,28 +201,23 @@ struct CommandLineTests : public juce::UnitTest
 
         beginTest ("Environment variables");
         {
-            std::map<juce::String, juce::String> envVars {
-                { "STRICTNESS_LEVEL", "7" },
-                { "RANDOM_SEED", "1234" },
-                { "TIMEOUT_MS", "20000" },
-                { "VERBOSE", "1" },
-                { "REPEAT", "11" },
-                { "RANDOMISE", "1" },
-                { "SKIP_GUI_TESTS", "1" },
-                { "DATA_FILE", "/path/to/file" },
-                { "OUTPUT_DIR", "/path/to/dir" },
-                { "SAMPLE_RATES", "22050,44100" },
-                { "BLOCK_SIZES", "32,64" },
-                { "RTCHECK", "relaxed" },
-            };
+            setEnv ("STRICTNESS_LEVEL", "7");
+            setEnv ("RANDOM_SEED", "1234");
+            setEnv ("TIMEOUT_MS", "20000");
+            setEnv ("VERBOSE", "1");
+            setEnv ("REPEAT", "11");
+            setEnv ("RANDOMISE", "1");
+            setEnv ("SKIP_GUI_TESTS", "1");
+            setEnv ("DATA_FILE", "/path/to/file");
+            setEnv ("OUTPUT_DIR", "/path/to/dir");
+            setEnv ("SAMPLE_RATES", "22050,44100");
+            setEnv ("BLOCK_SIZES", "32,64");
+            setEnv ("RTCHECK", "relaxed");
 
-            settings_parser::EnvProvider env = [envVars] (const juce::String& n)
-            {
-                const auto it = envVars.find (n);
-                return it != envVars.end() ? it->second : juce::String();
-            };
+            const auto opts = parse ("--validate x").toPluginTestOptions();
 
-            const auto opts = parse ("--validate x", env).toPluginTestOptions();
+            clearKnownEnv();
+
             expectEquals (opts.strictnessLevel, 7);
             expectEquals (opts.randomSeed, (juce::int64) 1234);
             expectEquals (opts.timeoutMs, (juce::int64) 20000);
@@ -205,13 +232,13 @@ struct CommandLineTests : public juce::UnitTest
 
         beginTest ("Command line overrides environment variables");
         {
-            settings_parser::EnvProvider env = [] (const juce::String& n)
-            {
-                return n == "STRICTNESS_LEVEL" ? juce::String ("3") : juce::String();
-            };
+            setEnv ("STRICTNESS_LEVEL", "3");
+            const auto envOnly = parse ("--validate x").strictnessLevel;
+            const auto cliWins = parse ("--strictness-level 9 --validate x").strictnessLevel;
+            clearKnownEnv();
 
-            expectEquals (parse ("--validate x", env).strictnessLevel, 3);                       // env only
-            expectEquals (parse ("--strictness-level 9 --validate x", env).strictnessLevel, 9);  // CLI wins
+            expectEquals (envOnly, 3);   // env only
+            expectEquals (cliWins, 9);   // CLI wins
         }
 
         beginTest ("Config file and precedence (CLI > env > config > defaults)");
@@ -222,7 +249,7 @@ struct CommandLineTests : public juce::UnitTest
 
             // config alone
             {
-                const auto s = parse (cfg + " --validate x", emptyEnv());
+                const auto s = parse (cfg + " --validate x");
                 expectEquals (s.strictnessLevel, 2);
                 expectEquals (s.timeoutMs, (juce::int64) 12345);
                 expectEquals (s.numRepeats, 4);
@@ -230,20 +257,18 @@ struct CommandLineTests : public juce::UnitTest
 
             // env overrides config
             {
-                settings_parser::EnvProvider env = [] (const juce::String& n)
-                { return n == "STRICTNESS_LEVEL" ? juce::String ("6") : juce::String(); };
-
-                const auto s = parse (cfg + " --validate x", env);
+                setEnv ("STRICTNESS_LEVEL", "6");
+                const auto s = parse (cfg + " --validate x");
+                clearKnownEnv();
                 expectEquals (s.strictnessLevel, 6);                 // env beats config
                 expectEquals (s.timeoutMs, (juce::int64) 12345);     // still from config
             }
 
             // CLI overrides env and config
             {
-                settings_parser::EnvProvider env = [] (const juce::String& n)
-                { return n == "STRICTNESS_LEVEL" ? juce::String ("6") : juce::String(); };
-
-                const auto s = parse (cfg + " --strictness-level 9 --validate x", env);
+                setEnv ("STRICTNESS_LEVEL", "6");
+                const auto s = parse (cfg + " --strictness-level 9 --validate x");
+                clearKnownEnv();
                 expectEquals (s.strictnessLevel, 9);
                 expectEquals (s.timeoutMs, (juce::int64) 12345);
             }

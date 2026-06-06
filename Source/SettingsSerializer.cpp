@@ -45,29 +45,9 @@ namespace settings_serializer
         return raw.getLargeIntValue();
     }
 
-    nlohmann::json commaToDoubleArray (const juce::String& raw)
+    std::vector<std::string> disabledTestsToList (const juce::String& raw)
     {
-        auto out = nlohmann::json::array();
-
-        for (const auto& token : juce::StringArray::fromTokens (raw, ",", "\""))
-            out.push_back (token.getDoubleValue());
-
-        return out;
-    }
-
-    nlohmann::json commaToIntArray (const juce::String& raw)
-    {
-        auto out = nlohmann::json::array();
-
-        for (const auto& token : juce::StringArray::fromTokens (raw, ",", "\""))
-            out.push_back (token.getIntValue());
-
-        return out;
-    }
-
-    nlohmann::json disabledTestsToArray (const juce::String& raw)
-    {
-        auto out = nlohmann::json::array();
+        std::vector<std::string> out;
 
         if (juce::File::isAbsolutePath (raw))
         {

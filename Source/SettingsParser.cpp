@@ -15,101 +15,15 @@
 #include "SettingsParser.h"
 #include "SettingsSerializer.h"
 
-#include <magic_args/magic_args.hpp>
+#include <CLI/CLI.hpp>
 
 #include <iostream>
-#include <span>
+#include <map>
 #include <string>
-#include <string_view>
 #include <vector>
 
 namespace settings_parser
 {
-    //==============================================================================
-    // The magic_args view of the flat command-line options. Everything is parsed
-    // as a raw optional/flag; typed coercion happens when building the JSON layer.
-    struct PluginvalCliArgs
-    {
-        magic_args::option<std::optional<std::string>> validate
-            { .mName = "validate", .mHelp = "Validates the plugin at the given path (or AU id). Optional if the path is the last argument." };
-        magic_args::option<std::optional<int>> strictnessLevel
-            { .mName = "strictness-level", .mHelp = "Strictness level 1-10 (default 5, minimum 5 recommended)." };
-        magic_args::option<std::optional<std::string>> randomSeed
-            { .mName = "random-seed", .mHelp = "Random seed (hex 0x.. or int) for replicable test runs." };
-        magic_args::option<std::optional<std::int64_t>> timeoutMs
-            { .mName = "timeout-ms", .mHelp = "Test timeout in ms (default 30000, -1 to never timeout)." };
-        magic_args::option<std::optional<int>> repeat
-            { .mName = "repeat", .mHelp = "Number of times to repeat the tests." };
-        magic_args::flag randomise
-            { .mName = "randomise", .mHelp = "Run the tests in a random order per repeat." };
-        magic_args::flag verbose
-            { .mName = "verbose", .mHelp = "Output additional logging information." };
-        magic_args::flag skipGuiTests
-            { .mName = "skip-gui-tests", .mHelp = "Avoid tests that create GUI windows (for headless CI)." };
-        magic_args::option<std::optional<std::string>> sampleRates
-            { .mName = "sample-rates", .mHelp = "Comma-separated sample rates (default 44100,48000,96000)." };
-        magic_args::option<std::optional<std::string>> blockSizes
-            { .mName = "block-sizes", .mHelp = "Comma-separated block sizes (default 64,128,256,512,1024)." };
-        magic_args::option<std::optional<std::string>> dataFile
-            { .mName = "data-file", .mHelp = "Path to a data file tests can use to configure themselves." };
-        magic_args::option<std::optional<std::string>> outputDir
-            { .mName = "output-dir", .mHelp = "Directory in which to write the log files." };
-        magic_args::option<std::optional<std::string>> outputFilename
-            { .mName = "output-filename", .mHelp = "Filename to write logs into." };
-        magic_args::option<std::optional<std::string>> disabledTests
-            { .mName = "disabled-tests", .mHelp = "Comma-separated test names, or a path to a file listing them." };
-        magic_args::option<std::optional<std::string>> rtcheck
-            { .mName = "rtcheck", .mHelp = "Real-time safety checks: disabled, enabled or relaxed." };
-        magic_args::option<std::optional<std::string>> config
-            { .mName = "config", .mHelp = "Path to a JSON file of settings (overridden by env vars and CLI options)." };
-    };
-
-    //==============================================================================
-    static magic_args::program_info makeProgramInfo()
-    {
-        return {
-            .mDescription = "Validate plugins to test compatibility with hosts and verify plugin API conformance",
-            .mVersion = getVersionString().toStdString(),
-            .mExamples = {
-                "pluginval --strictness-level 5 --validate path/to/plugin",
-                "pluginval path/to/plugin",
-                "pluginval --config settings.json --validate path/to/plugin",
-            },
-        };
-    }
-
-    static juce::String getTrailerText()
-    {
-        return juce::String (
-R"(Other commands:
-  --version                   Print the pluginval version.
-  --run-tests                 Run the internal unit tests.
-  --strictness-help [level]   List all tests that run at the given strictness level.
-
-Exit code:
-  0 if all tests complete successfully
-  1 if there are any errors
-
-Additionally, you can specify any of the command line options as environment
-variables by removing prefix dashes, converting internal dashes to underscores
-and capitalising all letters, e.g.
-    "--skip-gui-tests" > "SKIP_GUI_TESTS=1"
-    "--timeout-ms 30000" > "TIMEOUT_MS=30000"
-Precedence is command-line options > environment variables > --config file.
-)");
-    }
-
-    //==============================================================================
-    juce::String systemEnv (const juce::String& name)
-    {
-        return juce::SystemStats::getEnvironmentVariable (name, {});
-    }
-
-    juce::String getVersionString()
-    {
-        return juce::String ("pluginval") + " - " + VERSION;
-    }
-
     //==============================================================================
     namespace
     {
@@ -172,78 +86,29 @@ Precedence is command-line options > environment variables > --config file.
             return mos.toString();
         }
 
-        // Builds the sparse CLI JSON layer by parsing tokens with magic_args.
-        nlohmann::json parseCliLayer (const juce::StringArray& tokens)
+        juce::String getFooterText()
         {
-            std::vector<std::string> storage;
-            storage.reserve ((size_t) tokens.size() + 1);
-            storage.emplace_back ("pluginval");
+            return juce::String (
+R"(Other commands:
+  --run-tests                 Run the internal unit tests.
+  --strictness-help [level]   List all tests that run at the given strictness level.
 
-            for (const auto& t : tokens)
-                storage.push_back (t.toStdString());
+Exit code:
+  0 if all tests complete successfully
+  1 if there are any errors
 
-            std::vector<std::string_view> views (storage.begin(), storage.end());
-
-            const auto parsed = magic_args::parse<PluginvalCliArgs> (std::span<std::string_view> (views),
-                                                                     makeProgramInfo());
-
-            auto j = nlohmann::json::object();
-
-            if (! parsed) // HelpRequested / VersionRequested / parse error: contribute nothing
-                return j;
-
-            const auto& a = *parsed;
-
-            if (a.validate.has_value())         j["validatePath"]       = *a.validate;
-            if (a.strictnessLevel.has_value())  j["strictnessLevel"]    = *a.strictnessLevel;
-            if (a.randomSeed.has_value())       j["randomSeed"]         = settings_serializer::parseRandomSeed (juce::String (*a.randomSeed));
-            if (a.timeoutMs.has_value())        j["timeoutMs"]          = *a.timeoutMs;
-            if (a.repeat.has_value())           j["numRepeats"]         = *a.repeat;
-            if (a.verbose)                      j["verbose"]            = true;
-            if (a.randomise)                    j["randomiseTestOrder"] = true;
-            if (a.skipGuiTests)                 j["skipGuiTests"]       = true;
-            if (a.sampleRates.has_value())      j["sampleRates"]        = settings_serializer::commaToDoubleArray (juce::String (*a.sampleRates));
-            if (a.blockSizes.has_value())       j["blockSizes"]         = settings_serializer::commaToIntArray (juce::String (*a.blockSizes));
-            if (a.dataFile.has_value())         j["dataFile"]           = *a.dataFile;
-            if (a.outputDir.has_value())        j["outputDir"]          = *a.outputDir;
-            if (a.outputFilename.has_value())   j["outputFilename"]     = *a.outputFilename;
-            if (a.disabledTests.has_value())    j["disabledTests"]      = settings_serializer::disabledTestsToArray (juce::String (*a.disabledTests));
-            if (a.rtcheck.has_value())          j["realtimeCheck"]      = *a.rtcheck;
-
-            return j;
+You can also specify any option as an environment variable by removing the prefix
+dashes, converting internal dashes to underscores and capitalising, e.g.
+    "--skip-gui-tests" -> "SKIP_GUI_TESTS=1"
+    "--timeout-ms 30000" -> "TIMEOUT_MS=30000"
+Precedence: command-line options > environment variables > --config file.)");
         }
+    }
 
-        nlohmann::json envLayer (const EnvProvider& env)
-        {
-            auto j = nlohmann::json::object();
-
-            auto setString = [&] (const char* name, const char* key)
-            {
-                if (auto v = env (name); v.isNotEmpty())
-                    j[key] = v.toStdString();
-            };
-            auto setFlag = [&] (const char* name, const char* key)
-            {
-                if (env (name).isNotEmpty())
-                    j[key] = true;
-            };
-
-            if (auto v = env ("STRICTNESS_LEVEL"); v.isNotEmpty()) j["strictnessLevel"] = v.getIntValue();
-            if (auto v = env ("RANDOM_SEED");      v.isNotEmpty()) j["randomSeed"]      = settings_serializer::parseRandomSeed (v);
-            if (auto v = env ("TIMEOUT_MS");       v.isNotEmpty()) j["timeoutMs"]       = (std::int64_t) v.getLargeIntValue();
-            if (auto v = env ("REPEAT");           v.isNotEmpty()) j["numRepeats"]      = v.getIntValue();
-            setFlag ("VERBOSE",        "verbose");
-            setFlag ("RANDOMISE",      "randomiseTestOrder");
-            setFlag ("SKIP_GUI_TESTS", "skipGuiTests");
-            setString ("DATA_FILE",       "dataFile");
-            setString ("OUTPUT_DIR",      "outputDir");
-            setString ("OUTPUT_FILENAME", "outputFilename");
-            if (auto v = env ("SAMPLE_RATES"); v.isNotEmpty()) j["sampleRates"] = settings_serializer::commaToDoubleArray (v);
-            if (auto v = env ("BLOCK_SIZES");  v.isNotEmpty()) j["blockSizes"]  = settings_serializer::commaToIntArray (v);
-            setString ("RTCHECK", "realtimeCheck");
-
-            return j;
-        }
+    //==============================================================================
+    juce::String getVersionString()
+    {
+        return juce::String ("pluginval") + " - " + VERSION;
     }
 
     //==============================================================================
@@ -303,38 +168,97 @@ Precedence is command-line options > environment variables > --config file.
         return raw;
     }
 
-    PluginvalSettings resolveSettings (const juce::StringArray& tokens, const EnvProvider& env)
+    //==============================================================================
+    ParseResult parseTokens (const juce::StringArray& tokens)
     {
+        ParseResult result;
+        auto& s = result.settings;
+
         // A base64 JSON handoff from the parent process is fully authoritative.
         if (const auto b64 = valueForOption (tokens, "--config-base64"); b64.isNotEmpty())
         {
-            auto s = settings_serializer::fromJsonString (decodeBase64 (b64).toStdString());
+            s = settings_serializer::fromJsonString (decodeBase64 (b64).toStdString());
             s.validatePath = resolvePluginPath (juce::String (s.validatePath)).toStdString();
-            return s;
+            return result;
         }
 
-        auto configJson = nlohmann::json::object();
-
+        // Seed from --config first; CLI11 only overwrites members whose flag/env
+        // was provided, giving precedence: defaults < config < env < CLI.
         if (const auto configPath = valueForOption (tokens, "--config"); configPath.isNotEmpty())
-            configJson = nlohmann::json::parse (juce::File (configPath).loadFileAsString().toStdString());
+            s = settings_serializer::fromJsonFile (juce::File (configPath));
 
-        const auto envJson = envLayer (env);
-        const auto cliJson = parseCliLayer (tokens);
+        CLI::App app { "Validate plugins to test compatibility with hosts and verify plugin API conformance" };
+        app.set_version_flag ("--version", getVersionString().toStdString());
+        app.footer (getFooterText().toStdString());
 
-        // Precedence (later wins): defaults < config < env < CLI.
-        auto merged = nlohmann::json::object();
-        merged.merge_patch (configJson);
-        merged.merge_patch (envJson);
-        merged.merge_patch (cliJson);
+        std::string configSink; // accepted here; the file is loaded above
+        app.add_option ("--config", configSink, "Path to a JSON settings file (overridden by env vars and CLI options).");
 
-        auto s = merged.get<PluginvalSettings>();
+        app.add_option ("--validate", s.validatePath, "Validates the plugin at the given path (or AU id).");
+        app.add_option ("--strictness-level", s.strictnessLevel, "Strictness level 1-10 (default 5).")->envname ("STRICTNESS_LEVEL");
+        app.add_option ("--timeout-ms", s.timeoutMs, "Test timeout in ms (default 30000, -1 to never timeout).")->envname ("TIMEOUT_MS");
+        app.add_option ("--repeat", s.numRepeats, "Number of times to repeat the tests.")->envname ("REPEAT");
+        app.add_flag ("--randomise", s.randomiseTestOrder, "Run the tests in a random order per repeat.")->envname ("RANDOMISE");
+        app.add_flag ("--verbose", s.verbose, "Output additional logging information.")->envname ("VERBOSE");
+        app.add_flag ("--skip-gui-tests", s.skipGuiTests, "Avoid tests that create GUI windows (for headless CI).")->envname ("SKIP_GUI_TESTS");
+        app.add_option ("--sample-rates", s.sampleRates, "Comma-separated sample rates (default 44100,48000,96000).")->delimiter (',')->envname ("SAMPLE_RATES");
+        app.add_option ("--block-sizes", s.blockSizes, "Comma-separated block sizes (default 64,128,256,512,1024).")->delimiter (',')->envname ("BLOCK_SIZES");
+        app.add_option ("--data-file", s.dataFile, "Path to a data file tests can use to configure themselves.")->envname ("DATA_FILE");
+        app.add_option ("--output-dir", s.outputDir, "Directory in which to write the log files.")->envname ("OUTPUT_DIR");
+        app.add_option ("--output-filename", s.outputFilename, "Filename to write logs into.")->envname ("OUTPUT_FILENAME");
+
+        app.add_option_function<std::string> ("--disabled-tests",
+            [&s] (const std::string& v) { s.disabledTests = settings_serializer::disabledTestsToList (juce::String (v)); },
+            "Comma-separated test names, or a path to a file listing them.");
+
+        app.add_option_function<std::string> ("--random-seed",
+            [&s] (const std::string& v)
+            {
+                try { s.randomSeed = settings_serializer::parseRandomSeed (juce::String (v)); }
+                catch (const std::exception& e) { throw CLI::ValidationError ("--random-seed", e.what()); }
+            },
+            "Random seed (hex 0x.. or int) for replicable test runs.")->envname ("RANDOM_SEED");
+
+        app.add_option ("--rtcheck", s.realtimeCheck, "Real-time safety checks: disabled, enabled or relaxed.")
+           ->transform (CLI::CheckedTransformer (std::map<std::string, RealtimeCheck> {
+                { "disabled", RealtimeCheck::disabled },
+                { "enabled",  RealtimeCheck::enabled  },
+                { "relaxed",  RealtimeCheck::relaxed  } }, CLI::ignore_case))
+           ->envname ("RTCHECK");
+
+        // Build argv (CLI11 treats element 0 as the program name)
+        std::vector<std::string> storage;
+        storage.reserve ((size_t) tokens.size() + 1);
+        storage.emplace_back ("pluginval");
+
+        for (const auto& t : tokens)
+            storage.push_back (t.toStdString());
+
+        std::vector<const char*> argv;
+        argv.reserve (storage.size());
+
+        for (const auto& str : storage)
+            argv.push_back (str.c_str());
+
+        try
+        {
+            app.parse ((int) argv.size(), argv.data());
+        }
+        catch (const CLI::ParseError& e)
+        {
+            // Includes CallForHelp / CallForVersion (exit code 0) and real errors.
+            result.exitCode = app.exit (e);
+            result.handled = true;
+            return result;
+        }
+
         s.validatePath = resolvePluginPath (juce::String (s.validatePath)).toStdString();
-        return s;
+        return result;
     }
 
-    PluginvalSettings parse (const juce::String& commandLine, const EnvProvider& env)
+    PluginvalSettings parse (const juce::String& commandLine)
     {
-        return resolveSettings (preprocess (commandLine), env);
+        return parseTokens (preprocess (commandLine)).settings;
     }
 
     //==============================================================================
@@ -347,17 +271,5 @@ Precedence is command-line options > environment variables > --config file.
         juce::StringArray args (juce::File::getSpecialLocation (juce::File::currentExecutableFile).getFullPathName());
         args.addArray ({ "--config-base64", b64, "--validate", fileOrID });
         return args;
-    }
-
-    //==============================================================================
-    void printHelp (const juce::String& exeName)
-    {
-        std::vector<std::string> storage { exeName.toStdString(), "--help" };
-        std::vector<std::string_view> views (storage.begin(), storage.end());
-
-        // magic_args prints the auto-generated usage to stdout and returns HelpRequested.
-        (void) magic_args::parse<PluginvalCliArgs> (std::span<std::string_view> (views), makeProgramInfo());
-
-        std::cout << "\n" << getTrailerText() << std::endl;
     }
 }

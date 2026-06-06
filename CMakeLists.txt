@@ -6,9 +6,8 @@ project(pluginval VERSION ${CURRENT_VERSION})
 # Just compliing pluginval
 if (pluginval_IS_TOP_LEVEL)
     if (APPLE)
-        # Target OS versions down to 13.3. std::format (used by magic_args) pulls in
-        # libc++'s floating-point formatter, whose to_chars is only available on 13.3+.
-        set (CMAKE_OSX_DEPLOYMENT_TARGET "13.3" CACHE INTERNAL "")
+        # Target OS versions down to 10.11
+        set (CMAKE_OSX_DEPLOYMENT_TARGET "10.11" CACHE INTERNAL "")
 
         # Uncomment to produce a universal binary
         # set(CMAKE_OSX_ARCHITECTURES arm64 x86_64)
@@ -62,7 +61,7 @@ option(JUCE_ENABLE_MODULE_SOURCE_GROUPS "Enable Module Source Groups" ON)
 
 include(cmake/CPM.cmake)
 CPMAddPackage("gh:Neargye/magic_enum#v0.9.7")
-CPMAddPackage("gh:fredemmott/magic_args#v0.2.1")
+CPMAddPackage("gh:CLIUtils/CLI11@2.6.2")
 CPMAddPackage("gh:nlohmann/json@3.12.0")
 
 if(PLUGINVAL_ENABLE_RTCHECK)
@@ -112,7 +111,7 @@ juce_add_gui_app(pluginval
 
 juce_generate_juce_header(pluginval)
 
-target_compile_features(pluginval PRIVATE cxx_std_23)
+target_compile_features(pluginval PRIVATE cxx_std_20)
 
 set_target_properties(pluginval PROPERTIES
     C_VISIBILITY_PRESET hidden
@@ -185,7 +184,7 @@ target_link_libraries(pluginval PRIVATE
     juce::juce_audio_utils
     juce::juce_recommended_warning_flags
     magic_enum
-    magic_args::magic_args
+    CLI11::CLI11
     nlohmann_json::nlohmann_json)
 
 if (${CMAKE_SYSTEM_NAME} MATCHES "Linux")

@@ -196,20 +196,6 @@ void performCommandLine (CommandLineValidator& validator, const juce::String& co
     auto& app = *juce::JUCEApplication::getInstance();
     const auto tokens = settings_parser::preprocess (commandLine);
 
-    if (tokens.contains ("--help") || tokens.contains ("-h"))
-    {
-        settings_parser::printHelp (app.getApplicationName());
-        app.quit();
-        return;
-    }
-
-    if (tokens.contains ("--version"))
-    {
-        std::cout << settings_parser::getVersionString() << std::endl;
-        app.quit();
-        return;
-    }
-
     if (tokens.contains ("--run-tests"))
     {
         runUnitTests();
@@ -230,10 +216,20 @@ void performCommandLine (CommandLineValidator& validator, const juce::String& co
         return;
     }
 
-    // Otherwise this is a validation run (explicit or implicit --validate)
+    // Otherwise this is a validation run (explicit or implicit --validate).
+    // CLI11 handles --help/--version and parse errors.
     try
     {
-        auto [fileOrID, options] = parseCommandLine (commandLine);
+        const auto result = settings_parser::parseTokens (tokens);
+
+        if (result.handled)
+        {
+            app.setApplicationReturnValue (result.exitCode);
+            app.quit();
+            return;
+        }
+
+        const auto fileOrID = juce::String (result.settings.validatePath);
 
         if (fileOrID.isEmpty())
         {
@@ -242,7 +238,7 @@ void performCommandLine (CommandLineValidator& validator, const juce::String& co
         }
 
         // --validate runs async so will quit itself when done
-        validator.validate (fileOrID, options);
+        validator.validate (fileOrID, result.settings.toPluginTestOptions());
     }
     catch (const std::exception& e)
     {
