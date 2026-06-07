@@ -88,7 +88,7 @@ namespace settings_parser
 
         juce::String getFooterText()
         {
-            return juce::String (
+            return juce::SystemStats::getJUCEVersion() + "\n\n" + juce::String (
 R"(Other commands:
   --run-tests                 Run the internal unit tests.
   --strictness-help [level]   List all tests that run at the given strictness level.

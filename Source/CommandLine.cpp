@@ -171,8 +171,14 @@ static void runUnitTests()
     testRunner.runTestsInCategory ("pluginval");
     const int numFailures = getNumTestFailures (testRunner);
 
+    // Set the return value directly rather than juce::ConsoleApplication::fail(),
+    // which throws and would terminate the process when called outside a
+    // ConsoleApplication command handler.
     if (numFailures > 0)
-        juce::ConsoleApplication::fail (juce::String (numFailures) + " tests failed!!!");
+    {
+        std::cout << numFailures << " tests failed!!!" << std::endl;
+        juce::JUCEApplication::getInstance()->setApplicationReturnValue (1);
+    }
 }
 
 //==============================================================================

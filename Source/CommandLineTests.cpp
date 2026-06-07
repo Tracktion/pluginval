@@ -94,14 +94,14 @@ struct CommandLineTests : public juce::UnitTest
 
         beginTest ("Negative timeout");
         {
-            expectEquals (parse ("--timeout-ms -1 --validate x").timeoutMs, (juce::int64) -1);
+            expectEquals ((juce::int64) parse ("--timeout-ms -1 --validate x").timeoutMs, (juce::int64) -1);
         }
 
         beginTest ("Command line random (hex and int)");
         {
-            expectEquals (parse ("--random-seed 0x7f2da1 --validate x").randomSeed, (juce::int64) 8334753);
-            expectEquals (parse ("--random-seed 0x692bc1f --validate x").randomSeed, (juce::int64) 110279711);
-            expectEquals (parse ("--random-seed 1234 --validate x").randomSeed, (juce::int64) 1234);
+            expectEquals ((juce::int64) parse ("--random-seed 0x7f2da1 --validate x").randomSeed, (juce::int64) 8334753);
+            expectEquals ((juce::int64) parse ("--random-seed 0x692bc1f --validate x").randomSeed, (juce::int64) 110279711);
+            expectEquals ((juce::int64) parse ("--random-seed 1234 --validate x").randomSeed, (juce::int64) 1234);
         }
 
         beginTest ("Comma-separated lists");
@@ -251,7 +251,7 @@ struct CommandLineTests : public juce::UnitTest
             {
                 const auto s = parse (cfg + " --validate x");
                 expectEquals (s.strictnessLevel, 2);
-                expectEquals (s.timeoutMs, (juce::int64) 12345);
+                expectEquals ((juce::int64) s.timeoutMs, (juce::int64) 12345);
                 expectEquals (s.numRepeats, 4);
             }
 
@@ -261,7 +261,7 @@ struct CommandLineTests : public juce::UnitTest
                 const auto s = parse (cfg + " --validate x");
                 clearKnownEnv();
                 expectEquals (s.strictnessLevel, 6);                 // env beats config
-                expectEquals (s.timeoutMs, (juce::int64) 12345);     // still from config
+                expectEquals ((juce::int64) s.timeoutMs, (juce::int64) 12345);     // still from config
             }
 
             // CLI overrides env and config
@@ -270,7 +270,7 @@ struct CommandLineTests : public juce::UnitTest
                 const auto s = parse (cfg + " --strictness-level 9 --validate x");
                 clearKnownEnv();
                 expectEquals (s.strictnessLevel, 9);
-                expectEquals (s.timeoutMs, (juce::int64) 12345);
+                expectEquals ((juce::int64) s.timeoutMs, (juce::int64) 12345);
             }
         }
 
