@@ -4,7 +4,7 @@
 
 **pluginval** is a cross-platform audio plugin validator and tester application developed by Tracktion Corporation. It tests VST, VST3, AU (Audio Unit), LV2, and LADSPA plugins for compatibility and stability with host applications.
 
-- **Version**: 1.0.4 (see `VERSION` file)
+- **Version**: 1.0.4 (see `VERSION` file; a 2.0.0 entry is staged in `CHANGELIST.md` but `VERSION` is not yet bumped)
 - **License**: GPLv3
 - **Framework**: Built on JUCE (v8.0.x)
 - **Language**: C++20
@@ -80,7 +80,10 @@ pluginval/
 │   ├── MainComponent.cpp/h   # GUI main window component
 │   ├── Validator.cpp/h       # Core validation orchestration
 │   ├── PluginTests.cpp/h     # Test framework and base classes
-│   ├── CommandLine.cpp/h     # CLI argument parsing
+│   ├── CommandLine.cpp/h     # Thin CLI adapter (delegates to SettingsParser)
+│   ├── PluginvalSettings.h   # Unified settings struct + JSON mapping + toPluginTestOptions()
+│   ├── SettingsParser.cpp/h  # CLI/env/config -> merged JSON -> settings; child-process handoff
+│   ├── SettingsSerializer.cpp/h # JSON load/save + value coercions (comma lists, hex seed)
 │   ├── CrashHandler.cpp/h    # Crash reporting utilities
 │   ├── TestUtilities.cpp/h   # Helper functions for tests
 │   ├── RTCheck.h             # Real-time safety checking macros
@@ -187,6 +190,41 @@ VST2_SDK_DIR=/path/to/vst2sdk cmake -B Builds/Debug .
    - Base class for individual tests
    - Auto-registers via static instance pattern
    - Defines requirements (thread, GUI needs)
+
+### CLI Settings Pipeline
+
+Command-line parsing centres on one plain settings struct (`PluginvalSettings`)
+that CLI11 binds to directly. A single instance is filled by successive layers,
+**lowest to highest precedence: defaults → environment → `--config` → CLI**
+(in `SettingsParser::parseTokens`):
+
+1. **preprocess** the raw command line — rewrite the deprecated `strictnessLevel`,
+   strip the macOS `-NSDocumentRevisionsDebugMode YES` flag, and insert an
+   implicit `--validate` when the last argument is a bare plugin path.
+2. **Environment layer.** Env-var names are *derived* from the registered
+   options (`--strictness-level` → `STRICTNESS_LEVEL`), so there is no separate
+   env table. A synthetic `--name=value` argv is built from the environment and
+   parsed by CLI11, reusing all its coercion.
+3. **`--config` layer.** Repeatable; each JSON file is `merge_patch`-ed in
+   command-line order (later files win per key). Beats the environment.
+4. **CLI layer.** The real arguments are parsed last and beat everything;
+   CLI11 only overwrites a member when its option was actually provided.
+
+`configureApp()` registers every option (bound to the struct) and is used for
+both the env pass and the CLI pass. Comma lists use `->delimiter(',')`, the enum
+uses a `CheckedTransformer`, and the hex/int seed is a small callback.
+`PluginvalSettings::toPluginTestOptions()` converts to the JUCE-flavoured
+`PluginTests::Options` at the boundary.
+
+Adding a new option is three edits: a struct member, an entry in the nlohmann
+macro list, and one `add_option(...)` line — its environment variable then works
+automatically. `SettingsSerializer` handles JSON load/save plus the two
+remaining conversions (hex seed, disabled-tests file).
+
+The child validation process receives a fully-resolved, **authoritative**
+settings set via a base64-encoded JSON argument (`--config-base64`), avoiding
+per-flag re-serialisation and command-line quoting hazards. `--help`/`--version`
+are handled by CLI11 (auto usage + a footer with the env-var/commands notes).
 
 ### Test Framework
 
@@ -327,9 +365,9 @@ Basic usage:
 
 Key options:
 - `--validate [path]` - Validate plugin at path
+- `--config [file.json]` - Load a full settings set from JSON (overridden by env vars and CLI options)
 - `--strictness-level [1-10]` - Test thoroughness (default: 5)
 - `--skip-gui-tests` - Skip GUI tests (for headless CI)
-- `--validate-in-process` - Don't use child process (for debugging)
 - `--timeout-ms [ms]` - Test timeout (default: 30000, -1 for none)
 - `--verbose` - Enable verbose logging
 - `--output-dir [dir]` - Directory for log files
@@ -374,6 +412,8 @@ add_pluginval_tests(MyPluginTarget
 ### External
 - **JUCE** (v8.0.x) - Audio application framework (git submodule)
 - **magic_enum** (v0.9.7) - Enum reflection (fetched via CPM)
+- **CLI11** (v2.6.2) - CLI argument parsing, header-only (fetched via CPM)
+- **nlohmann/json** (3.12.0) - JSON settings layering/serialisation (fetched via CPM)
 - **rtcheck** (optional, macOS) - Real-time safety checking (fetched via CPM)
 - **VST3 SDK** (v3.7.x) - Steinberg VST3 SDK for embedded validator (fetched via CPM, optional)
 
@@ -439,6 +479,6 @@ Run internal tests via CLI:
 
 - Always test changes on multiple platforms when possible
 - VST3 plugins have specific threading requirements - use the `*OnMessageThreadIfVST3` helpers
-- Child process validation is the default and recommended for production use
-- In-process validation (`--validate-in-process`) is useful for debugging but a crashing plugin will crash pluginval
+- The GUI runs each validation in a separate child process for crash isolation (the default)
+- The CLI `--validate` path runs in-process; a crashing plugin will terminate pluginval, and the signal handler reports it as a failure rather than a pass
 - Real-time safety checking is only available on macOS currently (uses rtcheck library)

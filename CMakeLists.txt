@@ -61,6 +61,8 @@ option(JUCE_ENABLE_MODULE_SOURCE_GROUPS "Enable Module Source Groups" ON)
 
 include(cmake/CPM.cmake)
 CPMAddPackage("gh:Neargye/magic_enum#v0.9.7")
+CPMAddPackage("gh:CLIUtils/CLI11@2.6.2")
+CPMAddPackage("gh:nlohmann/json@3.12.0")
 
 if(PLUGINVAL_ENABLE_RTCHECK)
     CPMAddPackage("gh:Tracktion/rtcheck#main")
@@ -120,6 +122,9 @@ set(SourceFiles
     Source/CrashHandler.h
     Source/MainComponent.h
     Source/PluginTests.h
+    Source/PluginvalSettings.h
+    Source/SettingsParser.h
+    Source/SettingsSerializer.h
     Source/TestUtilities.h
     Source/Validator.h
     Source/CommandLine.cpp
@@ -127,9 +132,13 @@ set(SourceFiles
     Source/Main.cpp
     Source/MainComponent.cpp
     Source/PluginTests.cpp
+    Source/SettingsParser.cpp
+    Source/SettingsSerializer.cpp
     Source/tests/BasicTests.cpp
     Source/tests/LocaleTest.cpp
     Source/tests/BusTests.cpp
+    Source/tests/EditorTests.cpp
+    Source/tests/ExtremeTests.cpp
     Source/tests/ParameterFuzzTests.cpp
     Source/TestUtilities.cpp
     Source/Validator.cpp)
@@ -176,7 +185,9 @@ target_link_libraries(pluginval PRIVATE
     juce::juce_audio_processors
     juce::juce_audio_utils
     juce::juce_recommended_warning_flags
-    magic_enum)
+    magic_enum
+    CLI11::CLI11
+    nlohmann_json::nlohmann_json)
 
 if (${CMAKE_SYSTEM_NAME} MATCHES "Linux")
     target_link_libraries(pluginval PRIVATE

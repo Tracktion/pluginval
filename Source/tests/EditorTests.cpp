@@ -63,7 +63,7 @@ struct EditorDPITest   : public PluginTest
     {
         if (instance.hasEditor())
         {
-            ScopedDPIAwarenessDisabler scopedDPIAwarenessDisabler;
+            juce::ScopedDPIAwarenessDisabler scopedDPIAwarenessDisabler;
 
             {
                 ut.logMessage ("Testing opening Editor with DPI Awareness disabled");
