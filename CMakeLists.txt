@@ -137,6 +137,8 @@ set(SourceFiles
     Source/tests/BasicTests.cpp
     Source/tests/LocaleTest.cpp
     Source/tests/BusTests.cpp
+    Source/tests/EditorTests.cpp
+    Source/tests/ExtremeTests.cpp
     Source/tests/ParameterFuzzTests.cpp
     Source/TestUtilities.cpp
     Source/Validator.cpp)
