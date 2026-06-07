@@ -12,10 +12,13 @@
 
  ==============================================================================*/
 
+// CLI11 must be included before the JUCE headers: on Linux JUCE pulls in the X11
+// headers (JUCE_GUI_BASICS_INCLUDE_XHEADERS), which #define Success/None/Bool/etc.
+// and would clash with CLI11's CLI::ExitCodes::Success enumerator.
+#include <CLI/CLI.hpp>
+
 #include "SettingsParser.h"
 #include "SettingsSerializer.h"
-
-#include <CLI/CLI.hpp>
 
 #include <iostream>
 #include <map>

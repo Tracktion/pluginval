@@ -154,22 +154,30 @@ static void printStrictnessHelp (int level)
     std::cout << std::endl;
 }
 
-static int getNumTestFailures (juce::UnitTestRunner& testRunner)
-{
-    int numFailures = 0;
-
-    for (int i = 0; i < testRunner.getNumResults(); ++i)
-        if (auto result = testRunner.getResult (i))
-            numFailures += result->failures;
-
-    return numFailures;
-}
-
 static void runUnitTests()
 {
     juce::UnitTestRunner testRunner;
     testRunner.runTestsInCategory ("pluginval");
-    const int numFailures = getNumTestFailures (testRunner);
+
+    int numFailures = 0;
+
+    // Print failures to stdout: juce::UnitTestRunner logs via juce::Logger, which
+    // on a GUI app (e.g. Windows) doesn't reach the console.
+    for (int i = 0; i < testRunner.getNumResults(); ++i)
+    {
+        if (auto* result = testRunner.getResult (i))
+        {
+            numFailures += result->failures;
+
+            if (result->failures > 0)
+            {
+                std::cout << "!!! FAILED: " << result->unitTestName << " / " << result->subcategoryName << std::endl;
+
+                for (const auto& message : result->messages)
+                    std::cout << "      " << message << std::endl;
+            }
+        }
+    }
 
     // Set the return value directly rather than juce::ConsoleApplication::fail(),
     // which throws and would terminate the process when called outside a
