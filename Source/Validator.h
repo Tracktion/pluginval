@@ -87,6 +87,9 @@ public:
     /** Validates an array of PluginDescriptions. */
     bool validate (const juce::Array<juce::PluginDescription>& pluginsToValidate, PluginTests::Options);
 
+    /** Returns true if a validation is currently in progress. */
+    bool isValidating() const { return multiValidator != nullptr; }
+
     /** Call this to make validation happen in the same process.
         This can be useful for debugging but should not generally be used as a crashing
         plugin will bring down the app.

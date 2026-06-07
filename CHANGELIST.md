@@ -12,6 +12,7 @@
 - Enabled the editor stress and extreme (real-time allocation / oversized block) tests that were present in the source tree but had not been compiled into the build
 
 ### 1.0.5
+- Added drag-and-drop of plug-in files onto the main window, with two drop zones to either validate the plug-in or add it to the plugin list [#170]
 - Added static linking to the Windows runtime so it should run on more Windows systems (particularly non-dev machines)
 - Made `PluginInfoTest` run on the message thread as the functions it calls aren't thread-safe 
 
