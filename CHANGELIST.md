@@ -1,6 +1,8 @@
 # pluginval Change List
 
 ### 2.0.0
+- Restructured the command line into subcommands: `pluginval validate [options] <plugin>` (the default), `pluginval run-tests` and `pluginval strictness-help [level]`. The plugin path is now a positional argument of `validate`
+- **Deprecated:** the flat flags `--validate <plugin>`, `--run-tests` and `--strictness-help [level]` still work as aliases (with a one-line notice) but will be removed in a future version. `pluginval <plugin>` remains a silent shorthand for `validate`
 - Replaced the hand-rolled command-line parser with CLI11 and a single JSON-based settings pipeline
 - Added `--config <file.json>` to load settings from JSON (repeatable; later files win per key)
 - Settings precedence is now (lowest to highest): defaults, environment variables, `--config`, command-line options

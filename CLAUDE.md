@@ -193,6 +193,38 @@ VST2_SDK_DIR=/path/to/vst2sdk cmake -B Builds/Debug .
 
 ### CLI Settings Pipeline
 
+#### Subcommand dispatch layer
+
+The command line is structured into subcommands, peeled off by a thin verb
+dispatcher in front of the settings pipeline (it does **not** use CLI11-native
+subcommands, so the env/config/CLI layering below is untouched):
+
+- `pluginval validate [options] <plugin>` — the default; `<plugin>` is a
+  positional argument. `pluginval <plugin>` and `pluginval [options] <plugin>`
+  (no verb) also resolve to validate.
+- `pluginval run-tests` — runs the internal unit tests.
+- `pluginval strictness-help [level]` — lists tests at a strictness level.
+
+`settings_parser::dispatch()` (in `SettingsParser.cpp`) takes the `tokenise()`d
+command line and returns a `DispatchResult { command, validateTokens,
+deprecatedAlias, strictnessLevel }`. For `validate` it strips the verb and hands
+`validateTokens` to `parseTokens` unchanged. `CommandLine.cpp`'s
+`performCommandLine()` switches on `command` and emits a one-line stderr notice
+when `deprecatedAlias` is set.
+
+The old flat flags (`--validate <plugin>`, `--run-tests`, `--strictness-help`)
+are kept as **deprecated aliases** that route to the same commands with
+`deprecatedAlias = true` (the bare-path shorthand and the internal child handoff
+stay silent). `preprocess()` is now `tokenise()` + `insertImplicitValidate()`.
+The child process is launched with the explicit verb:
+`validate --config-base64 <b64> <path>`.
+
+Note: `--config` is parsed manually (it is stripped from the tokens fed to the
+CLI11 pass) so its greedy CLI11 vector parsing can't swallow the positional
+plugin path; it stays registered only so it appears in `--help`.
+
+#### Settings layering
+
 Command-line parsing centres on one plain settings struct (`PluginvalSettings`)
 that CLI11 binds to directly. A single instance is filled by successive layers,
 **lowest to highest precedence: defaults → environment → `--config` → CLI**
@@ -360,11 +392,17 @@ ut.logVerboseMessage("Detail message");  // Only with --verbose flag
 
 Basic usage:
 ```bash
-./pluginval --strictness-level 5 /path/to/plugin.vst3
+./pluginval validate --strictness-level 5 /path/to/plugin.vst3
 ```
 
-Key options:
-- `--validate [path]` - Validate plugin at path
+Commands:
+- `validate [options] <plugin>` - Validate the plugin at the given path/AU id (the default; `./pluginval <plugin>` also works)
+- `run-tests` - Run the internal unit tests
+- `strictness-help [level]` - List the tests that run at a strictness level
+
+The flat flags `--validate <plugin>`, `--run-tests` and `--strictness-help [level]` are deprecated aliases.
+
+Key options (for `validate`):
 - `--config [file.json]` - Load a full settings set from JSON (overridden by env vars and CLI options)
 - `--strictness-level [1-10]` - Test thoroughness (default: 5)
 - `--skip-gui-tests` - Skip GUI tests (for headless CI)
@@ -434,7 +472,7 @@ Debug unit tests run automatically in debug builds:
 
 Run internal tests via CLI:
 ```bash
-./pluginval --run-tests
+./pluginval run-tests
 ```
 
 ## Release Process

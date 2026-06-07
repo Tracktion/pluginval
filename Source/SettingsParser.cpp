@@ -126,9 +126,13 @@ namespace settings_parser
         juce::String getFooterText()
         {
             return juce::SystemStats::getJUCEVersion() + "\n\n" + juce::String (
-R"(Other commands:
-  --run-tests                 Run the internal unit tests.
-  --strictness-help [level]   List all tests that run at the given strictness level.
+R"(Commands:
+  validate [options] <plugin>   Validate the plugin at the given path or AU id (the default).
+  run-tests                     Run the internal unit tests.
+  strictness-help [level]       List all tests that run at the given strictness level.
+
+The flat flags --validate <plugin>, --run-tests and --strictness-help [level] are
+deprecated aliases for the commands above and will be removed in a future version.
 
 Exit code:
   0 if all tests complete successfully
@@ -172,6 +176,9 @@ Precedence (lowest to highest): defaults, environment variables, --config, comma
                 "Path to a JSON settings file. Repeatable; later files win per key.")->take_all();
 
             app.add_option ("--validate", s.validatePath, "Validates the plugin at the given path (or AU id).");
+            // The new canonical form: "pluginval validate <plugin>". Bound to the
+            // same member as --validate; whichever is supplied sets the path.
+            app.add_option ("plugin", s.validatePath, "Plugin path or AU id to validate.");
             app.add_option ("--strictness-level", s.strictnessLevel, "Strictness level 1-10 (default 5).");
             app.add_option ("--timeout-ms", s.timeoutMs, "Test timeout in ms (default 30000, -1 to never timeout).");
             app.add_option ("--repeat", s.numRepeats, "Number of times to repeat the tests.");
@@ -254,7 +261,7 @@ Precedence (lowest to highest): defaults, environment variables, --config, comma
     }
 
     //==============================================================================
-    juce::StringArray preprocess (const juce::String& commandLineIn)
+    juce::StringArray tokenise (const juce::String& commandLineIn)
     {
         if (commandLineIn.contains ("strictnessLevel"))
         {
@@ -273,6 +280,11 @@ Precedence (lowest to highest): defaults, environment variables, --config, comma
         for (auto& s : args)
             s = s.unquoted();
 
+        return args;
+    }
+
+    void insertImplicitValidate (juce::StringArray& args)
+    {
         // If only a plugin path is supplied as the last arg, add an implicit
         // --validate option for it so the rest of the CLI works.
         if (args.size() > 0)
@@ -286,18 +298,98 @@ Precedence (lowest to highest): defaults, environment variables, --config, comma
             if (! hasCommand && isPluginArgument (args[args.size() - 1]))
                 args.insert (args.size() - 1, "--validate");
         }
+    }
 
+    juce::StringArray preprocess (const juce::String& commandLine)
+    {
+        auto args = tokenise (commandLine);
+        insertImplicitValidate (args);
         return args;
     }
 
     bool isCommandLine (const juce::StringArray& tokens)
     {
+        if (! tokens.isEmpty())
+        {
+            const auto& verb = tokens.getReference (0);
+
+            if (verb == "validate" || verb == "run-tests" || verb == "strictness-help")
+                return true;
+        }
+
         return tokens.contains ("--help") || tokens.contains ("-h")
             || tokens.contains ("--version")
             || hasOption (tokens, "--validate")
             || tokens.contains ("--run-tests")
             || tokens.contains ("--strictness-help")
             || hasOption (tokens, "--config-base64");
+    }
+
+    //==============================================================================
+    DispatchResult dispatch (const juce::StringArray& tokensIn)
+    {
+        DispatchResult result;
+
+        // The optional [level] argument that follows the strictness-help command/flag.
+        const auto levelAfter = [] (const juce::StringArray& tokens, int idx)
+        {
+            if (idx >= 0 && idx + 1 < tokens.size())
+                if (const auto& next = tokens.getReference (idx + 1); ! next.startsWith ("-"))
+                    return juce::jlimit (1, 10, next.getIntValue());
+
+            return 5;
+        };
+
+        // 1. Explicit subcommand verbs (the new, non-deprecated syntax).
+        if (! tokensIn.isEmpty())
+        {
+            const auto& verb = tokensIn.getReference (0);
+
+            if (verb == "validate")
+            {
+                result.command = Command::validate;
+                result.validateTokens = tokensIn;
+                result.validateTokens.remove (0);   // the plugin path is captured by the positional CLI option
+                return result;
+            }
+
+            if (verb == "run-tests")
+            {
+                result.command = Command::runTests;
+                return result;
+            }
+
+            if (verb == "strictness-help")
+            {
+                result.command = Command::strictnessHelp;
+                result.strictnessLevel = levelAfter (tokensIn, 0);
+                return result;
+            }
+        }
+
+        // 2. Deprecated flat command flags.
+        if (tokensIn.contains ("--run-tests"))
+        {
+            result.command = Command::runTests;
+            result.deprecatedAlias = true;
+            return result;
+        }
+
+        if (tokensIn.contains ("--strictness-help"))
+        {
+            result.command = Command::strictnessHelp;
+            result.deprecatedAlias = true;
+            result.strictnessLevel = levelAfter (tokensIn, tokensIn.indexOf ("--strictness-help"));
+            return result;
+        }
+
+        // 3. Default: validate. An explicit --validate flag (but not the bare-path
+        //    shorthand, nor the internal --config-base64 handoff) is a deprecated alias.
+        result.command = Command::validate;
+        result.deprecatedAlias = hasOption (tokensIn, "--validate") && ! hasOption (tokensIn, "--config-base64");
+        result.validateTokens = tokensIn;
+        insertImplicitValidate (result.validateTokens);
+        return result;
     }
 
     juce::String resolvePluginPath (const juce::String& raw)
@@ -375,8 +467,18 @@ Precedence (lowest to highest): defaults, environment variables, --config, comma
 
             std::vector<std::string> argv { "pluginval" };
 
-            for (const auto& t : tokens)
+            // --config is handled manually above; drop it (and its value) here so
+            // its greedy CLI11 vector parsing can't swallow the positional plugin
+            // path. It stays registered purely so it appears in --help.
+            for (int i = 0; i < tokens.size(); ++i)
+            {
+                const auto& t = tokens.getReference (i);
+
+                if (t == "--config")        { ++i; continue; }  // skip the flag and its value
+                if (t.startsWith ("--config=")) continue;       // skip the inline form
+
                 argv.push_back (t.toStdString());
+            }
 
             if (const auto code = runParse (cliApp, argv); code)
             {
@@ -392,7 +494,7 @@ Precedence (lowest to highest): defaults, environment variables, --config, comma
 
     PluginvalSettings parse (const juce::String& commandLine, const EnvProvider& env)
     {
-        return parseTokens (preprocess (commandLine), env).settings;
+        return parseTokens (dispatch (tokenise (commandLine)).validateTokens, env).settings;
     }
 
     //==============================================================================
@@ -403,7 +505,7 @@ Precedence (lowest to highest): defaults, environment variables, --config, comma
         const auto b64 = juce::Base64::toBase64 (juce::String (jsonString));
 
         juce::StringArray args (juce::File::getSpecialLocation (juce::File::currentExecutableFile).getFullPathName());
-        args.addArray ({ "--config-base64", b64, "--validate", fileOrID });
+        args.addArray ({ "validate", "--config-base64", b64, fileOrID });
         return args;
     }
 }
