@@ -352,7 +352,7 @@ MainComponent::MainComponent (Validator& v)
         {
             strictnessDialog = std::make_unique<StrictnessInfoDialog> (
                 getStrictnessLevel(),
-                [this, updateStrictnessButtonText] (int newLevel)
+                [updateStrictnessButtonText] (int newLevel)
                 {
                     setStrictnessLevel (newLevel);
                     updateStrictnessButtonText();
@@ -384,26 +384,45 @@ void MainComponent::paint (juce::Graphics& g)
 
 void MainComponent::paintOverChildren (juce::Graphics& g)
 {
-    if (! dragHighlight)
+    if (dragAction == DropAction::none)
         return;
 
     constexpr float cornerRadius = 10.0f;
-    constexpr float borderThickness = 3.0f;
     constexpr float inset = 6.0f;
-    const auto accent = juce::Colour (0xff4a9eff);
+    constexpr float gap = 8.0f;
+    const auto accent = juce::Colour (0xff4a9eff).withAlpha (0.9f);
 
-    auto r = getLocalBounds().withTrimmedTop (menuBar.getBottom())
-                             .toFloat()
-                             .reduced (inset);
+    auto area = getDragOverlayBounds().toFloat().reduced (inset);
 
-    g.setColour (accent.withAlpha (0.12f));
-    g.fillRoundedRectangle (r, cornerRadius);
+    auto leftHalf = area.removeFromLeft ((area.getWidth() - gap) * 0.5f);
+    area.removeFromLeft (gap);
+    auto rightHalf = area;
 
-    g.setColour (accent);
-    g.drawRoundedRectangle (r, cornerRadius, borderThickness);
+    auto drawZone = [&] (juce::Rectangle<float> zone, const juce::String& title,
+                         const juce::String& subtitle, bool active)
+    {
+        auto bgCol = accent.withMultipliedSaturation (active ? 1.0f : 0.2f);
+        g.setColour (bgCol);
+        g.fillRoundedRectangle (zone, cornerRadius);
 
-    g.setFont (juce::Font (juce::FontOptions (22.0f, juce::Font::bold)));
-    g.drawText ("Drop plug-in to validate", r, juce::Justification::centred);
+        g.setColour (accent);
+        g.drawRoundedRectangle (zone, cornerRadius, active ? 3.0f : 1.5f);
+
+        auto textArea = zone.reduced (12.0f);
+        auto titleArea = textArea.removeFromTop (textArea.getHeight() * 0.5f);
+
+        g.setColour (bgCol.contrasting().withAlpha (active ? 1.0f : 0.6f));
+        g.setFont (juce::Font (juce::FontOptions (24.0f, juce::Font::bold)));
+        g.drawText (title, titleArea, juce::Justification::centredBottom);
+
+        g.setFont (juce::Font (juce::FontOptions (14.0f)));
+        g.drawText (subtitle, textArea, juce::Justification::centredTop);
+    };
+
+    drawZone (leftHalf, "Validate", "Run validation now",
+              dragAction == DropAction::validate);
+    drawZone (rightHalf, "Add to List", "Scan into the plug-in list",
+              dragAction == DropAction::addToList);
 }
 
 void MainComponent::resized()
@@ -468,31 +487,55 @@ bool MainComponent::isInterestedInFileDrag (const juce::StringArray& files)
     return false;
 }
 
-void MainComponent::fileDragEnter (const juce::StringArray& files, int, int)
+juce::Rectangle<int> MainComponent::getDragOverlayBounds() const
 {
-    const bool shouldHighlight = isInterestedInFileDrag (files);
+    return getLocalBounds().withTrimmedTop (menuBar.getBottom());
+}
 
-    if (dragHighlight != shouldHighlight)
+MainComponent::DropAction MainComponent::dropActionForX (int x) const
+{
+    return x < getDragOverlayBounds().getCentreX() ? DropAction::validate
+                                                   : DropAction::addToList;
+}
+
+void MainComponent::updateDragAction (const juce::StringArray& files, int x)
+{
+    const auto newAction = isInterestedInFileDrag (files) ? dropActionForX (x)
+                                                          : DropAction::none;
+
+    if (dragAction != newAction)
     {
-        dragHighlight = shouldHighlight;
+        dragAction = newAction;
         repaint();
     }
+}
+
+void MainComponent::fileDragEnter (const juce::StringArray& files, int x, int)
+{
+    updateDragAction (files, x);
+}
+
+void MainComponent::fileDragMove (const juce::StringArray& files, int x, int)
+{
+    updateDragAction (files, x);
 }
 
 void MainComponent::fileDragExit (const juce::StringArray&)
 {
-    if (dragHighlight)
+    if (dragAction != DropAction::none)
     {
-        dragHighlight = false;
+        dragAction = DropAction::none;
         repaint();
     }
 }
 
-void MainComponent::filesDropped (const juce::StringArray& files, int, int)
+void MainComponent::filesDropped (const juce::StringArray& files, int x, int)
 {
-    if (dragHighlight)
+    const auto action = dropActionForX (x);
+
+    if (dragAction != DropAction::none)
     {
-        dragHighlight = false;
+        dragAction = DropAction::none;
         repaint();
     }
 
@@ -507,12 +550,17 @@ void MainComponent::filesDropped (const juce::StringArray& files, int, int)
 
     getAppPreferences().setValue ("lastPluginLocation", pluginFiles[pluginFiles.size() - 1]);
 
-    juce::OwnedArray<juce::PluginDescription> typesFound;
-    knownPluginList.scanAndAddDragAndDroppedFiles (formatManager, pluginFiles, typesFound);
-    savePluginList();
-
-    validator.setValidateInProcess (getValidateInProcess());
-    validator.validate (pluginFiles, getTestOptions());
+    if (action == DropAction::addToList)
+    {
+        juce::OwnedArray<juce::PluginDescription> typesFound;
+        knownPluginList.scanAndAddDragAndDroppedFiles (formatManager, pluginFiles, typesFound);
+        savePluginList();
+    }
+    else
+    {
+        validator.setValidateInProcess (getValidateInProcess());
+        validator.validate (pluginFiles, getTestOptions());
+    }
 }
 
 //==============================================================================

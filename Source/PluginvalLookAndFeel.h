@@ -44,7 +44,6 @@ public:
         const auto textColour       = juce::Colour (0xffe0e0e0);
         const auto textDimmed       = juce::Colour (0xff909090);
         const auto accentColour     = juce::Colour (0xffffffff);
-        const auto highlightColour  = getAccentColour().withAlpha (0.3f);
 
         // Window colours
         setColour (juce::ResizableWindow::backgroundColourId, backgroundDark);
@@ -194,7 +193,7 @@ public:
         g.drawEllipse (juce::Rectangle<float> (thumbWidth, thumbWidth).withCentre (thumbPoint), 1.0f);
     }
 
-    void drawTabButton (juce::TabBarButton& button, juce::Graphics& g, bool isMouseOver, bool isMouseDown) override
+    void drawTabButton (juce::TabBarButton& button, juce::Graphics& g, bool isMouseOver, bool /*isMouseDown*/) override
     {
         auto area = button.getActiveArea().toFloat();
         auto backgroundColour = findColour (juce::ResizableWindow::backgroundColourId);
@@ -219,7 +218,7 @@ public:
         g.drawText (button.getButtonText(), area.reduced (12.0f, 0.0f), juce::Justification::centred);
     }
 
-    int getTabButtonBestWidth (juce::TabBarButton& button, int tabDepth) override
+    int getTabButtonBestWidth (juce::TabBarButton& button, int /*tabDepth*/) override
     {
         auto width = juce::GlyphArrangement::getStringWidthInt (juce::Font (juce::FontOptions (14.0f)), button.getButtonText()) + 40;  // Extra padding
         return juce::jmax (width, 80);
@@ -236,7 +235,7 @@ public:
     }
 
     void drawTableHeaderColumn (juce::Graphics& g, juce::TableHeaderComponent& header,
-                                const juce::String& columnName, int columnId,
+                                const juce::String& columnName, int /*columnId*/,
                                 int width, int height, bool isMouseOver, bool isMouseDown,
                                 int columnFlags) override
     {

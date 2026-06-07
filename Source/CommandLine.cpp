@@ -534,10 +534,10 @@ static void performCommandLine (CommandLineValidator& validator, const juce::Arg
     cli.addCommand ({ "--strictness-help",
                       "--strictness-help [level]",
                       "Lists all tests that run at the given strictness level.", juce::String(),
-                      [] (const auto& args)
+                      [] (const auto& commandArgs)
                       {
                           int level = 5;
-                          auto arg = getArgumentAfterOption (args, "--strictness-help");
+                          auto arg = getArgumentAfterOption (commandArgs, "--strictness-help");
                           if (arg.text.isNotEmpty() && ! arg.isShortOption() && ! arg.isLongOption())
                               level = arg.text.getIntValue();
                           printStrictnessHelp (level);

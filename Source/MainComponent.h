@@ -405,6 +405,7 @@ public:
     // FileDragAndDropTarget
     bool isInterestedInFileDrag (const juce::StringArray& files) override;
     void fileDragEnter (const juce::StringArray& files, int x, int y) override;
+    void fileDragMove (const juce::StringArray& files, int x, int y) override;
     void fileDragExit (const juce::StringArray& files) override;
     void filesDropped (const juce::StringArray& files, int x, int y) override;
 
@@ -426,9 +427,16 @@ private:
                strictnessInfoButton { "Strictness" };
     StatusBar statusBar { validator };
     std::unique_ptr<StrictnessInfoDialog> strictnessDialog;
-    bool dragHighlight = false;
+
+    // Which action a drop will perform, based on which half of the window the
+    // drag is over. DropAction::none means no plug-in drag is in progress.
+    enum class DropAction { none, validate, addToList };
+    DropAction dragAction = DropAction::none;
 
     static bool isPluginFile (const juce::String& path);
+    juce::Rectangle<int> getDragOverlayBounds() const;
+    DropAction dropActionForX (int x) const;
+    void updateDragAction (const juce::StringArray& files, int x);
 
     void savePluginList();
     juce::PopupMenu createFileMenu();

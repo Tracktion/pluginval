@@ -1,6 +1,7 @@
 # pluginval Change List
 
 ### 1.0.5
+- Added drag-and-drop of plug-in files onto the main window, with two drop zones to either validate the plug-in or add it to the plugin list [#170]
 - Added static linking to the Windows runtime so it should run on more Windows systems (particularly non-dev machines)
 - Made `PluginInfoTest` run on the message thread as the functions it calls aren't thread-safe 
 
