@@ -307,6 +307,30 @@ struct CommandLineTests : public juce::UnitTest
 
             expect (PluginvalSettings::fromPluginTestOptions (opts2, fileOrID2) == expected);
         }
+
+        beginTest ("--config-base64 rejects extra options");
+        {
+            PluginTests::Options opts;
+            opts.strictnessLevel = 7;
+
+            juce::StringArray childArgs (createCommandLine ("/some/MyPlugin.vst3", opts));
+            childArgs.remove (0); // drop the executable path
+
+            // The legitimate parent -> child handoff parses fine.
+            {
+                const auto r = settings_parser::parseTokens (childArgs, emptyEnv());
+                expect (! r.handled);
+                expectEquals (r.settings.strictnessLevel, 7);
+            }
+
+            // Combining it with any other option is rejected.
+            {
+                childArgs.addArray ({ "--strictness-level", "9" });
+                const auto r = settings_parser::parseTokens (childArgs, emptyEnv());
+                expect (r.handled);
+                expectEquals (r.exitCode, 1);
+            }
+        }
     }
 };
 

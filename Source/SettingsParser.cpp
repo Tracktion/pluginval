@@ -316,9 +316,28 @@ Precedence (lowest to highest): defaults, environment variables, --config, comma
         ParseResult result;
         auto& s = result.settings;
 
-        // A base64 JSON handoff from the parent process is fully authoritative.
+        // --config-base64 carries a fully-resolved settings set from the parent
+        // process and is authoritative. It is for internal use only and must not be
+        // combined with other options (which would otherwise be silently ignored);
+        // the only companion allowed is --validate.
         if (const auto b64 = valueForOption (tokens, "--config-base64"); b64.isNotEmpty())
         {
+            for (const auto& token : tokens)
+            {
+                if (! token.startsWith ("-") || token == "-")
+                    continue; // a value, not an option
+
+                if (const auto name = token.upToFirstOccurrenceOf ("=", false, false);
+                    name != "--config-base64" && name != "--validate")
+                {
+                    std::cerr << "*** FAILED: --config-base64 is for internal use and cannot be combined "
+                              << "with other options (got " << name << ")" << std::endl;
+                    result.exitCode = 1;
+                    result.handled = true;
+                    return result;
+                }
+            }
+
             s = settings_serializer::fromJsonString (decodeBase64 (b64).toStdString());
             s.validatePath = resolvePluginPath (juce::String (s.validatePath)).toStdString();
             return result;
