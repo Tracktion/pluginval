@@ -4,7 +4,7 @@
 
 **pluginval** is a cross-platform audio plugin validator and tester application developed by Tracktion Corporation. It tests VST, VST3, AU (Audio Unit), LV2, and LADSPA plugins for compatibility and stability with host applications.
 
-- **Version**: 1.0.4 (see `VERSION` file)
+- **Version**: 1.0.4 (see `VERSION` file; a 2.0.0 entry is staged in `CHANGELIST.md` but `VERSION` is not yet bumped)
 - **License**: GPLv3
 - **Framework**: Built on JUCE (v8.0.x)
 - **Language**: C++20
@@ -368,7 +368,6 @@ Key options:
 - `--config [file.json]` - Load a full settings set from JSON (overridden by env vars and CLI options)
 - `--strictness-level [1-10]` - Test thoroughness (default: 5)
 - `--skip-gui-tests` - Skip GUI tests (for headless CI)
-- `--validate-in-process` - Don't use child process (for debugging)
 - `--timeout-ms [ms]` - Test timeout (default: 30000, -1 for none)
 - `--verbose` - Enable verbose logging
 - `--output-dir [dir]` - Directory for log files
@@ -480,6 +479,6 @@ Run internal tests via CLI:
 
 - Always test changes on multiple platforms when possible
 - VST3 plugins have specific threading requirements - use the `*OnMessageThreadIfVST3` helpers
-- Child process validation is the default and recommended for production use
-- In-process validation (`--validate-in-process`) is useful for debugging but a crashing plugin will crash pluginval
+- The GUI runs each validation in a separate child process for crash isolation (the default)
+- The CLI `--validate` path runs in-process; a crashing plugin will terminate pluginval, and the signal handler reports it as a failure rather than a pass
 - Real-time safety checking is only available on macOS currently (uses rtcheck library)
