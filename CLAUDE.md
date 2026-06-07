@@ -194,24 +194,32 @@ VST2_SDK_DIR=/path/to/vst2sdk cmake -B Builds/Debug .
 ### CLI Settings Pipeline
 
 Command-line parsing centres on one plain settings struct (`PluginvalSettings`)
-that CLI11 binds to directly. The flow (in `SettingsParser`):
+that CLI11 binds to directly. A single instance is filled by successive layers,
+**lowest to highest precedence: defaults → environment → `--config` → CLI**
+(in `SettingsParser::parseTokens`):
 
 1. **preprocess** the raw command line — rewrite the deprecated `strictnessLevel`,
    strip the macOS `-NSDocumentRevisionsDebugMode YES` flag, and insert an
    implicit `--validate` when the last argument is a bare plugin path.
-2. If `--config <file.json>` is present, **seed** the struct from that JSON first.
-3. **CLI11** binds each `add_option`/`add_flag` straight to a `PluginvalSettings`
-   member, with the environment variable on the same line via `->envname()`.
-   Because CLI11 only overwrites a member when its flag/env was actually provided,
-   precedence is **defaults < config < env < CLI** (CLI wins) with no manual
-   layering. Comma lists use `->delimiter(',')`, the enum uses a
-   `CheckedTransformer`, and the hex/int seed is a small callback.
-4. `PluginvalSettings::toPluginTestOptions()` converts to the JUCE-flavoured
-   `PluginTests::Options` at the boundary.
+2. **Environment layer.** Env-var names are *derived* from the registered
+   options (`--strictness-level` → `STRICTNESS_LEVEL`), so there is no separate
+   env table. A synthetic `--name=value` argv is built from the environment and
+   parsed by CLI11, reusing all its coercion.
+3. **`--config` layer.** Repeatable; each JSON file is `merge_patch`-ed in
+   command-line order (later files win per key). Beats the environment.
+4. **CLI layer.** The real arguments are parsed last and beat everything;
+   CLI11 only overwrites a member when its option was actually provided.
+
+`configureApp()` registers every option (bound to the struct) and is used for
+both the env pass and the CLI pass. Comma lists use `->delimiter(',')`, the enum
+uses a `CheckedTransformer`, and the hex/int seed is a small callback.
+`PluginvalSettings::toPluginTestOptions()` converts to the JUCE-flavoured
+`PluginTests::Options` at the boundary.
 
 Adding a new option is three edits: a struct member, an entry in the nlohmann
-macro list, and one `add_option(...)` line. `SettingsSerializer` handles JSON
-load/save plus the two remaining conversions (hex seed, disabled-tests file).
+macro list, and one `add_option(...)` line — its environment variable then works
+automatically. `SettingsSerializer` handles JSON load/save plus the two
+remaining conversions (hex seed, disabled-tests file).
 
 The child validation process receives a fully-resolved, **authoritative**
 settings set via a base64-encoded JSON argument (`--config-base64`), avoiding

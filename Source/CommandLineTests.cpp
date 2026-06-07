@@ -12,7 +12,7 @@
 
  ==============================================================================*/
 
-#include <cstdlib>
+#include <map>
 
 struct CommandLineTests : public juce::UnitTest
 {
@@ -21,46 +21,32 @@ struct CommandLineTests : public juce::UnitTest
     {
     }
 
-    static constexpr const char* knownEnvVars[] = {
-        "STRICTNESS_LEVEL", "RANDOM_SEED", "TIMEOUT_MS", "VERBOSE", "REPEAT",
-        "RANDOMISE", "SKIP_GUI_TESTS", "DATA_FILE", "OUTPUT_DIR", "OUTPUT_FILENAME",
-        "SAMPLE_RATES", "BLOCK_SIZES", "RTCHECK"
-    };
-
-    static void setEnv (const char* name, const char* value)
+    static settings_parser::EnvProvider emptyEnv()
     {
-       #if JUCE_WINDOWS
-        _putenv_s (name, value);
-       #else
-        ::setenv (name, value, 1);
-       #endif
+        return [] (const juce::String&) { return juce::String(); };
     }
 
-    static void unsetEnv (const char* name)
+    static settings_parser::EnvProvider envFrom (std::map<juce::String, juce::String> vars)
     {
-       #if JUCE_WINDOWS
-        _putenv_s (name, "");
-       #else
-        ::unsetenv (name);
-       #endif
+        return [vars = std::move (vars)] (const juce::String& name)
+        {
+            const auto it = vars.find (name);
+            return it != vars.end() ? it->second : juce::String();
+        };
     }
 
-    static void clearKnownEnv()
+    static PluginvalSettings parse (const juce::String& cmd, settings_parser::EnvProvider env)
     {
-        for (auto* n : knownEnvVars)
-            unsetEnv (n);
+        return settings_parser::parse (cmd, env);
     }
 
     static PluginvalSettings parse (const juce::String& cmd)
     {
-        return settings_parser::parse (cmd);
+        return settings_parser::parse (cmd, emptyEnv());
     }
 
     void runTest() override
     {
-        // Start from a clean environment so host env vars don't affect the deterministic tests.
-        clearKnownEnv();
-
         beginTest ("Command line defaults");
         {
             const auto opts = parse ("").toPluginTestOptions();
@@ -203,23 +189,23 @@ struct CommandLineTests : public juce::UnitTest
 
         beginTest ("Environment variables");
         {
-            setEnv ("STRICTNESS_LEVEL", "7");
-            setEnv ("RANDOM_SEED", "1234");
-            setEnv ("TIMEOUT_MS", "20000");
-            setEnv ("VERBOSE", "1");
-            setEnv ("REPEAT", "11");
-            setEnv ("RANDOMISE", "1");
-            setEnv ("SKIP_GUI_TESTS", "1");
-            setEnv ("DATA_FILE", "/path/to/file");
-            setEnv ("OUTPUT_DIR", "/path/to/dir");
-            setEnv ("SAMPLE_RATES", "22050,44100");
-            setEnv ("BLOCK_SIZES", "32,64");
-            setEnv ("RTCHECK", "relaxed");
+            const auto env = envFrom ({
+                { "STRICTNESS_LEVEL", "7" },
+                { "RANDOM_SEED", "1234" },
+                { "TIMEOUT_MS", "20000" },
+                { "VERBOSE", "1" },
+                { "REPEAT", "11" },
+                { "RANDOMISE", "1" },
+                { "SKIP_GUI_TESTS", "1" },
+                { "DATA_FILE", "/path/to/file" },
+                { "OUTPUT_DIR", "/path/to/dir" },
+                { "SAMPLE_RATES", "22050,44100" },
+                { "BLOCK_SIZES", "32,64" },
+                { "RTCHECK", "relaxed" },
+            });
 
-            const auto opts = parse ("--validate x").toPluginTestOptions();
-
-            clearKnownEnv();
-
+            const auto settings = parse ("--validate x", env);
+            const auto opts = settings.toPluginTestOptions();
             expectEquals (opts.strictnessLevel, 7);
             expectEquals (opts.randomSeed, (juce::int64) 1234);
             expectEquals (opts.timeoutMs, (juce::int64) 20000);
@@ -227,6 +213,7 @@ struct CommandLineTests : public juce::UnitTest
             expectEquals (opts.numRepeats, 11);
             expect (opts.randomiseTestOrder);
             expect (opts.withGUI == false);
+            expectEquals (juce::String (settings.dataFile), juce::String ("/path/to/file"));
             expect (opts.sampleRates == std::vector<double> ({ 22050.0, 44100.0 }));
             expect (opts.blockSizes == std::vector<int> ({ 32, 64 }));
             expect (opts.realtimeCheck == RealtimeCheck::relaxed);
@@ -234,46 +221,59 @@ struct CommandLineTests : public juce::UnitTest
 
         beginTest ("Command line overrides environment variables");
         {
-            setEnv ("STRICTNESS_LEVEL", "3");
-            const auto envOnly = parse ("--validate x").strictnessLevel;
-            const auto cliWins = parse ("--strictness-level 9 --validate x").strictnessLevel;
-            clearKnownEnv();
-
-            expectEquals (envOnly, 3);   // env only
-            expectEquals (cliWins, 9);   // CLI wins
+            const auto env = envFrom ({ { "STRICTNESS_LEVEL", "3" } });
+            expectEquals (parse ("--validate x", env).strictnessLevel, 3);                       // env only
+            expectEquals (parse ("--strictness-level 9 --validate x", env).strictnessLevel, 9);  // CLI wins
         }
 
-        beginTest ("Config file and precedence (CLI > env > config > defaults)");
+        beginTest ("Precedence: CLI > --config > env > defaults");
         {
             juce::TemporaryFile configFile (".json");
-            configFile.getFile().replaceWithText (R"({ "strictnessLevel": 2, "timeoutMs": 12345, "numRepeats": 4 })");
+            configFile.getFile().replaceWithText (R"({ "strictnessLevel": 2, "timeoutMs": 12345 })");
             const auto cfg = "--config " + configFile.getFile().getFullPathName().quoted();
+
+            const auto env6 = envFrom ({ { "STRICTNESS_LEVEL", "6" } });
+
+            // env beats defaults
+            expectEquals (parse ("--validate x", env6).strictnessLevel, 6);
 
             // config alone
             {
                 const auto s = parse (cfg + " --validate x");
                 expectEquals (s.strictnessLevel, 2);
                 expectEquals ((juce::int64) s.timeoutMs, (juce::int64) 12345);
-                expectEquals (s.numRepeats, 4);
             }
 
-            // env overrides config
+            // config beats env
             {
-                setEnv ("STRICTNESS_LEVEL", "6");
-                const auto s = parse (cfg + " --validate x");
-                clearKnownEnv();
-                expectEquals (s.strictnessLevel, 6);                 // env beats config
-                expectEquals ((juce::int64) s.timeoutMs, (juce::int64) 12345);     // still from config
+                const auto s = parse (cfg + " --validate x", env6);
+                expectEquals (s.strictnessLevel, 2);                 // config wins over env
+                expectEquals ((juce::int64) s.timeoutMs, (juce::int64) 12345);
             }
 
-            // CLI overrides env and config
+            // CLI beats config and env
             {
-                setEnv ("STRICTNESS_LEVEL", "6");
-                const auto s = parse (cfg + " --strictness-level 9 --validate x");
-                clearKnownEnv();
+                const auto s = parse (cfg + " --strictness-level 9 --validate x", env6);
                 expectEquals (s.strictnessLevel, 9);
                 expectEquals ((juce::int64) s.timeoutMs, (juce::int64) 12345);
             }
+        }
+
+        beginTest ("Repeatable --config merges per key, last wins");
+        {
+            juce::TemporaryFile baseFile (".json");
+            baseFile.getFile().replaceWithText (R"({ "strictnessLevel": 2, "timeoutMs": 11111 })");
+
+            juce::TemporaryFile overrideFile (".json");
+            overrideFile.getFile().replaceWithText (R"({ "strictnessLevel": 8 })");
+
+            const auto cmd = "--config " + baseFile.getFile().getFullPathName().quoted()
+                           + " --config " + overrideFile.getFile().getFullPathName().quoted()
+                           + " --validate x";
+
+            const auto s = parse (cmd);
+            expectEquals (s.strictnessLevel, 8);                       // overridden by the second file
+            expectEquals ((juce::int64) s.timeoutMs, (juce::int64) 11111); // untouched, kept from the first
         }
 
         beginTest ("Child-process command line round-trip");

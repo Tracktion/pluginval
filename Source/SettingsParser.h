@@ -17,17 +17,26 @@
 #include "PluginvalSettings.h"
 #include "PluginTests.h"
 
+#include <functional>
+
 /**
     The command-line -> settings pipeline.
 
-    CLI11 binds each option directly to a member of a single PluginvalSettings
-    instance (environment variables via ->envname() on the same line). A
-    --config JSON file seeds the struct before parsing so precedence is
-    defaults < config < env < CLI. Conversion to the JUCE-flavoured
+    A single PluginvalSettings is filled by successive layers, lowest to highest
+    precedence: hardcoded defaults, then environment variables, then --config
+    (repeatable JSON files, later files win per key), then the individual CLI options.
+    CLI11 binds each option to a member and also provides the coercion used for
+    the environment layer (env names are derived from the registered options, so
+    there is no separate env table). Conversion to the JUCE-flavoured
     PluginTests::Options happens at the boundary via toPluginTestOptions().
 */
 namespace settings_parser
 {
+    //==============================================================================
+    /** Returns the value of an environment variable, or "" if unset. */
+    using EnvProvider = std::function<juce::String (const juce::String& name)>;
+    juce::String systemEnv (const juce::String& name);
+
     //==============================================================================
     /** Tokenises + preprocesses a raw command line: rewrites the deprecated
         "strictnessLevel", strips the macOS "-NSDocumentRevisionsDebugMode YES"
@@ -54,10 +63,10 @@ namespace settings_parser
     };
 
     /** Parses preprocessed option tokens into settings (and handles --help/--version). */
-    ParseResult parseTokens (const juce::StringArray& tokens);
+    ParseResult parseTokens (const juce::StringArray& tokens, const EnvProvider& env = systemEnv);
 
     /** Convenience: preprocess + parse from a raw command line, returning settings. */
-    PluginvalSettings parse (const juce::String& commandLine);
+    PluginvalSettings parse (const juce::String& commandLine, const EnvProvider& env = systemEnv);
 
     //==============================================================================
     /** Serialises options for the child validation process as a base64 JSON
