@@ -382,6 +382,30 @@ void MainComponent::paint (juce::Graphics& g)
     g.fillAll (getLookAndFeel().findColour (juce::ResizableWindow::backgroundColourId));
 }
 
+void MainComponent::paintOverChildren (juce::Graphics& g)
+{
+    if (! dragHighlight)
+        return;
+
+    constexpr float cornerRadius = 10.0f;
+    constexpr float borderThickness = 3.0f;
+    constexpr float inset = 6.0f;
+    const auto accent = juce::Colour (0xff4a9eff);
+
+    auto r = getLocalBounds().withTrimmedTop (menuBar.getBottom())
+                             .toFloat()
+                             .reduced (inset);
+
+    g.setColour (accent.withAlpha (0.12f));
+    g.fillRoundedRectangle (r, cornerRadius);
+
+    g.setColour (accent);
+    g.drawRoundedRectangle (r, cornerRadius, borderThickness);
+
+    g.setFont (juce::Font (juce::FontOptions (22.0f, juce::Font::bold)));
+    g.drawText ("Drop plug-in to validate", r, juce::Justification::centred);
+}
+
 void MainComponent::resized()
 {
     auto r = getLocalBounds();
@@ -417,6 +441,71 @@ void MainComponent::changeListenerCallback (juce::ChangeBroadcaster*)
 void MainComponent::validationStarted (const juce::String&)
 {
     tabbedComponent.setCurrentTabIndex (1);  // Switch to Console tab
+}
+
+//==============================================================================
+bool MainComponent::isPluginFile (const juce::String& path)
+{
+    static const juce::StringArray extensions { ".vst3", ".vst", ".component", ".dll", ".so", ".clap" };
+    const auto lower = path.toLowerCase();
+
+    for (const auto& ext : extensions)
+        if (lower.endsWith (ext))
+            return true;
+
+    return false;
+}
+
+bool MainComponent::isInterestedInFileDrag (const juce::StringArray& files)
+{
+    for (const auto& f : files)
+        if (isPluginFile (f))
+            return true;
+
+    return false;
+}
+
+void MainComponent::fileDragEnter (const juce::StringArray& files, int, int)
+{
+    const bool shouldHighlight = isInterestedInFileDrag (files);
+
+    if (dragHighlight != shouldHighlight)
+    {
+        dragHighlight = shouldHighlight;
+        repaint();
+    }
+}
+
+void MainComponent::fileDragExit (const juce::StringArray&)
+{
+    if (dragHighlight)
+    {
+        dragHighlight = false;
+        repaint();
+    }
+}
+
+void MainComponent::filesDropped (const juce::StringArray& files, int, int)
+{
+    if (dragHighlight)
+    {
+        dragHighlight = false;
+        repaint();
+    }
+
+    juce::StringArray pluginFiles;
+
+    for (const auto& f : files)
+        if (isPluginFile (f))
+            pluginFiles.add (f);
+
+    if (pluginFiles.isEmpty())
+        return;
+
+    getAppPreferences().setValue ("lastPluginLocation", pluginFiles[pluginFiles.size() - 1]);
+
+    validator.setValidateInProcess (getValidateInProcess());
+    validator.validate (pluginFiles, getTestOptions());
 }
 
 //==============================================================================
