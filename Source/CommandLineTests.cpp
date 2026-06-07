@@ -87,8 +87,10 @@ struct CommandLineTests : public juce::UnitTest
             expectEquals (opts.randomSeed, (juce::int64) 1234);
             expectEquals (opts.timeoutMs, (juce::int64) 20000);
             expectEquals (opts.numRepeats, 11);
-            expectEquals (opts.dataFile.getFullPathName(), juce::String ("/path/to/file"));
-            expectEquals (opts.outputDir.getFullPathName(), juce::String ("/path/to/dir"));
+            // Compare the raw parsed strings: juce::File would normalise these to the
+            // current drive on Windows (e.g. "D:\path\to\file").
+            expectEquals (juce::String (settings.dataFile), juce::String ("/path/to/file"));
+            expectEquals (juce::String (settings.outputDir), juce::String ("/path/to/dir"));
             expectEquals (juce::String (settings.validatePath), juce::String ("/path/to/plugin"));
         }
 
