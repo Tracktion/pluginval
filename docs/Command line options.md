@@ -2,10 +2,22 @@ Validate plugins to test compatibility with hosts and verify plugin API
 conformance
 
 
-pluginval [OPTIONS]
+pluginval <command> [OPTIONS] [plugin]
 
 
-OPTIONS:
+COMMANDS:
+  validate [options] <plugin>   Validate the plugin at the given path or AU id.
+                                This is the default, so "pluginval <plugin>" and
+                                "pluginval [options] <plugin>" also work.
+  run-tests                     Run the internal unit tests.
+  strictness-help [level]       List all tests that run at the given strictness level.
+
+The flat flags --validate <plugin>, --run-tests and --strictness-help [level]
+are deprecated aliases for the commands above and will be removed in a future
+version.
+
+
+OPTIONS (for the validate command):
   -h,     --help              Print this help message and exit
           --version           Display program version information and exit
           --config TEXT ...   Path to a JSON settings file. Repeatable; later files win per
@@ -32,19 +44,12 @@ OPTIONS:
           --rtcheck ENUM:value in {disabled->0,enabled->1,relaxed->2} OR {0,1,2} 
                               Real-time safety checks: disabled, enabled or relaxed.
 
-JUCE v8.0.13
-
-Other commands:
---run-tests Run the internal unit tests.
---strictness-help [level] List all tests that run at the given strictness level.
-
 Exit code:
 0 if all tests complete successfully
 1 if there are any errors
 
 You can also specify any option as an environment variable by removing the
-prefix
-dashes, converting internal dashes to underscores and capitalising, e.g.
+prefix dashes, converting internal dashes to underscores and capitalising, e.g.
 "--skip-gui-tests" -> "SKIP_GUI_TESTS=1"
 "--timeout-ms 30000" -> "TIMEOUT_MS=30000"
 Precedence (lowest to highest): defaults, environment variables, --config,

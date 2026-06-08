@@ -331,6 +331,112 @@ struct CommandLineTests : public juce::UnitTest
                 expectEquals (r.exitCode, 1);
             }
         }
+
+        beginTest ("Subcommand: validate with a positional plugin path");
+        {
+            const auto currentDir = juce::File::getCurrentWorkingDirectory();
+
+            // Plugin path as a positional after the verb.
+            expectEquals (juce::String (parse ("validate MyPlugin.vst3").validatePath),
+                          currentDir.getChildFile ("MyPlugin.vst3").getFullPathName());
+
+            // Options before the positional plugin path.
+            const auto s = parse ("validate --strictness-level 8 MyPlugin.vst3");
+            expectEquals (s.strictnessLevel, 8);
+            expectEquals (juce::String (s.validatePath), currentDir.getChildFile ("MyPlugin.vst3").getFullPathName());
+
+            // A bare AU component id positional is left untouched.
+            expectEquals (juce::String (parse ("validate MyPluginID").validatePath), juce::String ("MyPluginID"));
+        }
+
+        beginTest ("Subcommand: validate with --config before the positional plugin");
+        {
+            juce::TemporaryFile configFile (".json");
+            configFile.getFile().replaceWithText (R"({ "strictnessLevel": 2 })");
+
+            const auto currentDir = juce::File::getCurrentWorkingDirectory();
+            const auto cmd = "validate --config " + configFile.getFile().getFullPathName().quoted() + " MyPlugin.vst3";
+
+            const auto s = parse (cmd);
+            expectEquals (s.strictnessLevel, 2);   // --config didn't swallow the plugin path
+            expectEquals (juce::String (s.validatePath), currentDir.getChildFile ("MyPlugin.vst3").getFullPathName());
+        }
+
+        beginTest ("Subcommand dispatch routing (new verbs do not warn)");
+        {
+            using settings_parser::Command;
+
+            {
+                const auto d = settings_parser::dispatch (settings_parser::tokenise ("run-tests"));
+                expect (d.command == Command::runTests);
+                expect (! d.deprecatedAlias);
+            }
+            {
+                const auto d = settings_parser::dispatch (settings_parser::tokenise ("strictness-help 7"));
+                expect (d.command == Command::strictnessHelp);
+                expectEquals (d.strictnessLevel, 7);
+                expect (! d.deprecatedAlias);
+            }
+            {
+                const auto d = settings_parser::dispatch (settings_parser::tokenise ("strictness-help"));
+                expect (d.command == Command::strictnessHelp);
+                expectEquals (d.strictnessLevel, 5);   // default level
+            }
+            {
+                const auto d = settings_parser::dispatch (settings_parser::tokenise ("validate MyPlugin.vst3"));
+                expect (d.command == Command::validate);
+                expect (! d.deprecatedAlias);
+            }
+        }
+
+        beginTest ("Deprecated flat flags still route, flagged as deprecated");
+        {
+            using settings_parser::Command;
+
+            {
+                const auto d = settings_parser::dispatch (settings_parser::tokenise ("--run-tests"));
+                expect (d.command == Command::runTests);
+                expect (d.deprecatedAlias);
+            }
+            {
+                const auto d = settings_parser::dispatch (settings_parser::tokenise ("--strictness-help 9"));
+                expect (d.command == Command::strictnessHelp);
+                expectEquals (d.strictnessLevel, 9);
+                expect (d.deprecatedAlias);
+            }
+            {
+                const auto d = settings_parser::dispatch (settings_parser::tokenise ("--validate x"));
+                expect (d.command == Command::validate);
+                expect (d.deprecatedAlias);
+            }
+        }
+
+        beginTest ("Bare-path shorthand and child handoff do not warn");
+        {
+            juce::TemporaryFile temp ("path_to_file.vst3");
+            expect (temp.getFile().create());
+
+            // Bare plugin path -> validate, no deprecation warning.
+            const auto bare = settings_parser::dispatch (settings_parser::tokenise (temp.getFile().getFullPathName()));
+            expect (bare.command == settings_parser::Command::validate);
+            expect (! bare.deprecatedAlias);
+
+            // The internal child handoff uses the explicit verb -> no warning.
+            PluginTests::Options opts;
+            juce::StringArray childArgs (createCommandLine ("/some/MyPlugin.vst3", opts));
+            childArgs.remove (0); // drop the executable path
+            const auto child = settings_parser::dispatch (childArgs);
+            expect (child.command == settings_parser::Command::validate);
+            expect (! child.deprecatedAlias);
+        }
+
+        beginTest ("Should perform command line recognises subcommands");
+        {
+            expect (shouldPerformCommandLine ("run-tests"));
+            expect (shouldPerformCommandLine ("strictness-help"));
+            expect (shouldPerformCommandLine ("validate MyPlugin.vst3"));
+            expect (shouldPerformCommandLine ("validate MyPluginID"));
+        }
     }
 };
 

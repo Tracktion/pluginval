@@ -203,38 +203,47 @@ juce::StringArray createCommandLine (juce::String fileOrID, PluginTests::Options
 }
 
 //==============================================================================
+static void warnDeprecated (const juce::String& oldForm, const juce::String& newForm)
+{
+    std::cerr << "!!! WARNING: " << oldForm << " is deprecated; use '" << newForm
+              << "' instead. It will be removed in a future version." << std::endl;
+}
+
 void performCommandLine (CommandLineValidator& validator, const juce::String& commandLine)
 {
     hideDockIcon();
 
     auto& app = *juce::JUCEApplication::getInstance();
-    const auto tokens = settings_parser::preprocess (commandLine);
+    const auto routed = settings_parser::dispatch (settings_parser::tokenise (commandLine));
 
-    if (tokens.contains ("--run-tests"))
+    if (routed.command == settings_parser::Command::runTests)
     {
+        if (routed.deprecatedAlias)
+            warnDeprecated ("--run-tests", "pluginval run-tests");
+
         runUnitTests();
         app.quit();
         return;
     }
 
-    if (tokens.contains ("--strictness-help"))
+    if (routed.command == settings_parser::Command::strictnessHelp)
     {
-        int level = 5;
+        if (routed.deprecatedAlias)
+            warnDeprecated ("--strictness-help", "pluginval strictness-help");
 
-        if (const auto idx = tokens.indexOf ("--strictness-help"); idx >= 0 && idx + 1 < tokens.size())
-            if (const auto next = tokens[idx + 1]; ! next.startsWith ("-"))
-                level = next.getIntValue();
-
-        printStrictnessHelp (level);
+        printStrictnessHelp (routed.strictnessLevel);
         app.quit();
         return;
     }
 
-    // Otherwise this is a validation run (explicit or implicit --validate).
-    // CLI11 handles --help/--version and parse errors.
+    // Otherwise this is a validation run (positional plugin, or explicit/implicit
+    // --validate). CLI11 handles --help/--version and parse errors.
+    if (routed.deprecatedAlias)
+        warnDeprecated ("--validate", "pluginval validate <plugin>");
+
     try
     {
-        const auto result = settings_parser::parseTokens (tokens);
+        const auto result = settings_parser::parseTokens (routed.validateTokens);
 
         if (result.handled)
         {

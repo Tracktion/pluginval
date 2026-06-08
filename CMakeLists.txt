@@ -250,8 +250,9 @@ else()
     # TODO: This doesn't populate the executable in clion
     add_custom_target(${CMAKE_PROJECT_NAME}_pluginval_cli
             COMMAND $<TARGET_FILE:pluginval>
-            --validate ${artefact}
+            validate
             --strictness-level 10
+            ${artefact}
             DEPENDS pluginval ${PLUGINVAL_TARGET}
             COMMENT "Run pluginval CLI with strict validation")
 endif()
