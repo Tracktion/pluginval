@@ -45,7 +45,7 @@ jobs:
           sudo apt-get install -y \
             libasound2-dev libx11-dev libxext-dev libxinerama-dev libxrandr-dev \
             libxcursor-dev libxcomposite-dev libfreetype6-dev libfontconfig1-dev \
-            libgl1-mesa-dev libcurl4-openssl-dev ninja-build xvfb
+            libgl1-mesa-dev libcurl4-openssl-dev ladspa-sdk ninja-build xvfb
 
       # The acceptance tests host the dogfood plugins via JUCE's own VST3 hosting,
       # so the embedded VST3 validator (and its heavy SDK build) isn't needed here.
