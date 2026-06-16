@@ -506,6 +506,55 @@ struct CommandLineTests : public juce::UnitTest
             expect (! config.renderDuration.has_value());
             expectEquals (config.getComparison()["sample"].get<double>(), 0.0);
         }
+
+        beginTest ("Acceptance TestConfig playhead (object time signature)");
+        {
+            // Absent playhead -> unset (no transport supplied to the plugin).
+            {
+                const auto config = nlohmann::json::parse (R"({ "plugin": "P.vst3" })").get<acceptance::TestConfig>();
+                expect (! config.playhead.has_value());
+            }
+
+            // Present playhead -> parsed, with time_signature as an object.
+            {
+                const auto json = R"({
+                    "plugin": "P.vst3",
+                    "playhead": {
+                        "bpm": 90,
+                        "time_signature": { "numerator": 6, "denominator": 8 },
+                        "start_ppq": 4.0
+                    }
+                })";
+
+                const auto config = nlohmann::json::parse (json).get<acceptance::TestConfig>();
+                expect (config.playhead.has_value());
+                expectEquals (config.playhead->bpm, 90.0);
+                expectEquals (config.playhead->timeSigNumerator, 6);
+                expectEquals (config.playhead->timeSigDenominator, 8);
+                expectEquals (config.playhead->startPpq, 4.0);
+            }
+
+            // Time signature defaults to 4/4 when omitted.
+            {
+                const auto config = nlohmann::json::parse (R"({ "plugin": "P.vst3", "playhead": { "bpm": 100 } })")
+                                        .get<acceptance::TestConfig>();
+                expect (config.playhead.has_value());
+                expectEquals (config.playhead->timeSigNumerator, 4);
+                expectEquals (config.playhead->timeSigDenominator, 4);
+            }
+
+            // An invalid (zero) denominator is rejected.
+            {
+                bool threw = false;
+                try
+                {
+                    nlohmann::json::parse (R"({ "plugin": "P.vst3", "playhead": { "bpm": 120, "time_signature": { "numerator": 4, "denominator": 0 } } })")
+                        .get<acceptance::TestConfig>();
+                }
+                catch (const std::exception&) { threw = true; }
+                expect (threw, "expected a zero denominator to be rejected");
+            }
+        }
     }
 };
 

@@ -40,6 +40,17 @@ namespace acceptance
 */
 struct TestConfig
 {
+    /** A fixed transport supplied to the plugin during the render, for
+        time-dependent plugins (tempo-synced LFOs, arpeggiators, ...). The tempo
+        and time signature are constant; the position advances with the render. */
+    struct PlayheadConfig
+    {
+        double bpm = 120.0;
+        int    timeSigNumerator = 4;
+        int    timeSigDenominator = 4;
+        double startPpq = 0.0;       /**< Transport position (in quarter notes) at sample 0. */
+    };
+
     std::string name;                              /**< Labels results; derives the default reference path. */
     std::string plugin;                            /**< Plugin path or AU id. Required. */
     std::string inputAudio;                        /**< input.audio: path to an input audio file, or empty for silence. */
@@ -51,6 +62,7 @@ struct TestConfig
     int blockSize = 512;
     std::optional<double> renderDuration;          /**< Seconds. Unset -> derive from the input length. */
     nlohmann::json comparison;                     /**< Map of comparator name -> sub-config. Empty -> default. */
+    std::optional<PlayheadConfig> playhead;        /**< Fixed transport. Unset -> no playhead supplied to the plugin. */
 
     //==============================================================================
     /** The directory the config was loaded from. Relative reference / input /
