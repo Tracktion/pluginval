@@ -28,6 +28,10 @@ endif()
 option(WITH_ADDRESS_SANITIZER "Enable Address Sanitizer" OFF)
 option(WITH_THREAD_SANITIZER "Enable Thread Sanitizer" OFF)
 
+# Builds the in-repo dogfood plugins (e.g. the tone generator) used by the
+# acceptance self-tests. Off for normal release builds.
+option(PLUGINVAL_BUILD_TEST_PLUGINS "Build the in-repo test plugins used by the acceptance self-tests" OFF)
+
 message(STATUS "Sanitizers: ASan=${WITH_ADDRESS_SANITIZER} TSan=${WITH_THREAD_SANITIZER}")
 if (WITH_ADDRESS_SANITIZER)
     if (MSVC)
@@ -105,7 +109,7 @@ endif()
 juce_add_gui_app(pluginval
     BUNDLE_ID                       com.Tracktion.pluginval
     COMPANY_NAME                    Tracktion
-    ICON_BIG                        "${CMAKE_CURRENT_SOURCE_DIR}/Source/binarydata/icon.png"
+    ICON_BIG                        "${CMAKE_CURRENT_SOURCE_DIR}/source/binarydata/icon.png"
     HARDENED_RUNTIME_ENABLED        TRUE
     HARDENED_RUNTIME_OPTIONS        com.apple.security.cs.allow-unsigned-executable-memory com.apple.security.cs.disable-library-validation com.apple.security.get-task-allow)
 
@@ -118,42 +122,50 @@ set_target_properties(pluginval PROPERTIES
     CXX_VISIBILITY_PRESET hidden)
 
 set(SourceFiles
-    Source/CommandLine.h
-    Source/CrashHandler.h
-    Source/MainComponent.h
-    Source/PluginTests.h
-    Source/PluginvalSettings.h
-    Source/SettingsParser.h
-    Source/SettingsSerializer.h
-    Source/TestUtilities.h
-    Source/Validator.h
-    Source/CommandLine.cpp
-    Source/CrashHandler.cpp
-    Source/Main.cpp
-    Source/MainComponent.cpp
-    Source/PluginTests.cpp
-    Source/SettingsParser.cpp
-    Source/SettingsSerializer.cpp
-    Source/tests/BasicTests.cpp
-    Source/tests/LocaleTest.cpp
-    Source/tests/BusTests.cpp
-    Source/tests/EditorTests.cpp
-    Source/tests/ExtremeTests.cpp
-    Source/tests/ParameterFuzzTests.cpp
-    Source/TestUtilities.cpp
-    Source/Validator.cpp)
+    source/CommandLine.h
+    source/CrashHandler.h
+    source/MainComponent.h
+    source/PluginTests.h
+    source/PluginvalSettings.h
+    source/SettingsParser.h
+    source/SettingsSerializer.h
+    source/TestUtilities.h
+    source/Validator.h
+    source/acceptance/TestConfig.h
+    source/acceptance/TestConfig.cpp
+    source/acceptance/AcceptanceTest.h
+    source/acceptance/AcceptanceTest.cpp
+    source/acceptance/ReferenceComparator.h
+    source/acceptance/ReferenceComparator.cpp
+    source/acceptance/TestReporter.h
+    source/acceptance/TestReporter.cpp
+    source/CommandLine.cpp
+    source/CrashHandler.cpp
+    source/Main.cpp
+    source/MainComponent.cpp
+    source/PluginTests.cpp
+    source/SettingsParser.cpp
+    source/SettingsSerializer.cpp
+    source/tests/BasicTests.cpp
+    source/tests/LocaleTest.cpp
+    source/tests/BusTests.cpp
+    source/tests/EditorTests.cpp
+    source/tests/ExtremeTests.cpp
+    source/tests/ParameterFuzzTests.cpp
+    source/TestUtilities.cpp
+    source/Validator.cpp)
 
 target_sources(pluginval PRIVATE ${SourceFiles})
-source_group(TREE ${CMAKE_CURRENT_SOURCE_DIR}/Source PREFIX Source FILES ${SourceFiles})
+source_group(TREE ${CMAKE_CURRENT_SOURCE_DIR}/source PREFIX Source FILES ${SourceFiles})
 
 # Add VST3 validator runner sources to pluginval (extracts embedded binary at runtime)
 if(PLUGINVAL_VST3_VALIDATOR)
     set(VST3ValidatorFiles
-        Source/vst3validator/VST3ValidatorRunner.h
-        Source/vst3validator/VST3ValidatorRunner.cpp
+        source/vst3validator/VST3ValidatorRunner.h
+        source/vst3validator/VST3ValidatorRunner.cpp
     )
     target_sources(pluginval PRIVATE ${VST3ValidatorFiles})
-    source_group("Source/vst3validator" FILES ${VST3ValidatorFiles})
+    source_group("source/vst3validator" FILES ${VST3ValidatorFiles})
 endif()
 
 if (DEFINED ENV{VST2_SDK_DIR})
@@ -255,4 +267,13 @@ else()
             ${artefact}
             DEPENDS pluginval ${PLUGINVAL_TARGET}
             COMMENT "Run pluginval CLI with strict validation")
+endif()
+
+# In-repo dogfood plugins + acceptance self-tests.
+if (PLUGINVAL_BUILD_TEST_PLUGINS)
+    enable_testing()
+    add_subdirectory(tests/test_plugins/tone_generator)
+    add_subdirectory(tests/test_plugins/gain)
+    add_subdirectory(tests/test_plugins/playhead_probe)
+    add_subdirectory(tests/acceptance)
 endif()

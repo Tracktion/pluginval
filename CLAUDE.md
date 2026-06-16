@@ -75,7 +75,7 @@ Replace `<run_id>` with the ID from step 2.
 
 ```
 pluginval/
-├── Source/                    # Main application source code
+├── source/                    # Main application source code
 │   ├── Main.cpp              # Application entry point
 │   ├── MainComponent.cpp/h   # GUI main window component
 │   ├── Validator.cpp/h       # Core validation orchestration
@@ -93,6 +93,11 @@ pluginval/
 │   ├── vst3validator/        # Embedded VST3 validator integration
 │   │   ├── VST3ValidatorRunner.h
 │   │   └── VST3ValidatorRunner.cpp
+│   ├── acceptance/           # `pluginval test` golden-file subsystem (parallel to validate)
+│   │   ├── TestConfig.cpp/h        # snake_case JSON config struct (independent of PluginvalSettings)
+│   │   ├── AcceptanceTest.cpp/h    # plugin load + state + input + render; record-or-compare orchestrator
+│   │   ├── ReferenceComparator.cpp/h # Comparator interface + registry + SampleComparator
+│   │   └── TestReporter.cpp/h      # text + JSON result, exit code
 │   └── tests/                # Individual test implementations
 │       ├── BasicTests.cpp    # Core plugin tests (info, state, audio)
 │       ├── BusTests.cpp      # Audio bus configuration tests
@@ -108,6 +113,10 @@ pluginval/
 ├── tests/
 │   ├── AddPluginvalTests.cmake  # CMake module for CTest integration
 │   ├── test_plugins/         # Test plugin files
+│   │   ├── tone_generator/   # Deterministic dogfood generator (PLUGINVAL_BUILD_TEST_PLUGINS)
+│   │   ├── gain/             # Deterministic dogfood gain effect (for the input.audio path)
+│   │   └── playhead_probe/   # Writes the host transport to output (for the playhead path)
+│   ├── acceptance/           # Acceptance self-tests: configs (*.json.in), inputs/, checked-in refs/ WAVs
 │   ├── mac_tests/            # macOS-specific tests
 │   └── windows_tests.bat     # Windows test scripts
 ├── docs/                     # Documentation
@@ -150,6 +159,7 @@ cmake --build Builds/Debug --config Debug
 | `WITH_ADDRESS_SANITIZER` | Enable AddressSanitizer | OFF |
 | `WITH_THREAD_SANITIZER` | Enable ThreadSanitizer | OFF |
 | `VST2_SDK_DIR` | Path to VST2 SDK (env var) | - |
+| `PLUGINVAL_BUILD_TEST_PLUGINS` | Build the in-repo dogfood plugins + acceptance CTest self-tests | OFF |
 
 ### Enabling VST2 Support
 
@@ -258,6 +268,48 @@ settings set via a base64-encoded JSON argument (`--config-base64`), avoiding
 per-flag re-serialisation and command-line quoting hazards. `--help`/`--version`
 are handled by CLI11 (auto usage + a footer with the env-var/commands notes).
 
+### Acceptance Testing (`pluginval test`)
+
+A **parallel subsystem** to validate, in `source/acceptance/`. It answers "does
+this plugin produce the expected output for a known input + state?" — a
+deterministic *render + golden-file comparison*, not a unit-test pass/fail. Full
+spec: `tests/acceptance/Acceptance testing design.md`; end-user guide:
+`docs/Acceptance testing.md`.
+
+- **CLI**: `pluginval test <config.json>`. A new `Command::test` is recognised
+  by `settings_parser::dispatch()` (captures the positional config path into
+  `DispatchResult::testConfigPath`), `isCommandLine()` and `getFooterText()`;
+  `CommandLine.cpp`'s `performCommandLine()` has a `Command::test` branch that
+  runs the acceptance runner **synchronously on the message thread** and quits.
+- **Config**: `acceptance::TestConfig` (`TestConfig.cpp/h`) — std-typed struct,
+  **snake_case JSON keys** mapped via explicit `to_json`/`from_json` (members
+  stay camelCase). It is **independent** of `PluginvalSettings` / the `--config`
+  layering: the test config is a positional argument loaded standalone.
+- **Flow** (`AcceptanceTest.cpp`): load plugin → apply `state.file` then
+  `state.parameters` (normalised, matched by index / case-insensitive name or
+  paramID) → feed `input.audio`/`input.midi` or silence → if a `playhead` is
+  configured, point a fixed-tempo transport (`FixedPlayHead`, position advances
+  per block) at the plugin → render a fixed duration block-by-block (reusing the
+  `AudioProcessingTest` shape + the VST3-safe helpers in `TestUtilities.h`). If
+  no reference exists it **records** one (32-bit float WAV + `<name>.wav.json`
+  sidecar manifest); otherwise it **compares** and writes a diff WAV on failure.
+  Exit `0`/`1`.
+- **Comparators** (`ReferenceComparator.cpp/h`): pluggable `Comparator` +
+  `createComparator(name)` registry. v1 ships only `sample` (per-sample abs-diff
+  tolerance, default one 16-bit LSB = `1/32768`; `0` = bit-exact). Adding
+  `spectrum`/`crosscorr`/etc. is one registry entry, no config/runner changes.
+- **Dogfood + self-tests**: three minimal deterministic `juce_add_plugin` targets
+  behind `PLUGINVAL_BUILD_TEST_PLUGINS` — `tests/test_plugins/tone_generator/`
+  (closed-form sine/square generator, phase resets on `prepareToPlay`),
+  `tests/test_plugins/gain/` (a gain effect, dogfoods the `input.audio` path) and
+  `tests/test_plugins/playhead_probe/` (writes the host transport to its output,
+  dogfoods the `playhead` path). `tests/acceptance/` holds checked-in configs
+  (`*.json.in`, the plugin paths + input dir substituted at configure time),
+  `inputs/` and reference WAVs, run via CTest (`pluginval.acceptance.*`: sine-440,
+  square-220, square-state, gain-half, playhead-120). Phase 2 items (config-array
+  multiplexing, automation, extra comparators, child-process isolation) are notes
+  only.
+
 ### Test Framework
 
 Tests are self-registering. To find all tests, look for static instances:
@@ -298,12 +350,12 @@ The VST3 validator (Steinberg's vstvalidator) is embedded into pluginval when bu
 1. The VST3 SDK is fetched via CPM during CMake configure
 2. The SDK's own `validator` target is built as a separate executable
 3. A CMake script (`cmake/GenerateBinaryHeader.cmake`) converts the compiled binary into a C byte array header
-4. `VST3ValidatorRunner` (`Source/vst3validator/`) extracts the embedded binary to a temp file on first use
+4. `VST3ValidatorRunner` (`source/vst3validator/`) extracts the embedded binary to a temp file on first use
 5. When the `VST3validator` test runs, it spawns the extracted validator as a subprocess
 
 **Key files:**
 - `cmake/GenerateBinaryHeader.cmake` — binary-to-C-header conversion script
-- `Source/vst3validator/VST3ValidatorRunner.h/cpp` — extracts embedded binary, returns `juce::File`
+- `source/vst3validator/VST3ValidatorRunner.h/cpp` — extracts embedded binary, returns `juce::File`
 
 **Disabling embedded validator:**
 ```bash
@@ -486,7 +538,7 @@ Run internal tests via CLI:
 ## Common Tasks for AI Assistants
 
 ### Finding Where Tests Are Defined
-- All test classes are in `Source/tests/*.cpp`
+- All test classes are in `source/tests/*.cpp`
 - Search for `static.*Test.*Test;` to find registrations
 - Each test subclasses `PluginTest`
 

@@ -436,6 +436,124 @@ struct CommandLineTests : public juce::UnitTest
             expect (shouldPerformCommandLine ("strictness-help"));
             expect (shouldPerformCommandLine ("validate MyPlugin.vst3"));
             expect (shouldPerformCommandLine ("validate MyPluginID"));
+            expect (shouldPerformCommandLine ("test config.json"));
+        }
+
+        beginTest ("Subcommand: test captures the positional config path");
+        {
+            using settings_parser::Command;
+
+            {
+                const auto d = settings_parser::dispatch (settings_parser::tokenise ("test config.json"));
+                expect (d.command == Command::test);
+                expect (! d.deprecatedAlias);
+                expectEquals (d.testConfigPath, juce::String ("config.json"));
+            }
+            {
+                // The config path is the first non-option token after the verb.
+                const auto d = settings_parser::dispatch (settings_parser::tokenise ("test ./refs/sine.json"));
+                expect (d.command == Command::test);
+                expectEquals (d.testConfigPath, juce::String ("./refs/sine.json"));
+            }
+            {
+                // Missing positional -> empty path (the runner reports the usage error).
+                const auto d = settings_parser::dispatch (settings_parser::tokenise ("test"));
+                expect (d.command == Command::test);
+                expect (d.testConfigPath.isEmpty());
+            }
+        }
+
+        beginTest ("Acceptance TestConfig JSON parsing (snake_case keys, defaults)");
+        {
+            const auto json = R"({
+                "name": "myReverb-default",
+                "plugin": "/path/to/Plugin.vst3",
+                "input": { "audio": "in.wav" },
+                "state": { "parameters": { "Mix": 0.5, "3": 1.0 } },
+                "sample_rate": 48000,
+                "block_size": 256,
+                "render_duration": 2.0
+            })";
+
+            const auto config = nlohmann::json::parse (json).get<acceptance::TestConfig>();
+
+            expectEquals (config.getName(), juce::String ("myReverb-default"));
+            expectEquals (juce::String (config.plugin), juce::String ("/path/to/Plugin.vst3"));
+            expectEquals (juce::String (config.inputAudio), juce::String ("in.wav"));
+            expect (config.inputMidi.empty());
+            expectEquals (config.sampleRate, 48000.0);
+            expectEquals (config.blockSize, 256);
+            expect (config.renderDuration.has_value());
+            expectEquals (*config.renderDuration, 2.0);
+            expectEquals ((int) config.stateParameters.size(), 2);
+            expectEquals (config.stateParameters.at ("Mix"), 0.5);
+            expectEquals (config.stateParameters.at ("3"), 1.0);
+
+            // Omitted comparison falls back to one 16-bit LSB.
+            const auto comparison = config.getComparison();
+            expect (comparison.contains ("sample"));
+            expectEquals (comparison["sample"].get<double>(), 1.0 / 32768.0);
+        }
+
+        beginTest ("Acceptance TestConfig omitted render_duration and explicit comparison");
+        {
+            const auto json = R"({
+                "plugin": "Plugin.vst3",
+                "comparison": { "sample": 0.0 }
+            })";
+
+            const auto config = nlohmann::json::parse (json).get<acceptance::TestConfig>();
+            expect (! config.renderDuration.has_value());
+            expectEquals (config.getComparison()["sample"].get<double>(), 0.0);
+        }
+
+        beginTest ("Acceptance TestConfig playhead (object time signature)");
+        {
+            // Absent playhead -> unset (no transport supplied to the plugin).
+            {
+                const auto config = nlohmann::json::parse (R"({ "plugin": "P.vst3" })").get<acceptance::TestConfig>();
+                expect (! config.playhead.has_value());
+            }
+
+            // Present playhead -> parsed, with time_signature as an object.
+            {
+                const auto json = R"({
+                    "plugin": "P.vst3",
+                    "playhead": {
+                        "bpm": 90,
+                        "time_signature": { "numerator": 6, "denominator": 8 },
+                        "start_ppq": 4.0
+                    }
+                })";
+
+                const auto config = nlohmann::json::parse (json).get<acceptance::TestConfig>();
+                expect (config.playhead.has_value());
+                expectEquals (config.playhead->bpm, 90.0);
+                expectEquals (config.playhead->timeSigNumerator, 6);
+                expectEquals (config.playhead->timeSigDenominator, 8);
+                expectEquals (config.playhead->startPpq, 4.0);
+            }
+
+            // Time signature defaults to 4/4 when omitted.
+            {
+                const auto config = nlohmann::json::parse (R"({ "plugin": "P.vst3", "playhead": { "bpm": 100 } })")
+                                        .get<acceptance::TestConfig>();
+                expect (config.playhead.has_value());
+                expectEquals (config.playhead->timeSigNumerator, 4);
+                expectEquals (config.playhead->timeSigDenominator, 4);
+            }
+
+            // An invalid (zero) denominator is rejected.
+            {
+                bool threw = false;
+                try
+                {
+                    nlohmann::json::parse (R"({ "plugin": "P.vst3", "playhead": { "bpm": 120, "time_signature": { "numerator": 4, "denominator": 0 } } })")
+                        .get<acceptance::TestConfig>();
+                }
+                catch (const std::exception&) { threw = true; }
+                expect (threw, "expected a zero denominator to be rejected");
+            }
         }
     }
 };
