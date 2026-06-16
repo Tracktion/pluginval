@@ -11,6 +11,9 @@ COMMANDS:
                                 "pluginval [options] <plugin>" also work.
   run-tests                     Run the internal unit tests.
   strictness-help [level]       List all tests that run at the given strictness level.
+  test <config.json>            Run a deterministic acceptance (golden-file) test
+                                from a config. Records a reference on first run,
+                                compares against it afterwards (exit 0/1).
 
 The flat flags --validate <plugin>, --run-tests and --strictness-help [level]
 are deprecated aliases for the commands above and will be removed in a future

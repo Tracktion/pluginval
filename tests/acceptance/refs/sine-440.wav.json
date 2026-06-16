@@ -1,0 +1,23 @@
+{
+  "config_hash": "815cbbe305c6d5b0",
+  "created_on": {
+    "arch": "arm64",
+    "date": "2026-06-16T13:10:20.117+01:00",
+    "os": "Mac OSX 26.2"
+  },
+  "plugin": {
+    "format": "VST3",
+    "manufacturer": "Tracktion",
+    "name": "pluginval Tone Generator",
+    "uid": "VST3-pluginval Tone Generator-d86456ee-d8b77bc7",
+    "version": "1.0.4"
+  },
+  "pluginval_version": "1.0.4",
+  "render": {
+    "block_size": 512,
+    "length_seconds": 0.25,
+    "num_channels": 2,
+    "num_samples": 12000,
+    "sample_rate": 48000.0
+  }
+}
