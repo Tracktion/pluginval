@@ -1,0 +1,70 @@
+name: Acceptance tests
+
+# Builds the in-repo dogfood plugins and runs the acceptance (golden-file)
+# self-tests via CTest. This is independent of Tracktion's main private build
+# pipeline; it exists so the `pluginval test` feature has a public, reproducible
+# regression check across the three desktop platforms.
+
+on:
+  push:
+    branches: [ master, develop, v2 ]
+  pull_request:
+  workflow_dispatch:
+
+concurrency:
+  group: acceptance-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  acceptance:
+    name: ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ ubuntu-latest, macos-latest, windows-latest ]
+
+    env:
+      # Cache CPM's downloads (JUCE etc.) so reruns don't re-fetch them.
+      CPM_SOURCE_CACHE: ${{ github.workspace }}/.cpm-cache
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Cache CPM sources
+        uses: actions/cache@v4
+        with:
+          path: ${{ github.workspace }}/.cpm-cache
+          key: cpm-${{ matrix.os }}-${{ hashFiles('CMakeLists.txt', 'cmake/CPM.cmake') }}
+          restore-keys: cpm-${{ matrix.os }}-
+
+      - name: Install Linux dependencies
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            libasound2-dev libx11-dev libxext-dev libxinerama-dev libxrandr-dev \
+            libxcursor-dev libxcomposite-dev libfreetype6-dev libfontconfig1-dev \
+            libgl1-mesa-dev libcurl4-openssl-dev ninja-build xvfb
+
+      # The acceptance tests host the dogfood plugins via JUCE's own VST3 hosting,
+      # so the embedded VST3 validator (and its heavy SDK build) isn't needed here.
+      - name: Configure
+        run: >
+          cmake -B build
+          -DCMAKE_BUILD_TYPE=Release
+          -DPLUGINVAL_BUILD_TEST_PLUGINS=ON
+          -DPLUGINVAL_VST3_VALIDATOR=OFF
+
+      - name: Build
+        run: cmake --build build --config Release
+
+      - name: Run acceptance tests (Linux)
+        if: runner.os == 'Linux'
+        working-directory: build
+        run: xvfb-run --auto-servernum ctest -C Release --output-on-failure -R pluginval.acceptance
+
+      - name: Run acceptance tests (macOS / Windows)
+        if: runner.os != 'Linux'
+        working-directory: build
+        run: ctest -C Release --output-on-failure -R pluginval.acceptance

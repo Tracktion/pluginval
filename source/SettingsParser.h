@@ -69,7 +69,8 @@ namespace settings_parser
     {
         validate,        /**< Validate a plugin (the default when no verb is given). */
         runTests,        /**< Run the internal unit tests. */
-        strictnessHelp   /**< List the tests that run at a given strictness level. */
+        strictnessHelp,  /**< List the tests that run at a given strictness level. */
+        test             /**< Run a deterministic acceptance (golden-file) test from a config. */
     };
 
     /** The outcome of routing tokens to a subcommand. */
@@ -79,6 +80,7 @@ namespace settings_parser
         juce::StringArray validateTokens;   /**< Verb-stripped option tokens to feed parseTokens (validate only). */
         bool deprecatedAlias = false;       /**< A legacy flat flag (--validate/--run-tests/--strictness-help) was used. */
         int strictnessLevel = 5;            /**< The level for the strictnessHelp command. */
+        juce::String testConfigPath;        /**< The positional config.json for the test command. */
     };
 
     /** Routes tokenised input to a subcommand, peeling the leading verb. The

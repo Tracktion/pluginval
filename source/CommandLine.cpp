@@ -18,6 +18,7 @@
 #include "PluginTests.h"
 #include "PluginvalSettings.h"
 #include "SettingsParser.h"
+#include "acceptance/AcceptanceTest.h"
 
 #include <exception>
 #include <iostream>
@@ -232,6 +233,22 @@ void performCommandLine (CommandLineValidator& validator, const juce::String& co
             warnDeprecated ("--strictness-help", "pluginval strictness-help");
 
         printStrictnessHelp (routed.strictnessLevel);
+        app.quit();
+        return;
+    }
+
+    if (routed.command == settings_parser::Command::test)
+    {
+        if (routed.testConfigPath.isEmpty())
+        {
+            exitWithError ("*** FAILED: No acceptance-test config specified (usage: pluginval test <config.json>)");
+            return;
+        }
+
+        // The acceptance runner needs the message thread for the VST3-safe
+        // lifecycle helpers, and we are already on it here, so run synchronously.
+        const auto configFile = juce::File::getCurrentWorkingDirectory().getChildFile (routed.testConfigPath);
+        app.setApplicationReturnValue (acceptance::runTestFile (configFile));
         app.quit();
         return;
     }

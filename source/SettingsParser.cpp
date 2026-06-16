@@ -130,6 +130,7 @@ R"(Commands:
   validate [options] <plugin>   Validate the plugin at the given path or AU id (the default).
   run-tests                     Run the internal unit tests.
   strictness-help [level]       List all tests that run at the given strictness level.
+  test <config.json>            Run a deterministic acceptance (golden-file) test from a config.
 
 The flat flags --validate <plugin>, --run-tests and --strictness-help [level] are
 deprecated aliases for the commands above and will be removed in a future version.
@@ -313,7 +314,7 @@ Precedence (lowest to highest): defaults, environment variables, --config, comma
         {
             const auto& verb = tokens.getReference (0);
 
-            if (verb == "validate" || verb == "run-tests" || verb == "strictness-help")
+            if (verb == "validate" || verb == "run-tests" || verb == "strictness-help" || verb == "test")
                 return true;
         }
 
@@ -363,6 +364,23 @@ Precedence (lowest to highest): defaults, environment variables, --config, comma
             {
                 result.command = Command::strictnessHelp;
                 result.strictnessLevel = levelAfter (tokensIn, 0);
+                return result;
+            }
+
+            if (verb == "test")
+            {
+                result.command = Command::test;
+
+                // The positional acceptance-test config (first non-option token after the verb).
+                for (int i = 1; i < tokensIn.size(); ++i)
+                {
+                    if (! tokensIn.getReference (i).startsWith ("-"))
+                    {
+                        result.testConfigPath = tokensIn.getReference (i);
+                        break;
+                    }
+                }
+
                 return result;
             }
         }

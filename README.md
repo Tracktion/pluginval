@@ -102,6 +102,7 @@ This means you can check the exit code on your various CI and mark builds a fail
  - [Testing plugins with pluginval](<docs/Testing plugins with pluginval.md>)
  - [Debugging a failed validation](<docs/Debugging a failed validation.md>)
  - [Adding pluginval to CI](<docs/Adding pluginval to CI.md>)
+ - [Acceptance testing](<docs/Acceptance testing.md>)
 
 ### Contributing
 If you would like to contribute to the project please do! It's very simple to add tests, simply:
