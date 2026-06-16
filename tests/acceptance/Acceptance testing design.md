@@ -122,7 +122,7 @@ member names verbatim). Missing keys still fall back to the defaults.
   "block_size": 512,
   "render_duration": 2.0,                      // seconds; omitted -> use input length
   "comparison": { "sample": 1e-6 },            // omitted -> default 1/32768 (16-bit LSB)
-  "playhead": { "bpm": 120 },                  // future
+  "playhead": { "bpm": 120, "time_signature": { "numerator": 4, "denominator": 4 } },
   "automation": [ /* phase 2 */ ]
 }
 ```
@@ -142,7 +142,7 @@ member names verbatim). Missing keys still fall back to the defaults.
 | `block_size` | number | 512 | Single value. |
 | `render_duration` | number | input length | Seconds. `num_samples = round(duration * sample_rate)`. Input shorter than the duration is padded with silence; longer is truncated. |
 | `comparison` | object | `{ "sample": 0.0000305 }` | Map of comparator name -> its sub-config. See §5. |
-| `playhead` | object | none | **Future.** Fixed tempo / time signature for time-dependent plugins. |
+| `playhead` | object | none | Fixed transport for time-dependent plugins. `{ "bpm": <number>, "time_signature": { "numerator": N, "denominator": D }, "start_ppq": <number> }`. `time_signature` defaults to 4/4, `start_ppq` to 0. Omitted -> no playhead is set (the plugin sees `getPlayHead() == nullptr`). The tempo / time signature are constant; the position advances with the render. |
 | `automation` | array | none | **Phase 2.** Parameter changes scheduled at sample positions. |
 
 ### State precedence
@@ -323,6 +323,7 @@ tests/acceptance/
   square-220.json.in      // tone gen, waveform=square, state.parameters, bit-exact
   square-state.json.in    // tone gen, state.file blob + a gain parameter override
   gain-half.json.in       // gain effect, input.audio = a full-height sine, bit-exact
+  playhead-120.json.in    // playhead probe, fixed transport (bpm 120, 4/4), bit-exact
   inputs/sine-full.wav    // checked-in input for gain-half (±1.0 sine)
   refs/<case>.wav (+ .wav.json)   // checked-in references + sidecar manifests
   refs/square-state.state         // checked-in getStateInformation blob
@@ -337,7 +338,7 @@ stable enough to commit — a first smoke test of cross-platform portability for
 the `sample` comparator and the baseline for future comparators (`spectrum`,
 `crosscorr`, …).
 
-The four cases cover the distinct render paths:
+The five cases cover the distinct render paths:
 
 - **`sine-440` / `square-220`** — the `state.parameters` (name/index → normalised
   value) path. `square-220` compares bit-exact (`"sample": 0`).
@@ -350,6 +351,11 @@ The four cases cover the distinct render paths:
   full-height (±1.0) sine by 0.5 and is compared bit-exact (0.5 is exact in
   float). It also omits `render_duration`, so the render length is derived from
   the input file.
+- **`playhead-120`** — the **`playhead`** path: a third dogfood plugin
+  (`tests/test_plugins/playhead_probe/`) writes the host transport into its
+  output (channel 0 = `ppqPosition`, channel 1 = tempo), so the recorded
+  reference is a direct check that the fixed transport reached the plugin. If the
+  playhead regressed, the probe would output silence and the compare would fail.
 
 ## 9. Execution flow
 
@@ -358,11 +364,13 @@ The four cases cover the distinct render paths:
    `sample_rate` / `block_size`.
 3. Apply `state.file` then `state.parameters`.
 4. Load `input.audio` and/or `input.midi`; otherwise use silence.
-5. `prepareToPlay`, render `render_duration` worth of blocks, accumulating the
+5. If a `playhead` is configured, point a fixed-tempo transport at the plugin
+   (its position advances each block).
+6. `prepareToPlay`, render `render_duration` worth of blocks, accumulating the
    output into a single buffer.
-6. **No reference exists** -> write the float WAV + manifest (record mode);
+7. **No reference exists** -> write the float WAV + manifest (record mode);
    report "reference created".
-7. **Reference exists** -> run each configured comparator; report each verdict
+8. **Reference exists** -> run each configured comparator; report each verdict
    and the overall pass/fail; on failure write a diff WAV; exit `0` / `1`.
 
 ## 10. Phasing
@@ -377,14 +385,14 @@ The four cases cover the distinct render paths:
 - Record-or-compare with float-WAV + JSON-sidecar references.
 - `sample` comparator only (default tolerance = one 16-bit LSB).
 - Text + JSON result reporting; diff WAV on failure.
-- **Dogfood tone-generator plugin** (§8) plus a CTest self-test that runs the
-  full record/compare path against checked-in references.
+- Fixed `playhead` (tempo / time signature) for time-dependent plugins.
+- **Dogfood test plugins** (§8) plus CTest self-tests that run the full
+  record/compare path against checked-in references.
 
 **Phase 2 and beyond**
 
 - Multiplexed execution of config arrays.
 - Parameter `automation` timelines.
-- Fixed `playhead` (tempo / time signature) for time-dependent plugins.
 - Additional comparators: `peakrms`, `spectrum`, `crosscorr`, `fingerprint`.
 - Synthesised inputs (`input.generator`: noise / sine, with seed).
 - Optional child-process isolation mirroring the validate handoff.

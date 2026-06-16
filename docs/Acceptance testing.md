@@ -48,6 +48,7 @@ JSON keys are `snake_case`. The most useful fields:
 | `state.file` | A binary `getStateInformation` blob to restore first (e.g. a captured preset). Applied before `state.parameters`. |
 | `reference` | The golden `.wav`. Defaults to `<name>.wav` next to the config. |
 | `render_duration` | Seconds to render. If omitted, the input audio's length is used. |
+| `playhead` | A fixed transport for tempo-dependent plugins: `{ "bpm": 120, "time_signature": { "numerator": 4, "denominator": 4 } }`. Omit it and the plugin gets no playhead. The position advances with the render. |
 | `comparison` | How to compare. `{ "sample": <tolerance> }` is a per-sample absolute-difference tolerance (`0` = bit-exact); the default is one 16-bit LSB. |
 
 ### Determinism matters

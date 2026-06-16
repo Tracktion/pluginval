@@ -73,6 +73,16 @@ void to_json (nlohmann::json& j, const TestConfig& c)
 
     if (! c.comparison.is_null())
         j["comparison"] = c.comparison;
+
+    if (c.playhead)
+    {
+        j["playhead"] = {
+            { "bpm",            c.playhead->bpm },
+            { "time_signature", { { "numerator",   c.playhead->timeSigNumerator },
+                                  { "denominator", c.playhead->timeSigDenominator } } },
+            { "start_ppq",      c.playhead->startPpq }
+        };
+    }
 }
 
 void from_json (const nlohmann::json& j, TestConfig& c)
@@ -98,6 +108,24 @@ void from_json (const nlohmann::json& j, TestConfig& c)
 
     if (auto comp = j.find ("comparison"); comp != j.end() && ! comp->is_null())
         c.comparison = *comp;
+
+    if (auto ph = j.find ("playhead"); ph != j.end() && ph->is_object())
+    {
+        TestConfig::PlayheadConfig p;
+        p.bpm      = ph->value ("bpm", 120.0);
+        p.startPpq = ph->value ("start_ppq", 0.0);
+
+        if (auto ts = ph->find ("time_signature"); ts != ph->end() && ts->is_object())
+        {
+            p.timeSigNumerator   = ts->value ("numerator", 4);
+            p.timeSigDenominator = ts->value ("denominator", 4);
+        }
+
+        if (p.timeSigNumerator <= 0 || p.timeSigDenominator <= 0)
+            throw std::runtime_error ("playhead.time_signature numerator and denominator must be positive");
+
+        c.playhead = p;
+    }
 }
 
 //==============================================================================

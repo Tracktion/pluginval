@@ -39,6 +39,45 @@ namespace
     }
 
     //==============================================================================
+    /** A fixed-tempo transport whose position advances with the render. Constructed
+        from the config's playhead block and pointed at the plugin for the duration
+        of the render; setSamplePosition() is called before each processBlock. */
+    class FixedPlayHead : public juce::AudioPlayHead
+    {
+    public:
+        FixedPlayHead (const TestConfig::PlayheadConfig& config, double sr)
+            : cfg (config), sampleRate (sr)
+        {
+        }
+
+        void setSamplePosition (juce::int64 sample) noexcept   { currentSample = sample; }
+
+        juce::Optional<PositionInfo> getPosition() const override
+        {
+            const double seconds = (double) currentSample / sampleRate;
+
+            // PPQ is measured in quarter notes; a bar is numerator * (4/denominator) of them.
+            const double quarterNotesPerBar = cfg.timeSigNumerator * 4.0 / cfg.timeSigDenominator;
+            const double ppq = cfg.startPpq + seconds * (cfg.bpm / 60.0);
+
+            PositionInfo info;
+            info.setBpm (cfg.bpm);
+            info.setTimeSignature (TimeSignature { cfg.timeSigNumerator, cfg.timeSigDenominator });
+            info.setTimeInSamples (currentSample);
+            info.setTimeInSeconds (seconds);
+            info.setPpqPosition (ppq);
+            info.setPpqPositionOfLastBarStart (std::floor (ppq / quarterNotesPerBar) * quarterNotesPerBar);
+            info.setIsPlaying (true);
+            return info;
+        }
+
+    private:
+        const TestConfig::PlayheadConfig cfg;
+        const double sampleRate;
+        juce::int64 currentSample = 0;
+    };
+
+    //==============================================================================
     std::unique_ptr<juce::AudioPluginInstance> loadPlugin (juce::AudioPluginFormatManager& formatManager,
                                                            const juce::String& pathOrID,
                                                            double sampleRate, int blockSize)
@@ -254,7 +293,15 @@ RenderedAudio renderPlugin (const TestConfig& config)
     if (numSamples <= 0)
         throw std::runtime_error ("render_duration is required when there is no input.audio");
 
-    // 4. Prepare and render block by block.
+    // 4. Optional fixed transport for time-dependent plugins.
+    std::unique_ptr<FixedPlayHead> playHead;
+    if (config.playhead)
+    {
+        playHead = std::make_unique<FixedPlayHead> (*config.playhead, sampleRate);
+        instance->setPlayHead (playHead.get());
+    }
+
+    // 5. Prepare and render block by block.
     callPrepareToPlayOnMessageThreadIfVST3 (*instance, sampleRate, blockSize);
 
     const int numInputChannels = instance->getTotalNumInputChannels();
@@ -269,6 +316,9 @@ RenderedAudio renderPlugin (const TestConfig& config)
     for (int pos = 0; pos < numSamples; pos += blockSize)
     {
         const int thisBlock = juce::jmin (blockSize, numSamples - pos);
+
+        if (playHead != nullptr)
+            playHead->setSamplePosition (pos);
 
         block.clear();
 
@@ -290,6 +340,7 @@ RenderedAudio renderPlugin (const TestConfig& config)
             output.copyFrom (c, pos, proc, c, 0, thisBlock);
     }
 
+    instance->setPlayHead (nullptr);   // playHead is about to be destroyed
     callReleaseResourcesOnMessageThreadIfVST3 (*instance);
     instance.reset();
 

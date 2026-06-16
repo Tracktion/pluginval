@@ -114,7 +114,8 @@ pluginval/
 │   ├── AddPluginvalTests.cmake  # CMake module for CTest integration
 │   ├── test_plugins/         # Test plugin files
 │   │   ├── tone_generator/   # Deterministic dogfood generator (PLUGINVAL_BUILD_TEST_PLUGINS)
-│   │   └── gain/             # Deterministic dogfood gain effect (for the input.audio path)
+│   │   ├── gain/             # Deterministic dogfood gain effect (for the input.audio path)
+│   │   └── playhead_probe/   # Writes the host transport to output (for the playhead path)
 │   ├── acceptance/           # Acceptance self-tests: configs (*.json.in), inputs/, checked-in refs/ WAVs
 │   ├── mac_tests/            # macOS-specific tests
 │   └── windows_tests.bat     # Windows test scripts
@@ -286,25 +287,27 @@ spec: `tests/acceptance/Acceptance testing design.md`; end-user guide:
   layering: the test config is a positional argument loaded standalone.
 - **Flow** (`AcceptanceTest.cpp`): load plugin → apply `state.file` then
   `state.parameters` (normalised, matched by index / case-insensitive name or
-  paramID) → feed `input.audio`/`input.midi` or silence → render a fixed
-  duration block-by-block (reusing the `AudioProcessingTest` shape + the
-  VST3-safe helpers in `TestUtilities.h`). If no reference exists it **records**
-  one (32-bit float WAV + `<name>.wav.json` sidecar manifest); otherwise it
-  **compares** and writes a diff WAV on failure. Exit `0`/`1`.
+  paramID) → feed `input.audio`/`input.midi` or silence → if a `playhead` is
+  configured, point a fixed-tempo transport (`FixedPlayHead`, position advances
+  per block) at the plugin → render a fixed duration block-by-block (reusing the
+  `AudioProcessingTest` shape + the VST3-safe helpers in `TestUtilities.h`). If
+  no reference exists it **records** one (32-bit float WAV + `<name>.wav.json`
+  sidecar manifest); otherwise it **compares** and writes a diff WAV on failure.
+  Exit `0`/`1`.
 - **Comparators** (`ReferenceComparator.cpp/h`): pluggable `Comparator` +
   `createComparator(name)` registry. v1 ships only `sample` (per-sample abs-diff
   tolerance, default one 16-bit LSB = `1/32768`; `0` = bit-exact). Adding
   `spectrum`/`crosscorr`/etc. is one registry entry, no config/runner changes.
-- **Dogfood + self-tests**: two minimal deterministic `juce_add_plugin` targets
+- **Dogfood + self-tests**: three minimal deterministic `juce_add_plugin` targets
   behind `PLUGINVAL_BUILD_TEST_PLUGINS` — `tests/test_plugins/tone_generator/`
-  (closed-form sine/square generator, phase resets on `prepareToPlay`) and
-  `tests/test_plugins/gain/` (a gain effect, used to dogfood the `input.audio`
-  path: it gains a checked-in full-height sine and is compared bit-exact).
-  `tests/acceptance/` holds checked-in configs (`*.json.in`, the plugin paths +
-  input dir substituted at configure time), `inputs/` and reference WAVs, run via
-  CTest (`pluginval.acceptance.*`: sine-440, square-220, square-state, gain-half).
-  Phase 2 items (config-array multiplexing,
-  automation, playhead, extra comparators, child-process isolation) are notes
+  (closed-form sine/square generator, phase resets on `prepareToPlay`),
+  `tests/test_plugins/gain/` (a gain effect, dogfoods the `input.audio` path) and
+  `tests/test_plugins/playhead_probe/` (writes the host transport to its output,
+  dogfoods the `playhead` path). `tests/acceptance/` holds checked-in configs
+  (`*.json.in`, the plugin paths + input dir substituted at configure time),
+  `inputs/` and reference WAVs, run via CTest (`pluginval.acceptance.*`: sine-440,
+  square-220, square-state, gain-half, playhead-120). Phase 2 items (config-array
+  multiplexing, automation, extra comparators, child-process isolation) are notes
   only.
 
 ### Test Framework
