@@ -1,7 +1,7 @@
 cmake_minimum_required(VERSION 3.22)
 project(PluginvalAsDependency VERSION 1.0.0)
 
-set(JUCE_VERSION "8.0.3" CACHE STRING "JUCE version to test against")
+set(JUCE_VERSION "9.0.1" CACHE STRING "JUCE version to test against")
 
 include(${CMAKE_CURRENT_LIST_DIR}/../../cmake/CPM.cmake)
 
