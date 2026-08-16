@@ -68,7 +68,7 @@ endif()
 
 # Only fetch JUCE when top-level (when used as dependency, JUCE is already available)
 if (pluginval_IS_TOP_LEVEL)
-    CPMAddPackage("gh:juce-framework/juce#8.0.13")
+    CPMAddPackage("gh:juce-framework/juce#9.0.1")
 endif()
 
 
@@ -234,13 +234,16 @@ else()
         set(PLUGINVAL_TARGET "${CMAKE_PROJECT_NAME}_VST3")
     endif()
 
-    get_target_property(artefact ${PLUGINVAL_TARGET} JUCE_PLUGIN_ARTEFACT_FILE)
+    # An umbrella/multi-product project has no ${CMAKE_PROJECT_NAME}_AU target, so skip instead of hard-erroring.
+    if (TARGET ${PLUGINVAL_TARGET})
+        get_target_property(artefact ${PLUGINVAL_TARGET} JUCE_PLUGIN_ARTEFACT_FILE)
 
-    # TODO: This doesn't populate the executable in clion
-    add_custom_target(${CMAKE_PROJECT_NAME}_pluginval_cli
-            COMMAND $<TARGET_FILE:pluginval>
-            --validate ${artefact}
-            --strictness-level 10
-            DEPENDS pluginval ${PLUGINVAL_TARGET}
-            COMMENT "Run pluginval CLI with strict validation")
+        # TODO: This doesn't populate the executable in clion
+        add_custom_target(${CMAKE_PROJECT_NAME}_pluginval_cli
+                COMMAND $<TARGET_FILE:pluginval>
+                --validate ${artefact}
+                --strictness-level 10
+                DEPENDS pluginval ${PLUGINVAL_TARGET}
+                COMMENT "Run pluginval CLI with strict validation")
+    endif()
 endif()
