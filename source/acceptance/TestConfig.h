@@ -17,9 +17,9 @@
 #include <juce_audio_processors/juce_audio_processors.h>
 #include <nlohmann/json.hpp>
 
-#include <map>
 #include <optional>
 #include <string>
+#include <utility>
 #include <vector>
 
 namespace acceptance
@@ -33,7 +33,8 @@ namespace acceptance
     <config.json> of the "pluginval test" command. JSON keys are snake_case
     (e.g. sample_rate); the C++ members stay JUCE-style camelCase, so the mapping
     is done explicitly in the per-struct to_json / from_json (see TestConfig.cpp)
-    rather than the bare NLOHMANN macro.
+    rather than the bare NLOHMANN macro. It uses nlohmann::ordered_json so object
+    keys keep their file order (state.parameters is applied in that order).
 
     This config is completely independent of PluginvalSettings / the --config
     settings layering used by the validate command.
@@ -57,11 +58,11 @@ struct TestConfig
     std::string inputMidi;                         /**< input.midi: path to a .mid file, or empty for none. */
     std::string reference;                         /**< The golden file. Empty -> derived from name. */
     std::string stateFile;                         /**< state.file: binary getStateInformation blob. */
-    std::map<std::string, double> stateParameters; /**< state.parameters: name-or-index -> normalised value. */
+    std::vector<std::pair<std::string, double>> stateParameters; /**< state.parameters: name-or-index -> normalised value, in file order. */
     double sampleRate = 44100.0;
     int blockSize = 512;
     std::optional<double> renderDuration;          /**< Seconds. Unset -> derive from the input length. */
-    nlohmann::json comparison;                     /**< Map of comparator name -> sub-config. Empty -> default. */
+    nlohmann::ordered_json comparison;             /**< Map of comparator name -> sub-config. Null -> default. */
     std::optional<PlayheadConfig> playhead;        /**< Fixed transport. Unset -> no playhead supplied to the plugin. */
 
     //==============================================================================
@@ -73,7 +74,7 @@ struct TestConfig
     //==============================================================================
     /** Returns the resolved comparison map, substituting the default
         ({ "sample": 1/32768 }) when none was supplied. */
-    nlohmann::json getComparison() const;
+    nlohmann::ordered_json getComparison() const;
 
     /** The plugin path or AU id, resolved against the working directory. */
     juce::String getPluginPathOrID() const;
@@ -110,7 +111,9 @@ private:
 };
 
 //==============================================================================
-void to_json (nlohmann::json&, const TestConfig&);
-void from_json (const nlohmann::json&, TestConfig&);
+void to_json (nlohmann::ordered_json&, const TestConfig&);
+
+/** Throws std::runtime_error (or a nlohmann type error) on an invalid config. */
+void from_json (const nlohmann::ordered_json&, TestConfig&);
 
 } // namespace acceptance

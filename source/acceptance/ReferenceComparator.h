@@ -50,7 +50,7 @@ struct Comparator
         map (a bare number for "sample", or an object for richer methods). */
     virtual ComparisonResult compare (const juce::AudioBuffer<float>& reference,
                                       const juce::AudioBuffer<float>& output,
-                                      const nlohmann::json& config) = 0;
+                                      const nlohmann::ordered_json& config) = 0;
 };
 
 //==============================================================================

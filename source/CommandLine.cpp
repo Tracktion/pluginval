@@ -252,6 +252,12 @@ void performCommandLine (CommandLineValidator& validator, const juce::String& co
 
     if (routed.command == settings_parser::Command::test)
     {
+        if (routed.error.isNotEmpty())
+        {
+            exitWithError ("*** FAILED: " + routed.error);
+            return;
+        }
+
         if (routed.testConfigPath.isEmpty())
         {
             exitWithError ("*** FAILED: No acceptance-test config specified (usage: pluginval test <config.json>)");

@@ -290,8 +290,8 @@ spec: `tests/acceptance/Acceptance testing design.md`; end-user guide:
   stay camelCase). It is **independent** of `PluginvalSettings` / the `--config`
   layering: the test config is a positional argument loaded standalone.
 - **Flow** (`AcceptanceTest.cpp`): load plugin → apply `state.file` then
-  `state.parameters` (normalised, matched by index / case-insensitive name or
-  paramID) → feed `input.audio`/`input.midi` or silence → if a `playhead` is
+  `state.parameters` (normalised, applied in file order via `ordered_json`,
+  matched by index / case-insensitive `HostedParameter` ID or name) → feed `input.audio`/`input.midi` or silence → if a `playhead` is
   configured, point a fixed-tempo transport (`FixedPlayHead`, position advances
   per block) at the plugin → render a fixed duration block-by-block (reusing the
   `AudioProcessingTest` shape + the VST3-safe helpers in `TestUtilities.h`). If

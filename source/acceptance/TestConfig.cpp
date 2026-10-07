@@ -14,6 +14,8 @@
 
 #include "TestConfig.h"
 
+#include <cmath>
+#include <limits>
 #include <stdexcept>
 
 namespace acceptance
@@ -23,13 +25,13 @@ namespace acceptance
 namespace
 {
     /** The default comparison when none is supplied: one 16-bit LSB. */
-    nlohmann::json defaultComparison()
+    nlohmann::ordered_json defaultComparison()
     {
-        return nlohmann::json { { "sample", 1.0 / 32768.0 } };
+        return nlohmann::ordered_json { { "sample", 1.0 / 32768.0 } };
     }
 
     /** Reads a string member from a (possibly absent) nested object. */
-    std::string getNestedString (const nlohmann::json& j, const char* outer, const char* inner)
+    std::string getNestedString (const nlohmann::ordered_json& j, const char* outer, const char* inner)
     {
         if (auto o = j.find (outer); o != j.end() && o->is_object())
             if (auto i = o->find (inner); i != o->end() && i->is_string())
@@ -40,15 +42,15 @@ namespace
 }
 
 //==============================================================================
-void to_json (nlohmann::json& j, const TestConfig& c)
+void to_json (nlohmann::ordered_json& j, const TestConfig& c)
 {
-    j = nlohmann::json::object();
+    j = nlohmann::ordered_json::object();
     j["name"]   = c.name;
     j["plugin"] = c.plugin;
 
     if (! c.inputAudio.empty() || ! c.inputMidi.empty())
     {
-        auto input = nlohmann::json::object();
+        auto input = nlohmann::ordered_json::object();
         if (! c.inputAudio.empty()) input["audio"] = c.inputAudio;
         if (! c.inputMidi.empty())  input["midi"]  = c.inputMidi;
         j["input"] = input;
@@ -59,9 +61,19 @@ void to_json (nlohmann::json& j, const TestConfig& c)
 
     if (! c.stateFile.empty() || ! c.stateParameters.empty())
     {
-        auto state = nlohmann::json::object();
-        if (! c.stateFile.empty())       state["file"]       = c.stateFile;
-        if (! c.stateParameters.empty()) state["parameters"] = c.stateParameters;
+        auto state = nlohmann::ordered_json::object();
+        if (! c.stateFile.empty()) state["file"] = c.stateFile;
+
+        if (! c.stateParameters.empty())
+        {
+            auto params = nlohmann::ordered_json::object();
+
+            for (const auto& [key, value] : c.stateParameters)
+                params[key] = value;
+
+            state["parameters"] = params;
+        }
+
         j["state"] = state;
     }
 
@@ -85,8 +97,10 @@ void to_json (nlohmann::json& j, const TestConfig& c)
     }
 }
 
-void from_json (const nlohmann::json& j, TestConfig& c)
+void from_json (const nlohmann::ordered_json& j, TestConfig& c)
 {
+    const auto fail = [] (const std::string& message) { throw std::runtime_error (message); };
+
     c.name      = j.value ("name", std::string());
     c.plugin    = j.value ("plugin", std::string());
     c.reference = j.value ("reference", std::string());
@@ -98,16 +112,51 @@ void from_json (const nlohmann::json& j, TestConfig& c)
 
     if (auto state = j.find ("state"); state != j.end() && state->is_object())
         if (auto params = state->find ("parameters"); params != state->end() && params->is_object())
-            c.stateParameters = params->get<std::map<std::string, double>>();
+            for (const auto& [key, value] : params->items())
+                c.stateParameters.emplace_back (key, value.get<double>());
 
     c.sampleRate = j.value ("sample_rate", 44100.0);
     c.blockSize  = j.value ("block_size", 512);
 
-    if (auto d = j.find ("render_duration"); d != j.end() && d->is_number())
+    if (auto d = j.find ("render_duration"); d != j.end() && ! d->is_null())
+    {
+        if (! d->is_number())
+            fail ("render_duration must be a number of seconds");
+
         c.renderDuration = d->get<double>();
+    }
 
     if (auto comp = j.find ("comparison"); comp != j.end() && ! comp->is_null())
+    {
+        if (! comp->is_object() || comp->empty())
+            fail ("comparison must be a non-empty object of method -> settings (omit it for the default)");
+
         c.comparison = *comp;
+    }
+
+    // Validation.
+    if (c.plugin.empty())
+        fail ("plugin is required");
+
+    if (c.name.empty() && c.reference.empty())
+        fail ("name or reference is required");
+
+    if (! std::isfinite (c.sampleRate) || c.sampleRate <= 0.0)
+        fail ("sample_rate must be a positive number");
+
+    if (c.blockSize < 1 || c.blockSize > 65536)
+        fail ("block_size must be between 1 and 65536");
+
+    if (c.renderDuration)
+    {
+        const auto duration = *c.renderDuration;
+
+        if (! std::isfinite (duration) || duration <= 0.0)
+            fail ("render_duration must be a positive number of seconds");
+
+        if (duration * c.sampleRate > (double) std::numeric_limits<int>::max())
+            fail ("render_duration * sample_rate is too many samples");
+    }
 
     if (auto ph = j.find ("playhead"); ph != j.end() && ph->is_object())
     {
@@ -129,7 +178,7 @@ void from_json (const nlohmann::json& j, TestConfig& c)
 }
 
 //==============================================================================
-nlohmann::json TestConfig::getComparison() const
+nlohmann::ordered_json TestConfig::getComparison() const
 {
     return comparison.is_null() ? defaultComparison() : comparison;
 }
@@ -200,11 +249,13 @@ std::vector<TestConfig> TestConfig::loadFromFile (const juce::File& file)
     if (! file.existsAsFile())
         throw std::runtime_error (("test config not found: " + file.getFullPathName()).toStdString());
 
-    nlohmann::json j;
+    // ordered_json keeps object keys in file order (state.parameters is applied
+    // in that order).
+    nlohmann::ordered_json j;
 
     try
     {
-        j = nlohmann::json::parse (file.loadFileAsString().toStdString());
+        j = nlohmann::ordered_json::parse (file.loadFileAsString().toStdString());
     }
     catch (const std::exception& e)
     {
@@ -213,7 +264,7 @@ std::vector<TestConfig> TestConfig::loadFromFile (const juce::File& file)
 
     std::vector<TestConfig> configs;
 
-    const auto addOne = [&] (const nlohmann::json& entry)
+    const auto addOne = [&] (const nlohmann::ordered_json& entry)
     {
         auto c = entry.get<TestConfig>();
         c.configDir = file.getParentDirectory();

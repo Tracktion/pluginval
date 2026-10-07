@@ -15,6 +15,7 @@
 #include "ReferenceComparator.h"
 
 #include <cmath>
+#include <limits>
 
 namespace acceptance
 {
@@ -25,13 +26,14 @@ namespace acceptance
 
     config is the value under the "sample" key: a bare number giving the
     tolerance (0 == bit-exact), or an object { "tolerance": <number> }. Channel
-    and length mismatches fail outright.
+    and length mismatches fail outright, as does any non-finite (NaN / inf)
+    difference.
 */
 struct SampleComparator : public Comparator
 {
     juce::String getName() const override   { return "sample"; }
 
-    static double toleranceFrom (const nlohmann::json& config)
+    static double toleranceFrom (const nlohmann::ordered_json& config)
     {
         if (config.is_number())
             return config.get<double>();
@@ -45,7 +47,7 @@ struct SampleComparator : public Comparator
 
     ComparisonResult compare (const juce::AudioBuffer<float>& reference,
                               const juce::AudioBuffer<float>& output,
-                              const nlohmann::json& config) override
+                              const nlohmann::ordered_json& config) override
     {
         const double tolerance = toleranceFrom (config);
 
@@ -67,6 +69,7 @@ struct SampleComparator : public Comparator
         }
 
         double maxAbsDiff = 0.0;
+        bool nonFinite = false;
         int firstFailChannel = -1, firstFailSample = -1;
 
         for (int c = 0; c < reference.getNumChannels(); ++c)
@@ -78,10 +81,14 @@ struct SampleComparator : public Comparator
             {
                 const double diff = std::abs ((double) out[s] - (double) ref[s]);
 
-                if (diff > maxAbsDiff)
+                // NaN compares false both ways, so test for failure with
+                // ! (diff <= tolerance) and track non-finite diffs separately.
+                if (! std::isfinite (diff))
+                    nonFinite = true;
+                else if (diff > maxAbsDiff)
                     maxAbsDiff = diff;
 
-                if (diff > tolerance && firstFailChannel < 0)
+                if (! (diff <= tolerance) && firstFailChannel < 0)
                 {
                     firstFailChannel = c;
                     firstFailSample = s;
@@ -89,9 +96,10 @@ struct SampleComparator : public Comparator
             }
         }
 
-        r.score = maxAbsDiff;
-        r.passed = maxAbsDiff <= tolerance;
+        r.score = nonFinite ? std::numeric_limits<double>::infinity() : maxAbsDiff;
+        r.passed = firstFailChannel < 0;
         r.details["max_abs_diff"] = maxAbsDiff;
+        r.details["non_finite"] = nonFinite;
 
         if (r.passed)
         {
@@ -99,8 +107,12 @@ struct SampleComparator : public Comparator
         }
         else
         {
-            r.summary = "max abs diff " + juce::String (maxAbsDiff) + " > tolerance " + juce::String (tolerance)
-                      + " (first at channel " + juce::String (firstFailChannel) + ", sample " + juce::String (firstFailSample) + ")";
+            const auto firstFail = " (first at channel " + juce::String (firstFailChannel) + ", sample " + juce::String (firstFailSample) + ")";
+
+            if (nonFinite)
+                r.summary = "non-finite (NaN / inf) difference; finite max abs diff " + juce::String (maxAbsDiff) + firstFail;
+            else
+                r.summary = "max abs diff " + juce::String (maxAbsDiff) + " > tolerance " + juce::String (tolerance) + firstFail;
             r.details["first_fail_channel"] = firstFailChannel;
             r.details["first_fail_sample"]  = firstFailSample;
         }

@@ -80,3 +80,5 @@ pluginval.xcodeproj/
 pluginval_artefacts/
 
 .claude/*local*
+# Acceptance-test failure diffs (written next to the reference)
+*-diff.wav

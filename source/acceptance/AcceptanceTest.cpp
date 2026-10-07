@@ -24,6 +24,7 @@
 #include <cstdint>
 #include <cstdlib>
 #include <iostream>
+#include <limits>
 #include <stdexcept>
 
 namespace acceptance
@@ -172,12 +173,13 @@ namespace
             }
             else
             {
-                // Match the display name (case-insensitively), or the JUCE paramID
-                // when the host exposes parameters as AudioProcessorParameterWithID.
+                // Match the format's parameter ID, then the display name (both
+                // case-insensitively). Hosted parameters are HostedParameters, whose
+                // ID is the format's own (e.g. an LV2 symbol), not the JUCE paramID.
                 for (auto* p : instance.getParameters())
                 {
-                    if (auto* withID = dynamic_cast<juce::AudioProcessorParameterWithID*> (p))
-                        if (withID->paramID.equalsIgnoreCase (name))
+                    if (auto* hosted = dynamic_cast<juce::AudioPluginInstance::HostedParameter*> (p))
+                        if (hosted->getParameterID().equalsIgnoreCase (name))
                         {
                             match = p;
                             break;
@@ -199,16 +201,29 @@ namespace
     }
 
     //==============================================================================
-    juce::AudioBuffer<float> readWav (juce::AudioFormatManager& formatManager, const juce::File& file)
+    struct AudioFileData
+    {
+        juce::AudioBuffer<float> buffer;
+        double sampleRate = 0.0;
+    };
+
+    AudioFileData readWav (juce::AudioFormatManager& formatManager, const juce::File& file)
     {
         std::unique_ptr<juce::AudioFormatReader> reader (formatManager.createReaderFor (file));
 
         if (reader == nullptr)
             throw std::runtime_error (("could not read audio file: " + file.getFullPathName()).toStdString());
 
-        juce::AudioBuffer<float> buffer ((int) reader->numChannels, (int) reader->lengthInSamples);
-        reader->read (&buffer, 0, (int) reader->lengthInSamples, 0, true, true);
-        return buffer;
+        if (reader->lengthInSamples > std::numeric_limits<int>::max())
+            throw std::runtime_error (("audio file is too long: " + file.getFullPathName()).toStdString());
+
+        const auto numSamples = (int) reader->lengthInSamples;
+        AudioFileData data { juce::AudioBuffer<float> ((int) reader->numChannels, numSamples), reader->sampleRate };
+
+        if (! reader->read (&data.buffer, 0, numSamples, 0, true, true))
+            throw std::runtime_error (("failed reading audio file: " + file.getFullPathName()).toStdString());
+
+        return data;
     }
 
     void writeFloatWav (const juce::File& file, const juce::AudioBuffer<float>& buffer, double sampleRate)
@@ -258,6 +273,11 @@ namespace
             if (const auto* track = midiFile.getTrack (t))
                 for (const auto* event : *track)
                 {
+                    // Meta events (tempo, track name, end of track...) are file
+                    // structure, not MIDI to send to the plugin.
+                    if (event->message.isMetaEvent())
+                        continue;
+
                     const auto sample = (int) std::lround (event->message.getTimeStamp() * sampleRate);
                     buffer.addEvent (event->message, sample);
                 }
@@ -288,7 +308,7 @@ namespace
         instead, and the plugin and reference locations are dropped. */
     juce::String configHash (const TestConfig& config)
     {
-        auto j = nlohmann::json {};
+        auto j = nlohmann::ordered_json {};
         to_json (j, config);
         j.erase ("plugin");
         j.erase ("reference");
@@ -311,7 +331,7 @@ namespace
 RenderedAudio renderPlugin (const TestConfig& config)
 {
     const auto sampleRate = config.sampleRate;
-    const auto blockSize = juce::jmax (1, config.blockSize);
+    const auto blockSize = config.blockSize;   // validated by from_json
 
     juce::AudioPluginFormatManager formatManager;
    #if JUCE_VERSION >= 0x08000B
@@ -341,7 +361,13 @@ RenderedAudio renderPlugin (const TestConfig& config)
         if (! audioFile.existsAsFile())
             throw std::runtime_error (("input.audio not found: " + audioFile.getFullPathName()).toStdString());
 
-        inputAudio = readWav (audioFormats, audioFile);
+        auto data = readWav (audioFormats, audioFile);
+
+        if (data.sampleRate != sampleRate)
+            throw std::runtime_error (("input.audio sample rate (" + juce::String (data.sampleRate) + ") doesn't match sample_rate ("
+                                       + juce::String (sampleRate) + "): " + audioFile.getFullPathName()).toStdString());
+
+        inputAudio = std::move (data.buffer);
     }
 
     juce::MidiBuffer midi;
@@ -356,7 +382,14 @@ RenderedAudio renderPlugin (const TestConfig& config)
     // 3. Render length.
     int numSamples = 0;
     if (config.renderDuration)
-        numSamples = (int) std::lround (*config.renderDuration * sampleRate);
+    {
+        const auto samples = std::llround (*config.renderDuration * sampleRate);
+
+        if (samples > std::numeric_limits<int>::max())
+            throw std::runtime_error ("render_duration * sample_rate is too many samples");
+
+        numSamples = (int) samples;
+    }
     else if (inputAudio.getNumSamples() > 0)
         numSamples = inputAudio.getNumSamples();
 
@@ -493,7 +526,13 @@ TestResult runTest (const TestConfig& config, const RunOptions& options)
 
         juce::AudioFormatManager formats;
         formats.registerBasicFormats();
-        const auto reference = readWav (formats, referenceFile);
+        const auto referenceData = readWav (formats, referenceFile);
+        const auto& reference = referenceData.buffer;
+
+        if (referenceData.sampleRate != rendered.sampleRate)
+            return TestResult::makeError (name, "reference sample rate (" + juce::String (referenceData.sampleRate)
+                                                + ") doesn't match the render (" + juce::String (rendered.sampleRate) + "): "
+                                                + referenceFile.getFullPathName());
 
         bool allPassed = true;
 
@@ -513,6 +552,9 @@ TestResult runTest (const TestConfig& config, const RunOptions& options)
         }
 
         result.outcome = allPassed ? TestResult::Outcome::passed : TestResult::Outcome::failed;
+
+        // Never leave a diff from an earlier failure behind.
+        config.getDiffFile().deleteFile();
 
         if (! allPassed)
         {

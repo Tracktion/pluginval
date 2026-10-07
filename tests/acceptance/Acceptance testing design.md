@@ -139,17 +139,17 @@ member names verbatim). Missing keys still fall back to the defaults.
 
 | Field | Type | Default | Notes |
 |---|---|---|---|
-| `name` | string | basename of config file | Used to derive the default reference path and to label results. |
-| `plugin` | string | — (required) | Absolute/relative path, or an AU identifier string. Relative paths resolve against the working directory. |
-| `input.audio` | string | none | Path to an input audio file (WAV/AIFF/FLAC via `AudioFormatManager`). Used for effects. |
-| `input.midi` | string | none | Path to a `.mid` file (`juce::MidiFile`). Used for instruments. |
+| `name` | string | reference's basename | Used to derive the default reference path and to label results. `name` or `reference` is required. |
+| `plugin` | string | (required) | Absolute/relative path, or an AU identifier string. Relative paths resolve against the working directory. |
+| `input.audio` | string | none | Path to an input audio file (WAV/AIFF/FLAC via `AudioFormatManager`). Used for effects. Its sample rate must equal `sample_rate`. File channel N feeds plugin input channel N; a mono file feeds channel 0 only (deliberately not duplicated). |
+| `input.midi` | string | none | Path to a `.mid` file (`juce::MidiFile`). Used for instruments. Meta events are skipped. |
 | `reference` | string | `<dir-of-config>/<name>.wav` | The golden file. Absent -> record mode; present -> compare mode. |
 | `state.file` | string | none | Binary blob from `getStateInformation`, applied via the VST3-safe helper. |
-| `state.parameters` | object | none | `name-or-index -> normalised value`. Applied after `state.file` if both are given. |
-| `sample_rate` | number | 44100 | Single value (not a list, unlike validate). |
-| `block_size` | number | 512 | Single value. |
+| `state.parameters` | object | none | `name-or-index -> normalised value`, applied in file order (parsed with `nlohmann::ordered_json`). Applied after `state.file` if both are given. Digits-only keys are indices; otherwise the format's parameter ID, then the display name, case-insensitively. |
+| `sample_rate` | number | 44100 | Single value (not a list, unlike validate). Must be positive and finite. |
+| `block_size` | number | 512 | Single value, 1 to 65536. |
 | `render_duration` | number | input length | Seconds. `num_samples = round(duration * sample_rate)`. Input shorter than the duration is padded with silence; longer is truncated. |
-| `comparison` | object | `{ "sample": 0.0000305 }` | Map of comparator name -> its sub-config. See §5. |
+| `comparison` | object | `{ "sample": 0.0000305 }` | Map of comparator name -> its sub-config. See §5. An empty object is rejected. The `sample` comparator fails on any NaN / inf difference. |
 | `playhead` | object | none | Fixed transport for time-dependent plugins. `{ "bpm": <number>, "time_signature": { "numerator": N, "denominator": D }, "start_ppq": <number> }`. `time_signature` defaults to 4/4, `start_ppq` to 0. Omitted -> no playhead is set (the plugin sees `getPlayHead() == nullptr`). The tempo / time signature are constant; the position advances with the render. |
 | `automation` | array | none | **Phase 2.** Parameter changes scheduled at sample positions. |
 
