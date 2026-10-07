@@ -18,6 +18,7 @@ COMMANDS:
                                                     pass instead.
                                   --timeout-ms <ms> Fail if the run takes longer
                                                     (default 30000, -1 = never).
+                                Any other option is an error.
 
 The flat flags --validate <plugin>, --run-tests and --strictness-help [level]
 are deprecated aliases for the commands above and will be removed in a future

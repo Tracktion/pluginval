@@ -45,14 +45,19 @@ JSON keys are `snake_case`. The most useful fields:
 
 | Field | Notes |
 |---|---|
+| `name` | Labels the result and gives the default reference path. **Required** unless `reference` is given. |
 | `plugin` | Path to the plugin (or an AU identifier). **Required.** |
-| `input.audio` / `input.midi` | Input files to feed it. Omit both for silence (e.g. instruments driven only by MIDI, or generators). |
-| `state.parameters` | A map of parameter name (or index) → **normalised** value (`0` to `1`), applied before rendering. |
+| `input.audio` / `input.midi` | Input files to feed it. Omit both for silence (e.g. instruments driven only by MIDI, or generators). The audio file's sample rate must match `sample_rate`. Each file channel feeds the plugin input channel with the same index: a mono file feeds channel 0 only (it isn't duplicated), and extra channels on either side are silent / ignored. MIDI meta events (tempo, track names) aren't sent to the plugin. |
+| `state.parameters` | A map of parameter → **normalised** value (`0` to `1`), applied before rendering, **in file order**. A key of digits only is a parameter index; otherwise it matches the format's parameter ID, then the display name (case-insensitively). |
 | `state.file` | A binary `getStateInformation` blob to restore first (e.g. a captured preset). Applied before `state.parameters`. |
 | `reference` | The golden `.wav`. Defaults to `<name>.wav` next to the config. |
-| `render_duration` | Seconds to render. If omitted, the input audio's length is used. |
+| `sample_rate` / `block_size` | Default `44100` / `512`. `sample_rate` must be positive; `block_size` must be 1 to 65536. |
+| `render_duration` | Seconds to render (positive). If omitted, the input audio's length is used. |
 | `playhead` | A fixed transport for tempo-dependent plugins: `{ "bpm": 120, "time_signature": { "numerator": 4, "denominator": 4 } }`. Omit it and the plugin gets no playhead. The position advances with the render. |
-| `comparison` | How to compare. `{ "sample": <tolerance> }` is a per-sample absolute-difference tolerance (`0` = bit-exact); the default is one 16-bit LSB. |
+| `comparison` | How to compare. `{ "sample": <tolerance> }` is a per-sample absolute-difference tolerance (`0` = bit-exact); the default is one 16-bit LSB. Any NaN / inf difference fails. Omit it for the default; an empty `{}` is an error. |
+
+An invalid config (a missing required field or an out-of-range value) is reported
+as an error (exit `1`) without rendering.
 
 ### Determinism matters
 
@@ -77,6 +82,8 @@ alongside your project so every run compares against the same golden file.
 
 Options:
 
+Any other option is an error.
+
 - `--record-missing` - record a missing reference and pass instead of failing.
   Useful if your CI records new references and checks them in. Also settable as
   `RECORD_MISSING=1`.
@@ -90,6 +97,10 @@ Each reference's `.wav.json` manifest stores a `config_hash`. If the config (or 
 contents of its input / state files) changes after the reference was recorded, the
 run warns that the reference may be stale. Paths and the plugin binary aren't part
 of the hash, so a checked-in reference doesn't warn on other machines.
+
+On a mismatch a `<name>-diff.wav` (output minus reference) is written next to the
+reference; it's removed again on the next passing run. Add `*-diff.wav` to your
+`.gitignore`.
 
 For the complete schema, the comparator design and the planned roadmap, see the
 [design document](<../tests/acceptance/Acceptance testing design.md>).

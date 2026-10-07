@@ -83,6 +83,7 @@ namespace settings_parser
         juce::String testConfigPath;        /**< The positional config.json for the test command. */
         bool recordMissing = false;         /**< test: record a missing reference (and pass) instead of failing. */
         juce::int64 timeoutMs = 30000;      /**< test: abort the run after this long (-1 to never time out). */
+        juce::String error;                 /**< test: an invalid option / argument, to report instead of running. */
     };
 
     /** Routes tokenised input to a subcommand, peeling the leading verb. The

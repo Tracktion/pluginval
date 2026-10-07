@@ -394,12 +394,30 @@ Precedence (lowest to highest): defaults, environment variables, --config, comma
                     }
                     else if (token == "--timeout-ms")
                     {
-                        if (i + 1 < tokensIn.size())
-                            result.timeoutMs = tokensIn.getReference (++i).getLargeIntValue();
+                        const auto value = i + 1 < tokensIn.size() ? tokensIn.getReference (++i) : juce::String();
+                        const auto digits = value.startsWith ("-") ? value.substring (1) : value;
+
+                        if (digits.isEmpty() || ! digits.containsOnly ("0123456789"))
+                        {
+                            result.error = "--timeout-ms needs a whole number of milliseconds (got \"" + value + "\")";
+                            break;
+                        }
+
+                        result.timeoutMs = value.getLargeIntValue();
                     }
-                    else if (! token.startsWith ("-") && result.testConfigPath.isEmpty())
+                    else if (token.startsWith ("-"))
+                    {
+                        result.error = "unknown option for test: " + token;
+                        break;
+                    }
+                    else if (result.testConfigPath.isEmpty())
                     {
                         result.testConfigPath = token;
+                    }
+                    else
+                    {
+                        result.error = "unexpected argument for test: " + token + " (only one config can be given)";
+                        break;
                     }
                 }
 

@@ -12,6 +12,7 @@
 
  ==============================================================================*/
 
+#include <limits>
 #include <map>
 
 struct CommandLineTests : public juce::UnitTest
@@ -483,6 +484,25 @@ struct CommandLineTests : public juce::UnitTest
             {
                 const auto d = settings_parser::dispatch (settings_parser::tokenise ("test --timeout-ms 500 config.json"));
                 expectEquals (d.testConfigPath, juce::String ("config.json"));
+                expect (d.error.isEmpty());
+            }
+            {
+                // Unknown options are errors, not silently skipped (their value
+                // would otherwise be taken as the config path).
+                const auto d = settings_parser::dispatch (settings_parser::tokenise ("test --output-dir out config.json"));
+                expect (d.error.contains ("--output-dir"));
+            }
+            {
+                const auto d = settings_parser::dispatch (settings_parser::tokenise ("test config.json --timeout-ms abc"));
+                expect (d.error.contains ("--timeout-ms"));
+            }
+            {
+                const auto d = settings_parser::dispatch (settings_parser::tokenise ("test config.json --timeout-ms"));
+                expect (d.error.contains ("--timeout-ms"));
+            }
+            {
+                const auto d = settings_parser::dispatch (settings_parser::tokenise ("test a.json b.json"));
+                expect (d.error.contains ("b.json"));
             }
         }
 
@@ -498,7 +518,7 @@ struct CommandLineTests : public juce::UnitTest
                 "render_duration": 2.0
             })";
 
-            const auto config = nlohmann::json::parse (json).get<acceptance::TestConfig>();
+            const auto config = nlohmann::ordered_json::parse (json).get<acceptance::TestConfig>();
 
             expectEquals (config.getName(), juce::String ("myReverb-default"));
             expectEquals (juce::String (config.plugin), juce::String ("/path/to/Plugin.vst3"));
@@ -508,9 +528,12 @@ struct CommandLineTests : public juce::UnitTest
             expectEquals (config.blockSize, 256);
             expect (config.renderDuration.has_value());
             expectEquals (*config.renderDuration, 2.0);
+            // state.parameters keeps file order ("Mix" sorts after "3").
             expectEquals ((int) config.stateParameters.size(), 2);
-            expectEquals (config.stateParameters.at ("Mix"), 0.5);
-            expectEquals (config.stateParameters.at ("3"), 1.0);
+            expectEquals (juce::String (config.stateParameters[0].first), juce::String ("Mix"));
+            expectEquals (config.stateParameters[0].second, 0.5);
+            expectEquals (juce::String (config.stateParameters[1].first), juce::String ("3"));
+            expectEquals (config.stateParameters[1].second, 1.0);
 
             // Omitted comparison falls back to one 16-bit LSB.
             const auto comparison = config.getComparison();
@@ -521,11 +544,12 @@ struct CommandLineTests : public juce::UnitTest
         beginTest ("Acceptance TestConfig omitted render_duration and explicit comparison");
         {
             const auto json = R"({
+                "name": "t",
                 "plugin": "Plugin.vst3",
                 "comparison": { "sample": 0.0 }
             })";
 
-            const auto config = nlohmann::json::parse (json).get<acceptance::TestConfig>();
+            const auto config = nlohmann::ordered_json::parse (json).get<acceptance::TestConfig>();
             expect (! config.renderDuration.has_value());
             expectEquals (config.getComparison()["sample"].get<double>(), 0.0);
         }
@@ -534,13 +558,14 @@ struct CommandLineTests : public juce::UnitTest
         {
             // Absent playhead -> unset (no transport supplied to the plugin).
             {
-                const auto config = nlohmann::json::parse (R"({ "plugin": "P.vst3" })").get<acceptance::TestConfig>();
+                const auto config = nlohmann::ordered_json::parse (R"({ "name": "t", "plugin": "P.vst3" })").get<acceptance::TestConfig>();
                 expect (! config.playhead.has_value());
             }
 
             // Present playhead -> parsed, with time_signature as an object.
             {
                 const auto json = R"({
+                    "name": "t",
                     "plugin": "P.vst3",
                     "playhead": {
                         "bpm": 90,
@@ -549,7 +574,7 @@ struct CommandLineTests : public juce::UnitTest
                     }
                 })";
 
-                const auto config = nlohmann::json::parse (json).get<acceptance::TestConfig>();
+                const auto config = nlohmann::ordered_json::parse (json).get<acceptance::TestConfig>();
                 expect (config.playhead.has_value());
                 expectEquals (config.playhead->bpm, 90.0);
                 expectEquals (config.playhead->timeSigNumerator, 6);
@@ -559,7 +584,7 @@ struct CommandLineTests : public juce::UnitTest
 
             // Time signature defaults to 4/4 when omitted.
             {
-                const auto config = nlohmann::json::parse (R"({ "plugin": "P.vst3", "playhead": { "bpm": 100 } })")
+                const auto config = nlohmann::ordered_json::parse (R"({ "name": "t", "plugin": "P.vst3", "playhead": { "bpm": 100 } })")
                                         .get<acceptance::TestConfig>();
                 expect (config.playhead.has_value());
                 expectEquals (config.playhead->timeSigNumerator, 4);
@@ -571,12 +596,63 @@ struct CommandLineTests : public juce::UnitTest
                 bool threw = false;
                 try
                 {
-                    nlohmann::json::parse (R"({ "plugin": "P.vst3", "playhead": { "bpm": 120, "time_signature": { "numerator": 4, "denominator": 0 } } })")
+                    nlohmann::ordered_json::parse (R"({ "name": "t", "plugin": "P.vst3", "playhead": { "bpm": 120, "time_signature": { "numerator": 4, "denominator": 0 } } })")
                         .get<acceptance::TestConfig>();
                 }
                 catch (const std::exception&) { threw = true; }
                 expect (threw, "expected a zero denominator to be rejected");
             }
+        }
+
+        beginTest ("Acceptance TestConfig validation");
+        {
+            const auto rejects = [] (const char* json)
+            {
+                try
+                {
+                    nlohmann::ordered_json::parse (json).get<acceptance::TestConfig>();
+                }
+                catch (const std::exception&)
+                {
+                    return true;
+                }
+
+                return false;
+            };
+
+            expect (! rejects (R"({ "name": "t", "plugin": "P.vst3" })"));
+            expect (! rejects (R"({ "reference": "r.wav", "plugin": "P.vst3" })"), "reference alone names the test");
+
+            expect (rejects (R"({ "name": "t" })"), "plugin is required");
+            expect (rejects (R"({ "plugin": "P.vst3" })"), "name or reference is required");
+            expect (rejects (R"({ "name": "t", "plugin": "P.vst3", "comparison": {} })"), "empty comparison");
+            expect (rejects (R"({ "name": "t", "plugin": "P.vst3", "comparison": 1 })"), "non-object comparison");
+            expect (rejects (R"({ "name": "t", "plugin": "P.vst3", "sample_rate": 0 })"), "zero sample_rate");
+            expect (rejects (R"({ "name": "t", "plugin": "P.vst3", "sample_rate": -48000 })"), "negative sample_rate");
+            expect (rejects (R"({ "name": "t", "plugin": "P.vst3", "block_size": 0 })"), "zero block_size");
+            expect (rejects (R"({ "name": "t", "plugin": "P.vst3", "block_size": 65537 })"), "huge block_size");
+            expect (rejects (R"({ "name": "t", "plugin": "P.vst3", "render_duration": 0 })"), "zero render_duration");
+            expect (rejects (R"({ "name": "t", "plugin": "P.vst3", "render_duration": "1" })"), "string render_duration");
+            expect (rejects (R"({ "name": "t", "plugin": "P.vst3", "render_duration": 1e6, "sample_rate": 48000 })"),
+                    "render_duration * sample_rate overflowing int");
+        }
+
+        beginTest ("Acceptance sample comparator fails on NaN");
+        {
+            auto comparator = acceptance::createComparator ("sample");
+            expect (comparator != nullptr);
+
+            juce::AudioBuffer<float> reference (1, 4), output (1, 4);
+            reference.clear();
+            output.clear();
+
+            expect (comparator->compare (reference, output, nlohmann::ordered_json (0.0)).passed);
+
+            output.setSample (0, 2, std::numeric_limits<float>::quiet_NaN());
+            const auto r = comparator->compare (reference, output, nlohmann::ordered_json (1.0));
+            expect (! r.passed, "NaN must not pass, whatever the tolerance");
+            expectEquals (r.details["first_fail_channel"].get<int>(), 0);
+            expectEquals (r.details["first_fail_sample"].get<int>(), 2);
         }
     }
 };
