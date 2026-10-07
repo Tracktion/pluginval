@@ -17,8 +17,13 @@
 
 #include <juce_audio_formats/juce_audio_formats.h>
 
+#define XXH_INLINE_ALL
+#include <xxhash.h>
+
 #include <cmath>
 #include <cstdint>
+#include <cstdlib>
+#include <iostream>
 #include <stdexcept>
 
 namespace acceptance
@@ -99,6 +104,47 @@ namespace
 
         return instance;
     }
+
+    //==============================================================================
+    /** Deletes the plugin on the message thread, as hosts are expected to. */
+    void deleteOnMessageThread (std::unique_ptr<juce::AudioPluginInstance> instance)
+    {
+        if (juce::MessageManager::getInstance()->isThisTheMessageThread())
+        {
+            instance.reset();
+            return;
+        }
+
+        juce::WaitableEvent deleted;
+        juce::MessageManager::callAsync ([&]
+                                         {
+                                             instance.reset();
+                                             deleted.signal();
+                                         });
+        deleted.wait();
+    }
+
+    /** Owns the plugin for the duration of the render. On the way out (including
+        when an exception unwinds the render) it detaches the playhead, releases
+        resources if the plugin was prepared and deletes it on the message thread. */
+    struct PluginLifetime
+    {
+        ~PluginLifetime()
+        {
+            if (instance == nullptr)
+                return;
+
+            instance->setPlayHead (nullptr);
+
+            if (prepared)
+                callReleaseResourcesOnMessageThreadIfVST3 (*instance);
+
+            deleteOnMessageThread (std::move (instance));
+        }
+
+        std::unique_ptr<juce::AudioPluginInstance> instance;
+        bool prepared = false;
+    };
 
     //==============================================================================
     void applyState (juce::AudioPluginInstance& instance, const TestConfig& config)
@@ -220,25 +266,44 @@ namespace
     }
 
     //==============================================================================
+    juce::String toHex (XXH64_hash_t hash)
+    {
+        return juce::String::toHexString ((juce::int64) hash).paddedLeft ('0', 16);
+    }
+
+    /** XXH3 of a file's contents, or "missing" if it can't be read. */
+    juce::String hashFile (const juce::File& file)
+    {
+        juce::MemoryBlock data;
+
+        if (! file.loadFileAsData (data))
+            return "missing";
+
+        return toHex (XXH3_64bits (data.getData(), data.getSize()));
+    }
+
+    /** A hash of everything that determines the render apart from the plugin
+        binary itself (which is what's under test). Paths are machine-specific,
+        so they are left out: the input and state files are hashed by content
+        instead, and the plugin and reference locations are dropped. */
     juce::String configHash (const TestConfig& config)
     {
         auto j = nlohmann::json {};
         to_json (j, config);
-        j.erase ("reference");   // the hash must be independent of where the reference lives
+        j.erase ("plugin");
+        j.erase ("reference");
 
-        // A small, stable (cross-platform) FNV-1a 64-bit hash. The hash is only
-        // used for an informational "stale reference" warning, so juce_cryptography
-        // (MD5) isn't worth pulling in.
-        const auto dump = j.dump();
-        std::uint64_t hash = 1469598103934665603ull;
-
-        for (const auto c : dump)
+        if (auto input = j.find ("input"); input != j.end())
         {
-            hash ^= (std::uint64_t) (unsigned char) c;
-            hash *= 1099511628211ull;
+            if (input->contains ("audio")) (*input)["audio"] = hashFile (config.getInputAudioFile()).toStdString();
+            if (input->contains ("midi"))  (*input)["midi"]  = hashFile (config.getInputMidiFile()).toStdString();
         }
 
-        return juce::String::toHexString ((juce::int64) hash);
+        if (auto state = j.find ("state"); state != j.end() && state->contains ("file"))
+            (*state)["file"] = hashFile (config.getStateFile()).toStdString();
+
+        const auto dump = j.dump();
+        return toHex (XXH3_64bits (dump.data(), dump.size()));
     }
 }
 
@@ -255,7 +320,12 @@ RenderedAudio renderPlugin (const TestConfig& config)
     formatManager.addDefaultFormats();
    #endif
 
-    auto instance = loadPlugin (formatManager, config.getPluginPathOrID(), sampleRate, blockSize);
+    // Declared before the plugin so it outlives it.
+    std::unique_ptr<FixedPlayHead> playHead;
+
+    PluginLifetime plugin;
+    plugin.instance = loadPlugin (formatManager, config.getPluginPathOrID(), sampleRate, blockSize);
+    auto& instance = plugin.instance;
     const auto description = instance->getPluginDescription();
 
     // 1. State (file then parameter overrides), applied before prepareToPlay.
@@ -294,7 +364,6 @@ RenderedAudio renderPlugin (const TestConfig& config)
         throw std::runtime_error ("render_duration is required when there is no input.audio");
 
     // 4. Optional fixed transport for time-dependent plugins.
-    std::unique_ptr<FixedPlayHead> playHead;
     if (config.playhead)
     {
         playHead = std::make_unique<FixedPlayHead> (*config.playhead, sampleRate);
@@ -303,6 +372,7 @@ RenderedAudio renderPlugin (const TestConfig& config)
 
     // 5. Prepare and render block by block.
     callPrepareToPlayOnMessageThreadIfVST3 (*instance, sampleRate, blockSize);
+    plugin.prepared = true;
 
     const int numInputChannels = instance->getTotalNumInputChannels();
     const int numOutputChannels = juce::jmax (1, instance->getTotalNumOutputChannels());
@@ -340,22 +410,29 @@ RenderedAudio renderPlugin (const TestConfig& config)
             output.copyFrom (c, pos, proc, c, 0, thisBlock);
     }
 
-    instance->setPlayHead (nullptr);   // playHead is about to be destroyed
-    callReleaseResourcesOnMessageThreadIfVST3 (*instance);
-    instance.reset();
-
     return { std::move (output), sampleRate, blockSize, description };
 }
 
 //==============================================================================
-TestResult runTest (const TestConfig& config)
+TestResult runTest (const TestConfig& config, const RunOptions& options)
 {
     const auto name = config.getName();
 
     try
     {
-        const auto rendered = renderPlugin (config);
         const auto referenceFile = config.getReferenceFile();
+
+        // Fail fast: without --record-missing, a missing reference is an error
+        // (e.g. a golden file deleted or mis-pathed in CI must not silently pass).
+        if (! referenceFile.existsAsFile() && ! options.recordMissing)
+        {
+            auto result = TestResult::makeError (name, "reference not found: " + referenceFile.getFullPathName()
+                                                       + " (run with --record-missing to record it)");
+            result.referenceFile = referenceFile;
+            return result;
+        }
+
+        const auto rendered = renderPlugin (config);
 
         TestResult result;
         result.name = name;
@@ -401,11 +478,14 @@ TestResult runTest (const TestConfig& config)
             try
             {
                 const auto manifest = nlohmann::json::parse (sidecar.loadFileAsString().toStdString());
+                const auto currentHash = configHash (config).toStdString();
+
                 if (manifest.contains ("config_hash")
-                    && manifest["config_hash"].get<std::string>() != configHash (config).toStdString())
+                    && manifest["config_hash"].get<std::string>() != currentHash)
                 {
                     std::cout << "  WARNING: reference was recorded from a different config (stale?): "
-                              << sidecar.getFullPathName() << std::endl;
+                              << sidecar.getFullPathName() << " (recorded " << manifest["config_hash"].get<std::string>()
+                              << ", current " << currentHash << ")" << std::endl;
                 }
             }
             catch (const std::exception&) { /* a malformed sidecar is non-fatal */ }
@@ -462,10 +542,14 @@ TestResult runTest (const TestConfig& config)
     {
         return TestResult::makeError (name, e.what());
     }
+    catch (...)
+    {
+        return TestResult::makeError (name, "unknown exception");
+    }
 }
 
 //==============================================================================
-int runTestFile (const juce::File& configFile)
+int runTestFile (const juce::File& configFile, const RunOptions& options)
 {
     std::vector<TestConfig> configs;
 
@@ -492,9 +576,80 @@ int runTestFile (const juce::File& configFile)
     if (configs.size() > 1)
         std::cout << "Note: " << configs.size() << " configs found; v1 runs the first only." << std::endl;
 
-    const auto result = runTest (configs.front());
+    const auto result = runTest (configs.front(), options);
     reporter::report (result);
     return reporter::exitCode (result);
+}
+
+//==============================================================================
+struct TestRunner::Watchdog  : private juce::Thread
+{
+    Watchdog (const juce::File& file, juce::int64 timeout)
+        : Thread ("pluginval test watchdog"), configFile (file), timeoutMs (timeout)
+    {
+        startThread (juce::Thread::Priority::low);
+    }
+
+    ~Watchdog() override
+    {
+        markFinished();
+        stopThread (5000);
+    }
+
+    void markFinished()
+    {
+        finished.signal();
+    }
+
+private:
+    const juce::File configFile;
+    const juce::int64 timeoutMs;
+    juce::WaitableEvent finished;
+
+    void run() override
+    {
+        if (finished.wait ((double) timeoutMs))
+            return;
+
+        // The worker is stuck in a plugin call that can't be interrupted, so
+        // report the failure and end the process.
+        const auto result = TestResult::makeError (configFile.getFileNameWithoutExtension(),
+                                                   "timed out after " + juce::RelativeTime::milliseconds (timeoutMs).getDescription());
+        reporter::report (result);
+        std::cout << std::flush;
+        std::_Exit (reporter::exitCode (result));
+    }
+};
+
+//==============================================================================
+TestRunner::TestRunner (const juce::File& file, const RunOptions& opts, std::function<void (int)> callback)
+    : Thread ("pluginval test"),
+      configFile (file),
+      options (opts),
+      onComplete (std::move (callback))
+{
+    jassert (onComplete);
+
+    if (options.timeoutMs > 0)
+        watchdog = std::make_unique<Watchdog> (configFile, options.timeoutMs);
+
+    startThread();
+}
+
+TestRunner::~TestRunner()
+{
+    stopThread (5000);
+    watchdog.reset();
+}
+
+void TestRunner::run()
+{
+    const auto exitCode = runTestFile (configFile, options);
+
+    if (watchdog != nullptr)
+        watchdog->markFinished();
+
+    juce::MessageManager::callAsync ([callback = onComplete, exitCode] { callback (exitCode); });
 }
 
 } // namespace acceptance

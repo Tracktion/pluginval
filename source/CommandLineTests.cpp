@@ -463,6 +463,29 @@ struct CommandLineTests : public juce::UnitTest
             }
         }
 
+        beginTest ("Subcommand: test options (--record-missing, --timeout-ms)");
+        {
+            using settings_parser::Command;
+
+            {
+                const auto d = settings_parser::dispatch (settings_parser::tokenise ("test --record-missing --timeout-ms 500 config.json"));
+                expect (d.command == Command::test);
+                expect (d.recordMissing);
+                expectEquals (d.timeoutMs, (juce::int64) 500);
+                expectEquals (d.testConfigPath, juce::String ("config.json"));
+            }
+            {
+                // Options after the positional; the timeout value isn't taken as the config.
+                const auto d = settings_parser::dispatch (settings_parser::tokenise ("test config.json --timeout-ms -1"));
+                expectEquals (d.testConfigPath, juce::String ("config.json"));
+                expectEquals (d.timeoutMs, (juce::int64) -1);
+            }
+            {
+                const auto d = settings_parser::dispatch (settings_parser::tokenise ("test --timeout-ms 500 config.json"));
+                expectEquals (d.testConfigPath, juce::String ("config.json"));
+            }
+        }
+
         beginTest ("Acceptance TestConfig JSON parsing (snake_case keys, defaults)");
         {
             const auto json = R"({

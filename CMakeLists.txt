@@ -68,6 +68,13 @@ CPMAddPackage("gh:Neargye/magic_enum#v0.9.7")
 CPMAddPackage("gh:CLIUtils/CLI11@2.6.2")
 CPMAddPackage("gh:nlohmann/json@3.12.0")
 
+# xxHash is used header-only (XXH_INLINE_ALL) for the acceptance-test config hash
+CPMAddPackage(
+    NAME xxHash
+    GITHUB_REPOSITORY Cyan4973/xxHash
+    VERSION 0.8.3
+    DOWNLOAD_ONLY YES)
+
 if(PLUGINVAL_ENABLE_RTCHECK)
     CPMAddPackage("gh:Tracktion/rtcheck#main")
 endif()
@@ -200,6 +207,8 @@ target_link_libraries(pluginval PRIVATE
     magic_enum
     CLI11::CLI11
     nlohmann_json::nlohmann_json)
+
+target_include_directories(pluginval PRIVATE "${xxHash_SOURCE_DIR}")
 
 if (${CMAKE_SYSTEM_NAME} MATCHES "Linux")
     target_link_libraries(pluginval PRIVATE

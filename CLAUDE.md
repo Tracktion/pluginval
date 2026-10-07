@@ -278,9 +278,13 @@ spec: `tests/acceptance/Acceptance testing design.md`; end-user guide:
 
 - **CLI**: `pluginval test <config.json>`. A new `Command::test` is recognised
   by `settings_parser::dispatch()` (captures the positional config path into
-  `DispatchResult::testConfigPath`), `isCommandLine()` and `getFooterText()`;
-  `CommandLine.cpp`'s `performCommandLine()` has a `Command::test` branch that
-  runs the acceptance runner **synchronously on the message thread** and quits.
+  `DispatchResult::testConfigPath`, plus `recordMissing` / `timeoutMs` from
+  `--record-missing` / `--timeout-ms` or `RECORD_MISSING` / `TIMEOUT_MS`),
+  `isCommandLine()` and `getFooterText()`; `CommandLine.cpp`'s
+  `performCommandLine()` has a `Command::test` branch that starts an
+  `acceptance::TestRunner`, which renders on a **background thread** (message
+  thread left free; plugin deleted on it), with a watchdog for the timeout, and
+  quits via `callAsync` when done.
 - **Config**: `acceptance::TestConfig` (`TestConfig.cpp/h`) — std-typed struct,
   **snake_case JSON keys** mapped via explicit `to_json`/`from_json` (members
   stay camelCase). It is **independent** of `PluginvalSettings` / the `--config`
@@ -291,9 +295,10 @@ spec: `tests/acceptance/Acceptance testing design.md`; end-user guide:
   configured, point a fixed-tempo transport (`FixedPlayHead`, position advances
   per block) at the plugin → render a fixed duration block-by-block (reusing the
   `AudioProcessingTest` shape + the VST3-safe helpers in `TestUtilities.h`). If
-  no reference exists it **records** one (32-bit float WAV + `<name>.wav.json`
-  sidecar manifest); otherwise it **compares** and writes a diff WAV on failure.
-  Exit `0`/`1`.
+  no reference exists it fails, or with `--record-missing` **records** one
+  (32-bit float WAV + `<name>.wav.json` sidecar manifest, whose `config_hash` is
+  XXH3 of the config minus paths, with input/state files hashed by content);
+  otherwise it **compares** and writes a diff WAV on failure. Exit `0`/`1`.
 - **Comparators** (`ReferenceComparator.cpp/h`): pluggable `Comparator` +
   `createComparator(name)` registry. v1 ships only `sample` (per-sample abs-diff
   tolerance, default one 16-bit LSB = `1/32768`; `0` = bit-exact). Adding
