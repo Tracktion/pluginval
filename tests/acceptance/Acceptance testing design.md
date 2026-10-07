@@ -53,8 +53,13 @@ pluginval test <config.json>
 
 - `<config.json>` is the **positional** acceptance-test definition (see §4). It
   is parsed by its own loader.
-- If the config's reference file does not exist, it is **created** (record
-  mode) and the command reports success.
+- If the config's reference file does not exist, the command fails, unless
+  `--record-missing` (or `RECORD_MISSING=1`) is given, in which case it is
+  **created** (record mode) and the command reports success. Failing by default
+  stops a deleted or mis-pathed reference from silently passing in CI.
+- `--timeout-ms <ms>` (default 30000, `-1` = never; also `TIMEOUT_MS`) bounds the
+  whole run. A watchdog reports the timeout and exits `1`, since a hung plugin
+  call can't be interrupted.
 - If the reference exists, the rendered output is **compared** against it and
   the command exits `0` (match) or `1` (mismatch), consistent with `validate`.
 
@@ -95,7 +100,10 @@ Because `test` is brand new there are **no deprecated-alias** concerns.
 
 For v1, acceptance tests run **in-process**: record and compare both need the
 rendered buffer back in the calling process, so in-process is the natural
-choice. Crash isolation can be layered on later by mirroring the validate
+choice. The render runs on a background thread (`acceptance::TestRunner`) so the
+message thread stays free to service the plugin (VST3 lifecycle calls,
+async-only creation, work the plugin posts to the message thread); the plugin is
+deleted on the message thread. Crash isolation can be layered on later by mirroring the validate
 child-process handoff (`createChildProcessCommandLine` in `SettingsParser.cpp`,
 which passes an authoritative base64-JSON blob via `--config-base64`); the
 equivalent would be `test --config-base64 <b64>` with the child writing the
@@ -227,7 +235,7 @@ A reference is **two files**:
   "render":      { "sample_rate": 48000, "block_size": 512, "num_channels": 2,
                    "num_samples": 96000, "length_seconds": 2.0 },
   "pluginval_version": "2.0.0",
-  "config_hash":  "…",   // hash of the resolved config (excluding the reference path)
+  "config_hash":  "…",   // XXH3 of the config, paths excluded (see below)
   "created_on":   { "os": "macOS", "arch": "arm64", "date": "2026-…" }  // informational only
 }
 ```
@@ -235,7 +243,12 @@ A reference is **two files**:
 - `created_on` is **informational only** — it is never used for matching, because
   references are meant to be portable and shared.
 - `config_hash` lets the runner detect a **stale** reference (one produced from a
-  different config than the one now being run) and warn.
+  different config than the one now being run) and warn. It is an XXH3-64 hash
+  (xxHash, header-only via CPM) of the config with the `plugin` and `reference`
+  paths removed and the `input.audio` / `input.midi` / `state.file` paths replaced
+  by XXH3 hashes of the files' contents. Paths are machine-specific, so hashing
+  them would make every checked-in reference look stale elsewhere; the plugin
+  binary is what's under test, so it is deliberately not part of the hash.
 - The default reference path deliberately contains **no platform/arch**, since
   references are intended to be portable and checked into a repo.
 
@@ -368,8 +381,9 @@ The five cases cover the distinct render paths:
    (its position advances each block).
 6. `prepareToPlay`, render `render_duration` worth of blocks, accumulating the
    output into a single buffer.
-7. **No reference exists** -> write the float WAV + manifest (record mode);
-   report "reference created".
+7. **No reference exists** -> without `--record-missing`, fail before rendering;
+   with it, write the float WAV + manifest (record mode) and report
+   "reference created".
 8. **Reference exists** -> run each configured comparator; report each verdict
    and the overall pass/fail; on failure write a diff WAV; exit `0` / `1`.
 

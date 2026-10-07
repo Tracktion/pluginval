@@ -130,7 +130,11 @@ R"(Commands:
   validate [options] <plugin>   Validate the plugin at the given path or AU id (the default).
   run-tests                     Run the internal unit tests.
   strictness-help [level]       List all tests that run at the given strictness level.
-  test <config.json>            Run a deterministic acceptance (golden-file) test from a config.
+  test [options] <config.json>  Run a deterministic acceptance (golden-file) test from a config.
+                                  --record-missing  Record a missing reference and pass
+                                                    (default: a missing reference fails).
+                                  --timeout-ms <ms> Fail if the run takes longer than this
+                                                    (default 30000, -1 to never time out).
 
 The flat flags --validate <plugin>, --run-tests and --strictness-help [level] are
 deprecated aliases for the commands above and will be removed in a future version.
@@ -371,13 +375,31 @@ Precedence (lowest to highest): defaults, environment variables, --config, comma
             {
                 result.command = Command::test;
 
-                // The positional acceptance-test config (first non-option token after the verb).
+                // Environment variables first, so the command line wins (matching validate).
+                if (const auto env = juce::SystemStats::getEnvironmentVariable ("RECORD_MISSING", {}); env.isNotEmpty())
+                    result.recordMissing = env.getIntValue() != 0 || env.equalsIgnoreCase ("true");
+
+                if (const auto env = juce::SystemStats::getEnvironmentVariable ("TIMEOUT_MS", {}); env.isNotEmpty())
+                    result.timeoutMs = env.getLargeIntValue();
+
+                // The options, plus the positional acceptance-test config (the first
+                // non-option token after the verb).
                 for (int i = 1; i < tokensIn.size(); ++i)
                 {
-                    if (! tokensIn.getReference (i).startsWith ("-"))
+                    const auto& token = tokensIn.getReference (i);
+
+                    if (token == "--record-missing")
                     {
-                        result.testConfigPath = tokensIn.getReference (i);
-                        break;
+                        result.recordMissing = true;
+                    }
+                    else if (token == "--timeout-ms")
+                    {
+                        if (i + 1 < tokensIn.size())
+                            result.timeoutMs = tokensIn.getReference (++i).getLargeIntValue();
+                    }
+                    else if (! token.startsWith ("-") && result.testConfigPath.isEmpty())
+                    {
+                        result.testConfigPath = token;
                     }
                 }
 

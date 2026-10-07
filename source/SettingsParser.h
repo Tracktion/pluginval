@@ -81,6 +81,8 @@ namespace settings_parser
         bool deprecatedAlias = false;       /**< A legacy flat flag (--validate/--run-tests/--strictness-help) was used. */
         int strictnessLevel = 5;            /**< The level for the strictnessHelp command. */
         juce::String testConfigPath;        /**< The positional config.json for the test command. */
+        bool recordMissing = false;         /**< test: record a missing reference (and pass) instead of failing. */
+        juce::int64 timeoutMs = 30000;      /**< test: abort the run after this long (-1 to never time out). */
     };
 
     /** Routes tokenised input to a subcommand, peeling the leading verb. The

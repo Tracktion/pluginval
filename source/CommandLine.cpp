@@ -119,6 +119,19 @@ void CommandLineValidator::validate (const juce::String& fileOrID, PluginTests::
                                                   });
 }
 
+void CommandLineValidator::runAcceptanceTest (const juce::File& configFile, const acceptance::RunOptions& options)
+{
+    // Runs on a background thread so the message thread stays free for the
+    // plugin; quits itself when done.
+    testRunner = std::make_unique<acceptance::TestRunner> (configFile, options,
+                                                           [] (int exitCode)
+                                                           {
+                                                               auto& app = *juce::JUCEApplication::getInstance();
+                                                               app.setApplicationReturnValue (exitCode);
+                                                               app.quit();
+                                                           });
+}
+
 //==============================================================================
 static void printStrictnessHelp (int level)
 {
@@ -245,11 +258,12 @@ void performCommandLine (CommandLineValidator& validator, const juce::String& co
             return;
         }
 
-        // The acceptance runner needs the message thread for the VST3-safe
-        // lifecycle helpers, and we are already on it here, so run synchronously.
-        const auto configFile = juce::File::getCurrentWorkingDirectory().getChildFile (routed.testConfigPath);
-        app.setApplicationReturnValue (acceptance::runTestFile (configFile));
-        app.quit();
+        acceptance::RunOptions options;
+        options.recordMissing = routed.recordMissing;
+        options.timeoutMs = routed.timeoutMs;
+
+        // Runs async so will quit itself when done
+        validator.runAcceptanceTest (juce::File::getCurrentWorkingDirectory().getChildFile (routed.testConfigPath), options);
         return;
     }
 
