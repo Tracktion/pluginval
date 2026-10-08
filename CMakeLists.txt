@@ -81,7 +81,7 @@ endif()
 
 # Only fetch JUCE when top-level (when used as dependency, JUCE is already available)
 if (pluginval_IS_TOP_LEVEL)
-    CPMAddPackage("gh:juce-framework/juce#8.0.13")
+    CPMAddPackage("gh:juce-framework/juce#9.0.3")
 endif()
 
 
