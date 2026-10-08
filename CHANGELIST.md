@@ -1,6 +1,7 @@
 # pluginval Change List
 
 ### 2.0.0
+- Updated JUCE to 9.0.3
 - Added acceptance testing: `pluginval test <config.json>` renders a plugin with a known state, input (audio/MIDI) and optional playhead, then compares the output against a checked-in reference WAV, exiting `0` on a match and `1` on a mismatch (with a diff WAV). Use `--record-missing` to record new references. See `docs/Acceptance testing.md`
 - Restructured the command line into subcommands: `pluginval validate [options] <plugin>` (the default), `pluginval run-tests` and `pluginval strictness-help [level]`. The plugin path is now a positional argument of `validate`
 - **Deprecated:** the flat flags `--validate <plugin>`, `--run-tests` and `--strictness-help [level]` still work as aliases (with a one-line notice) but will be removed in a future version. `pluginval <plugin>` remains a silent shorthand for `validate`
