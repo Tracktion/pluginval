@@ -4,7 +4,7 @@
 
 **pluginval** is a cross-platform audio plugin validator and tester application developed by Tracktion Corporation. It tests VST, VST3, AU (Audio Unit), LV2, and LADSPA plugins for compatibility and stability with host applications.
 
-- **Version**: 1.0.4 (see `VERSION` file; a 2.0.0 entry is staged in `CHANGELIST.md` but `VERSION` is not yet bumped)
+- **Version**: 2.0.0 (see `VERSION` file)
 - **License**: GPLv3
 - **Framework**: Built on JUCE (v8.0.x)
 - **Language**: C++20
