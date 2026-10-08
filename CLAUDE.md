@@ -6,7 +6,7 @@
 
 - **Version**: 2.0.0 (see `VERSION` file)
 - **License**: GPLv3
-- **Framework**: Built on JUCE (v8.0.x)
+- **Framework**: Built on JUCE (v9.0.x)
 - **Language**: C++20
 
 ### Key Features
