@@ -1,0 +1,15 @@
+{
+    "name": "playhead-120",
+    "plugin": "@PLAYHEAD_PROBE_PLUGIN@",
+    "reference": "@ACCEPTANCE_REF_DIR@/playhead-120.wav",
+    "sample_rate": 48000,
+    "block_size": 512,
+    "render_duration": 0.25,
+    "playhead": {
+        "bpm": 120,
+        "time_signature": { "numerator": 4, "denominator": 4 }
+    },
+    "comparison": {
+        "sample": 0.0
+    }
+}

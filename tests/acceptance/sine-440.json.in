@@ -1,0 +1,15 @@
+{
+    "name": "sine-440",
+    "plugin": "@TONE_GENERATOR_PLUGIN@",
+    "reference": "@ACCEPTANCE_REF_DIR@/sine-440.wav",
+    "state": {
+        "parameters": {
+            "waveform": 0.0,
+            "frequency": 0.021021021021021,
+            "gain": 0.5
+        }
+    },
+    "sample_rate": 48000,
+    "block_size": 512,
+    "render_duration": 0.25
+}

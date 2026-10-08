@@ -64,11 +64,11 @@ exit /B %ERRORLEVEL%
     "%MSBUILD_EXE%" %PLUGIN_NAME%.sln /p:VisualStudioVersion=15.0 /m /t:Build /p:Configuration=Release /p:Platform=x64 /p:PreferredToolArchitecture=x64  /p:TreatWarningsAsErrors=true
 
     :: Test in process
-    call "%PLUGINVAL_EXE%" --validate-in-process --strictness-level 5 --validate %PLUGIN_VST3%
+    call "%PLUGINVAL_EXE%" validate --strictness-level 5 %PLUGIN_VST3%
     if %ERRORLEVEL% NEQ 0 exit 1
 
     :: Test out of process
-    :: call "%PLUGINVAL_EXE%" --strictness-level 5 --validate %PLUGIN_VST3%
+    :: call "%PLUGINVAL_EXE%" validate --strictness-level 5 %PLUGIN_VST3%
     :: if %ERRORLEVEL% NEQ 0 exit 1
 
 exit /B 0

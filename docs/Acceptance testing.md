@@ -1,0 +1,106 @@
+# Acceptance testing
+
+Acceptance testing answers a different question from normal validation. Instead of
+"does this plugin conform to the host API and behave safely?" it asks **"does this
+plugin still produce the output I expect for a known input and state?"** - a
+deterministic *render + golden-file comparison*. It is ideal for catching
+accidental DSP changes (a wrong coefficient, a refactor that shifts the output) in
+your own plugins from CI.
+
+It is driven by a small JSON config and a dedicated command:
+
+```
+pluginval test myPlugin-default.json
+```
+
+- The **first** run, with `--record-missing`, renders the plugin and, finding no
+  reference, **records** one (a `.wav` plus a `.wav.json` manifest) next to the
+  config and reports success. Without `--record-missing` a missing reference is an
+  error, so a golden file that is deleted or mis-pathed can't silently pass in CI.
+- **Subsequent** runs render again and **compare** against that reference,
+  exiting `0` on a match and `1` on a mismatch (writing a diff `.wav` to help you
+  see what changed).
+
+So the workflow is: write a config, run once with `--record-missing` to record the
+reference, **commit the
+config and the reference**, then let CI run the same command on every change.
+
+### A minimal config
+
+```json
+{
+  "name": "myReverb-default",
+  "plugin": "/path/to/MyReverb.vst3",
+  "input": { "audio": "inputs/drums.wav" },
+  "reference": "refs/myReverb-default.wav",
+  "state": { "parameters": { "Mix": 0.5, "Decay": 0.8 } },
+  "sample_rate": 48000,
+  "block_size": 512,
+  "render_duration": 2.0,
+  "comparison": { "sample": 1e-6 }
+}
+```
+
+JSON keys are `snake_case`. The most useful fields:
+
+| Field | Notes |
+|---|---|
+| `name` | Labels the result and gives the default reference path. **Required** unless `reference` is given. |
+| `plugin` | Path to the plugin (or an AU identifier). **Required.** |
+| `input.audio` / `input.midi` | Input files to feed it. Omit both for silence (e.g. instruments driven only by MIDI, or generators). The audio file's sample rate must match `sample_rate`. Each file channel feeds the plugin input channel with the same index: a mono file feeds channel 0 only (it isn't duplicated), and extra channels on either side are silent / ignored. MIDI meta events (tempo, track names) aren't sent to the plugin. |
+| `state.parameters` | A map of parameter → **normalised** value (`0` to `1`), applied before rendering, **in file order**. A key of digits only is a parameter index; otherwise it matches the format's parameter ID, then the display name (case-insensitively). |
+| `state.file` | A binary `getStateInformation` blob to restore first (e.g. a captured preset). Applied before `state.parameters`. |
+| `reference` | The golden `.wav`. Defaults to `<name>.wav` next to the config. |
+| `sample_rate` / `block_size` | Default `44100` / `512`. `sample_rate` must be positive; `block_size` must be 1 to 65536. |
+| `render_duration` | Seconds to render (positive). If omitted, the input audio's length is used. |
+| `playhead` | A fixed transport for tempo-dependent plugins: `{ "bpm": 120, "time_signature": { "numerator": 4, "denominator": 4 } }`. Omit it and the plugin gets no playhead. The position advances with the render. |
+| `comparison` | How to compare. `{ "sample": <tolerance> }` is a per-sample absolute-difference tolerance (`0` = bit-exact); the default is one 16-bit LSB. Any NaN / inf difference fails. Omit it for the default; an empty `{}` is an error. |
+
+An invalid config (a missing required field or an out-of-range value) is reported
+as an error (exit `1`) without rendering.
+
+### Determinism matters
+
+Acceptance testing only works for output that is reproducible from a fixed input
+and state. A plugin with free-running randomness can't be golden-tested reliably.
+For the same reason, references are only safely **portable across platforms** when
+you allow a tolerance - exact per-sample matches rarely survive different CPUs and
+floating-point libraries. If a reference recorded on one OS fails on another, raise
+the `sample` tolerance (or use a more tolerant comparison method as they are added).
+
+### Running from CI
+
+`pluginval test` is just a command that returns an exit code, so any CI system can
+run it the same way it runs your other checks:
+
+```bash
+pluginval test tests/acceptance/myReverb-default.json
+```
+
+A non-zero exit fails the build. Commit the config and its reference `.wav`
+alongside your project so every run compares against the same golden file.
+
+Options:
+
+Any other option is an error.
+
+- `--record-missing` - record a missing reference and pass instead of failing.
+  Useful if your CI records new references and checks them in. Also settable as
+  `RECORD_MISSING=1`.
+- `--timeout-ms <ms>` - fail (exit `1`) if the run takes longer than this
+  (default `30000`, `-1` to never time out). Also settable as `TIMEOUT_MS`.
+
+The render runs on a background thread, as a host's audio thread would, leaving
+the message thread free for the plugin.
+
+Each reference's `.wav.json` manifest stores a `config_hash`. If the config (or the
+contents of its input / state files) changes after the reference was recorded, the
+run warns that the reference may be stale. Paths and the plugin binary aren't part
+of the hash, so a checked-in reference doesn't warn on other machines.
+
+On a mismatch a `<name>-diff.wav` (output minus reference) is written next to the
+reference; it's removed again on the next passing run. Add `*-diff.wav` to your
+`.gitignore`.
+
+For the complete schema, the comparator design and the planned roadmap, see the
+[design document](<../tests/acceptance/Acceptance testing design.md>).
