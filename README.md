@@ -49,7 +49,7 @@ CPMAddPackage("gh:tracktion/pluginval#develop")
 
 Then all you need to do is call `add_subdirectory ("modules/pluginval")` in your `CMakeLists.txt`. This should be done **after** your call to `juce_add_plugin`. 
 
-Note that only JUCE 8 is currently supported/tested for this method. 
+Note that only JUCE 8 and 9 are currently supported/tested for this method. 
 
 ### Third-party Installation
 ###### _Chocolatey (Windows):_
