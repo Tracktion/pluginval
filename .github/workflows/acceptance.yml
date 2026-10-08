@@ -43,7 +43,7 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get install -y \
-            libasound2-dev libx11-dev libxext-dev libxinerama-dev libxrandr-dev \
+            libasound2-dev libx11-dev libxext-dev libxi-dev libxinerama-dev libxrandr-dev \
             libxcursor-dev libxcomposite-dev libfreetype6-dev libfontconfig1-dev \
             libgl1-mesa-dev libcurl4-openssl-dev ladspa-sdk ninja-build xvfb
 
