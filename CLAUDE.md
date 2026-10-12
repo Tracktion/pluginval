@@ -90,6 +90,7 @@ pluginval/
 │   ├── PluginvalLookAndFeel.h # Custom UI styling
 │   ├── StrictnessInfoPopup.h # Strictness level info UI
 │   ├── binarydata/           # Binary resources (icons)
+│   ├── native/               # Platform helpers (pluginval_native_posix.h: async-signal-safe stack trace writing)
 │   ├── vst3validator/        # Embedded VST3 validator integration
 │   │   ├── VST3ValidatorRunner.h
 │   │   └── VST3ValidatorRunner.cpp
