@@ -13,10 +13,10 @@
  ==============================================================================*/
 
 #pragma once
-#include <JuceHeader.h>
+
 
 /** Initialises crash handling in order to get stack traces when validation crashes occur. */
 void initialiseCrashHandler();
 
 /** Call this after a crash to get the most recent stack trace. */
-String getCrashLog();
+juce::String getCrashLog();

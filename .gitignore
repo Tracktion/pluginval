@@ -65,3 +65,18 @@ install/testresults.txt
 **/bin
 **/tmp
 **/cmake_build
+
+# CLion
+cmake-build*
+.idea/
+
+# CMake
+CMakeCache.txt
+CMakeFiles/
+CMakeScripts/
+cmake_install.cmake
+pluginval.build/
+pluginval.xcodeproj/
+pluginval_artefacts/
+
+.claude/*local*

@@ -14,6 +14,7 @@
 
 #include "../PluginTests.h"
 #include "../TestUtilities.h"
+#include "../RTCheck.h"
 
 //==============================================================================
 struct AllocationsInRealTimeThreadTest  : public PluginTest
@@ -23,7 +24,7 @@ struct AllocationsInRealTimeThreadTest  : public PluginTest
     {
     }
 
-    void runTest (PluginTests& ut, AudioPluginInstance& instance) override
+    void runTest (PluginTests& ut, juce::AudioPluginInstance& instance) override
     {
         const bool isPluginInstrument = instance.getPluginDescription().isInstrument;
 
@@ -40,22 +41,23 @@ struct AllocationsInRealTimeThreadTest  : public PluginTest
         {
             for (auto bs : blockSizes)
             {
-                ut.logMessage (String ("Testing with sample rate [SR] and block size [BS]")
-                                   .replace ("SR", String (sr, 0), false)
-                                   .replace ("BS", String (bs), false));
+                ut.logMessage (juce::String ("Testing with sample rate [SR] and block size [BS]")
+                                   .replace ("SR",juce::String (sr, 0), false)
+                                   .replace ("BS",juce::String (bs), false));
                 instance.releaseResources();
                 instance.prepareToPlay (sr, bs);
 
-                const int numChannelsRequired = jmax (instance.getTotalNumInputChannels(), instance.getTotalNumOutputChannels());
-                AudioBuffer<float> ab (numChannelsRequired, bs);
-                MidiBuffer mb;
+                const int numChannelsRequired = juce::jmax (instance.getTotalNumInputChannels(), instance.getTotalNumOutputChannels());
+                juce::AudioBuffer<float> ab (numChannelsRequired, bs);
+                juce::MidiBuffer mb;
+                mb.ensureSize (32);
 
                 // Add a random note on if the plugin is a synth
                 const int noteChannel = r.nextInt ({ 1, 17 });
                 const int noteNumber = r.nextInt (128);
 
                 if (isPluginInstrument)
-                    addNoteOn (mb, noteChannel, noteNumber, jmin (10, bs - 1));
+                    addNoteOn (mb, noteChannel, noteNumber, juce::jmin (10, bs - 1));
 
                 for (int i = 0; i < numBlocks; ++i)
                 {
@@ -66,6 +68,7 @@ struct AllocationsInRealTimeThreadTest  : public PluginTest
                     fillNoise (ab);
 
                     {
+                        RTC_REALTIME_CONTEXT_IF_ENABLED(ut.getOptions().realtimeCheck, i)
                         ScopedAllocationDisabler sad;
                         instance.processBlock (ab, mb);
                     }
@@ -73,7 +76,7 @@ struct AllocationsInRealTimeThreadTest  : public PluginTest
                     mb.clear();
 
                     auto& ai = getAllocatorInterceptor();
-                    ut.expect (! ai.getAndClearAllocationViolation(), "Allocations occured in audio thread: " + String (ai.getAndClearNumAllocationViolations()));
+                    ut.expect (! ai.getAndClearAllocationViolation(), "Allocations occurred in audio thread: " + juce::String (ai.getAndClearNumAllocationViolations()));
 
                     ut.expectEquals (countNaNs (ab), 0, "NaNs found in buffer");
                     ut.expectEquals (countInfs (ab), 0, "Infs found in buffer");
@@ -94,7 +97,7 @@ struct LargerThanPreparedBlockSizeTest   : public PluginTest
     {
     }
 
-    void runTest (PluginTests& ut, AudioPluginInstance& instance) override
+    void runTest (PluginTests& ut, juce::AudioPluginInstance& instance) override
     {
         if (! canRunTest (instance))
         {
@@ -119,16 +122,17 @@ struct LargerThanPreparedBlockSizeTest   : public PluginTest
             for (auto preparedBlockSize : blockSizes)
             {
                 const auto processingBlockSize = preparedBlockSize * 2;
-                ut.logMessage (String ("Preparing with sample rate [SR] and block size [BS], processing with block size [BSP]")
-                                   .replace ("SR", String (sr, 0), false)
-                                   .replace ("BSP", String (processingBlockSize), false)
-                                   .replace ("BS", String (preparedBlockSize), false));
+                ut.logMessage (juce::String ("Preparing with sample rate [SR] and block size [BS], processing with block size [BSP]")
+                                   .replace ("SR",juce::String (sr, 0), false)
+                                   .replace ("BSP",juce::String (processingBlockSize), false)
+                                   .replace ("BS",juce::String (preparedBlockSize), false));
                 instance.releaseResources();
                 instance.prepareToPlay (sr, preparedBlockSize);
 
-                const int numChannelsRequired = jmax (instance.getTotalNumInputChannels(), instance.getTotalNumOutputChannels());
-                AudioBuffer<float> ab (numChannelsRequired, processingBlockSize);
-                MidiBuffer mb;
+                const int numChannelsRequired = juce::jmax (instance.getTotalNumInputChannels(), instance.getTotalNumOutputChannels());
+                juce::AudioBuffer<float> ab (numChannelsRequired, processingBlockSize);
+                juce::MidiBuffer mb;
+                mb.ensureSize (32);
 
                 for (int i = 0; i < 10; ++i)
                 {
@@ -145,7 +149,7 @@ struct LargerThanPreparedBlockSizeTest   : public PluginTest
     }
 
 private:
-    static bool canRunTest (const AudioPluginInstance& instance)
+    static bool canRunTest (const juce::AudioPluginInstance& instance)
     {
         const auto format = instance.getPluginDescription().pluginFormatName;
 

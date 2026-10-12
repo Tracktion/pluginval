@@ -14,51 +14,63 @@
 
 #pragma once
 
-#include <JuceHeader.h>
+#include "juce_audio_processors/juce_audio_processors.h"
+
+/** Determines the type of real-time checking to perform. */
+enum class RealtimeCheck
+{
+    disabled,   ///< Doesn't check for realtime safety
+    enabled,    ///< Checks for realtime safety
+    relaxed     ///< Checks for realtime safety after the first audio callback (to allow initialisation)
+};
+
+juce::String getDisplayString (RealtimeCheck);
+
 
 //==============================================================================
 /**
-    The UnitTest which will create the plugins and run each of the registered tests on them.
+    The juce::UnitTest which will create the plugins and run each of the registered tests on them.
 */
-struct PluginTests : public UnitTest
+struct PluginTests : public juce::UnitTest
 {
     //==============================================================================
     /** A set of options to use when running tests. */
     struct Options
     {
-        int strictnessLevel = 5;            /**< Max test level to run. */
-        int64 randomSeed = 0;               /**< The seed to use for the tests, 0 signifies a randomly generated seed. */
-        int64 timeoutMs = 30000;            /**< Timeout after which to kill the test. */
-        bool verbose = false;               /**< Whether or not to log additional information. */
-        int numRepeats = 1;                 /**< The number of times to repeat the tests. */
-        bool randomiseTestOrder = false;    /**< Whether to randomise the order of the tests in each repeat. */
-        bool withGUI = true;                /**< Whether or not avoid tests that instantiate a gui. */
-        File dataFile;                      /**< File which tests can use to run user provided data. */
-        File outputDir;                     /**< Directory in which to write the log files for each test run. */
-        StringArray disabledTests;          /**< List of disabled tests. */
-        std::vector<double> sampleRates;    /**< List of sample rates. */
-        std::vector<int> blockSizes;        /**< List of block sizes. */
-        File vst3Validator;                 /**< File to use as the VST3 validator app. */
+        int strictnessLevel = 5;                                /**< Max test level to run. */
+        juce::int64 randomSeed = 0;                             /**< The seed to use for the tests, 0 signifies a randomly generated seed. */
+        juce::int64 timeoutMs = 30000;                          /**< Timeout after which to kill the test. */
+        bool verbose = false;                                   /**< Whether or not to log additional information. */
+        int numRepeats = 1;                                     /**< The number of times to repeat the tests. */
+        bool randomiseTestOrder = false;                        /**< Whether to randomise the order of the tests in each repeat. */
+        bool withGUI = true;                                    /**< Whether or not avoid tests that instantiate a gui. */
+        juce::File dataFile;                                    /**< juce::File which tests can use to run user provided data. */
+        juce::File outputDir;                                   /**< Directory in which to write the log files for each test run. */
+        juce::String outputFilename;                            /**< Filename to write logs into */
+        juce::StringArray disabledTests;                        /**< List of disabled tests. */
+        std::vector<double> sampleRates;                        /**< List of sample rates. */
+        std::vector<int> blockSizes;                            /**< List of block sizes. */
+        RealtimeCheck realtimeCheck = RealtimeCheck::disabled;  /**< The type of real-time safety checking to perform. */
     };
 
     /** Creates a set of tests for a fileOrIdentifier. */
-    PluginTests (const String& fileOrIdentifier, Options);
+    PluginTests (const juce::String& fileOrIdentifier, Options);
 
     /** Creates a set of tests for a PluginDescription. */
-    PluginTests (const PluginDescription&, Options);
+    PluginTests (const juce::PluginDescription&, Options);
 
     /** Returns the file or ID used to create this. */
-    String getFileOrID() const;
+    juce::String getFileOrID() const;
 
     /** Call this after you've run the test to return information about the PluginDescriptions found. */
-    const OwnedArray<PluginDescription>& getDescriptions() const    { return typesFound; }
+    const juce::OwnedArray<juce::PluginDescription>& getDescriptions() const    { return typesFound; }
 
     //==============================================================================
     /** Returns the set of options currently being used to run the tests. */
     Options getOptions() const                       { return options; }
 
     /** Logs a verbose message which may be ommited from logs if the verbose option is not specified. */
-    void logVerboseMessage (const String& message);
+    void logVerboseMessage (const juce::String& message);
 
     /** Resets the timeout. Call this from long tests that don't log messages. */
     void resetTimeout();
@@ -68,15 +80,25 @@ struct PluginTests : public UnitTest
     void runTest() override;
 
 private:
-    const String fileOrID;
+    const juce::String fileOrID;
     const Options options;
-    AudioPluginFormatManager formatManager;
-    KnownPluginList knownPluginList;
+    juce::AudioPluginFormatManager formatManager;
+    juce::KnownPluginList knownPluginList;
 
-    OwnedArray<PluginDescription> typesFound;
+    juce::OwnedArray<juce::PluginDescription> typesFound;
 
-    std::unique_ptr<AudioPluginInstance> testOpenPlugin (const PluginDescription&);
-    void testType (const PluginDescription&);
+    std::unique_ptr<juce::AudioPluginInstance> testOpenPlugin (const juce::PluginDescription&);
+    void testType (const juce::PluginDescription&);
+};
+
+//==============================================================================
+/**
+    Describes what a test does at a given strictness level.
+*/
+struct TestDescription
+{
+    juce::String title;
+    juce::String description;
 };
 
 //==============================================================================
@@ -122,14 +144,14 @@ struct PluginTest
         @param testName                 The name of the test
         @param testStrictnessLevel      The conformance level of the test
     */
-    PluginTest (const String& testName,
+    PluginTest (const juce::String& testName,
                 int testStrictnessLevel,
                 Requirements testRequirements = { Requirements::Thread::backgroundThread, Requirements::GUI::noGUI })
         : name (testName),
           strictnessLevel (testStrictnessLevel),
           requirements (testRequirements)
     {
-        jassert (isPositiveAndNotGreaterThan (strictnessLevel, 10));
+        jassert (juce::isPositiveAndNotGreaterThan (strictnessLevel, 10));
         getAllTests().add (this);
     }
 
@@ -140,9 +162,9 @@ struct PluginTest
     }
 
     /** Returns a static list of all the tests. */
-    static Array<PluginTest*>& getAllTests()
+    static juce::Array<PluginTest*>& getAllTests()
     {
-        static Array<PluginTest*> tests;
+        static juce::Array<PluginTest*> tests;
         return tests;
     }
 
@@ -161,14 +183,23 @@ struct PluginTest
 
     //==============================================================================
     /** Override to perform any tests.
-        Note that because PluginTest doesn't inherit from UnitTest (due to being passed
-        in the AudioPluginInstance), you can use the UnitTest parameter to log messages or
+        Note that because PluginTest doesn't inherit from juce::UnitTest (due to being passed
+        in the juce::AudioPluginInstance), you can use the juce::UnitTest parameter to log messages or
         call expect etc.
     */
-    virtual void runTest (PluginTests& runningTest, AudioPluginInstance&) = 0;
+    virtual void runTest (PluginTests& runningTest, juce::AudioPluginInstance&) = 0;
+
+    /** Override to return a description of what this test does.
+        The strictnessLevel parameter allows tests to describe different behaviour
+        at different levels (e.g., more iterations, stricter checks).
+    */
+    virtual std::vector<TestDescription> getDescription (int /*strictnessLevel*/) const
+    {
+        return { { name, {} } };
+    }
 
     //==============================================================================
-    const String name;
+    const juce::String name;
     const int strictnessLevel;
     const Requirements requirements;
 };

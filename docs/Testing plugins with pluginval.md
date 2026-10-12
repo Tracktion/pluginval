@@ -12,9 +12,9 @@ This guide focuses on non-developers and how they can use `pluginval` to validat
 5. If the scanning fails, use the "Test File" option
 
 ##### 1. Download the latest `pluginval` binary for your platform
- - [Windows](https://github.com/Tracktion/pluginval/releases/download/latest_release/pluginval_Windows.zip)
- - [Mac](https://github.com/Tracktion/pluginval/releases/download/latest_release/pluginval_macOS.zip)
- - [Linux](https://github.com/Tracktion/pluginval/releases/download/latest_release/pluginval_Linux.zip)
+ - [Windows](https://github.com/Tracktion/pluginval/releases/latest/download/pluginval_Windows.zip)
+ - [Mac](https://github.com/Tracktion/pluginval/releases/latest/download/pluginval_macOS.zip)
+ - [Linux](https://github.com/Tracktion/pluginval/releases/latest/download/pluginval_Linux.zip)
 
 Once, downloaded, unzip the file and run the application.
 

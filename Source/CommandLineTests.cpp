@@ -13,10 +13,10 @@
  ==============================================================================*/
 
 
-struct CommandLineTests : public UnitTest
+struct CommandLineTests : public juce::UnitTest
 {
     CommandLineTests()
-        : UnitTest ("CommandLineTests", "pluginval")
+        : juce::UnitTest ("CommandLineTests", "pluginval")
     {
     }
 
@@ -25,7 +25,7 @@ struct CommandLineTests : public UnitTest
 
         beginTest ("Merge environment variables");
         {
-            StringPairArray envVars;
+            juce::StringPairArray envVars;
             envVars.set ("STRICTNESS_LEVEL", "5");
             envVars.set ("RANDOM_SEED", "1234");
             envVars.set ("TIMEOUT_MS", "30000");
@@ -36,7 +36,7 @@ struct CommandLineTests : public UnitTest
             envVars.set ("DATA_FILE", "<path_to_file>");
             envVars.set ("OUTPUT_DIR", "<path_to_dir>");
 
-            const auto merged = mergeEnvironmentVariables (String(), [&envVars] (const String& n, const String& def) { return envVars.getValue (n, def); }).joinIntoString (" ");
+            const auto merged = mergeEnvironmentVariables (juce::String(), [&envVars] (const juce::String& n, const juce::String& def) { return envVars.getValue (n, def); }).joinIntoString (" ");
             expect (merged.contains ("--strictness-level 5"));
             expect (merged.contains ("--random-seed 1234"));
             expect (merged.contains ("--timeout-ms 30000"));
@@ -50,30 +50,30 @@ struct CommandLineTests : public UnitTest
 
         beginTest ("Command line defaults");
         {
-            ArgumentList args ({}, "");
+            juce::ArgumentList args ({}, "");
             expectEquals (getStrictnessLevel (args), 5);
-            expectEquals (getRandomSeed (args), (int64) 0);
-            expectEquals (getTimeout (args), (int64) 30000);
+            expectEquals (getRandomSeed (args), (juce::int64) 0);
+            expectEquals (getTimeout (args), (juce::int64) 30000);
             expectEquals (getNumRepeats (args), 1);
-            expectEquals (getOptionValue (args, "--data-file", {}, "Missing data-file path argument!").toString(), String());
-            expectEquals (getOptionValue (args, "--output-dir", {}, "Missing output-dir path argument!").toString(), String());
+            expectEquals (getOptionValue (args, "--data-file", {}, "Missing data-file path argument!").toString(), juce::String());
+            expectEquals (getOptionValue (args, "--output-dir", {}, "Missing output-dir path argument!").toString(), juce::String());
         }
 
         beginTest ("Command line parser");
         {
-            ArgumentList args ({}, "--strictness-level 7 --random-seed 1234 --timeout-ms 20000 --repeat 11 --data-file /path/to/file --output-dir /path/to/dir --validate /path/to/plugin");
+            juce::ArgumentList args ({}, "--strictness-level 7 --random-seed 1234 --timeout-ms 20000 --repeat 11 --data-file /path/to/file --output-dir /path/to/dir --validate /path/to/plugin");
             expectEquals (getStrictnessLevel (args), 7);
-            expectEquals (getRandomSeed (args), (int64) 1234);
-            expectEquals (getTimeout (args), (int64) 20000);
+            expectEquals (getRandomSeed (args), (juce::int64) 1234);
+            expectEquals (getTimeout (args), (juce::int64) 20000);
             expectEquals (getNumRepeats (args), 11);
-            expectEquals (getOptionValue (args, "--data-file", {}, "Missing data-file path argument!").toString(), String ("/path/to/file"));
-            expectEquals (getOptionValue (args, "--output-dir", {}, "Missing output-dir path argument!").toString(), String ("/path/to/dir"));
-            expectEquals (getOptionValue (args, "--validate", {}, "Missing validate argument!").toString(), String ("/path/to/plugin"));
+            expectEquals (getOptionValue (args, "--data-file", {}, "Missing data-file path argument!").toString(),juce::String ("/path/to/file"));
+            expectEquals (getOptionValue (args, "--output-dir", {}, "Missing output-dir path argument!").toString(),juce::String ("/path/to/dir"));
+            expectEquals (getOptionValue (args, "--validate", {}, "Missing validate argument!").toString(),juce::String ("/path/to/plugin"));
         }
 
         beginTest ("Handles an absolute path to the plugin");
         {
-            const auto homeDir = File::getSpecialLocation (File::userHomeDirectory).getFullPathName();
+            const auto homeDir = juce::File::getSpecialLocation (juce::File::userHomeDirectory).getFullPathName();
             const auto commandLineString = "--validate " + homeDir + "/path/to/MyPlugin";
             const auto args = createCommandLineArgs (commandLineString);
             expectEquals (parseCommandLine (args).first, homeDir + "/path/to/MyPlugin");
@@ -81,7 +81,7 @@ struct CommandLineTests : public UnitTest
 
         beginTest ("Handles a quoted absolute path to the plugin");
         {
-            const auto homeDir = File::getSpecialLocation (File::userHomeDirectory).getFullPathName();
+            const auto homeDir = juce::File::getSpecialLocation (juce::File::userHomeDirectory).getFullPathName();
             const auto pathToQuote = homeDir + "/path/to/MyPlugin";
             const auto commandLineString = "--validate " + pathToQuote.quoted();
             const auto args = createCommandLineArgs (commandLineString);
@@ -90,14 +90,14 @@ struct CommandLineTests : public UnitTest
 
         beginTest ("Handles a relative path");
         {
-            const auto currentDir = File::getCurrentWorkingDirectory();
+            const auto currentDir = juce::File::getCurrentWorkingDirectory();
             const auto args = createCommandLineArgs ("--validate MyPlugin.vst3");
             expectEquals (parseCommandLine (args).first, currentDir.getChildFile ("MyPlugin.vst3").getFullPathName());
         }
 
         beginTest ("Handles a quoted relative path with spaces to the plugin");
         {
-            const auto currentDir = File::getCurrentWorkingDirectory();
+            const auto currentDir = juce::File::getCurrentWorkingDirectory();
             const auto args = createCommandLineArgs (R"(--validate "My Plugin.vst3")");
             expectEquals (parseCommandLine (args).first, currentDir.getChildFile ("My Plugin.vst3").getFullPathName());
         }
@@ -106,7 +106,7 @@ struct CommandLineTests : public UnitTest
 
         beginTest ("Handles a relative path with ./ to the plugin");
         {
-            const auto currentDir = File::getCurrentWorkingDirectory().getFullPathName();
+            const auto currentDir = juce::File::getCurrentWorkingDirectory().getFullPathName();
             const auto commandLineString = "--validate ./path/to/MyPlugin";
             const auto args = createCommandLineArgs(commandLineString);
             expectEquals (parseCommandLine (args).first, currentDir + "/path/to/MyPlugin");
@@ -116,20 +116,20 @@ struct CommandLineTests : public UnitTest
         {
             const auto commandLineString = "--validate ~/path/to/MyPlugin";
             const auto args = createCommandLineArgs(commandLineString);
-            expectEquals (parseCommandLine (args).first, File::getSpecialLocation (File::userHomeDirectory).getFullPathName() + "/path/to/MyPlugin");
+            expectEquals (parseCommandLine (args).first, juce::File::getSpecialLocation (juce::File::userHomeDirectory).getFullPathName() + "/path/to/MyPlugin");
         }
 
         beginTest ("Handles quoted strings, spaces, and home directory relative path to the plugin");
         {
             const auto commandLineString = R"(--data-file "~/path/to/My File" --output-dir "~/path/to/My Directory" --validate "~/path/to/My Plugin")";
             const auto args = createCommandLineArgs(commandLineString);
-            expectEquals (parseCommandLine (args).first, File::getSpecialLocation (File::userHomeDirectory).getFullPathName() + "/path/to/My Plugin");
+            expectEquals (parseCommandLine (args).first, juce::File::getSpecialLocation (juce::File::userHomeDirectory).getFullPathName() + "/path/to/My Plugin");
         }
         #endif
 
         beginTest ("Implicit validate with a relative path");
         {
-            const auto currentDir = File::getCurrentWorkingDirectory();
+            const auto currentDir = juce::File::getCurrentWorkingDirectory();
             const auto args = createCommandLineArgs ("MyPlugin.vst3");
             expectEquals (parseCommandLine (args).first, currentDir.getChildFile ("MyPlugin.vst3").getFullPathName());
         }
@@ -138,13 +138,13 @@ struct CommandLineTests : public UnitTest
         {
             const auto commandLineString = "--validate MyPluginID";
             const auto args = createCommandLineArgs(commandLineString);
-            expectEquals (parseCommandLine (args).first, String ("MyPluginID"));
+            expectEquals (parseCommandLine (args).first,juce::String ("MyPluginID"));
         }
 
         beginTest ("Command line random");
         {
-            expectEquals (getRandomSeed (ArgumentList ({}, "--random-seed 0x7f2da1")), (int64) 8334753);
-            expectEquals (getRandomSeed (ArgumentList ({}, "--random-seed 0x692bc1f")), (int64) 110279711);
+            expectEquals (getRandomSeed (juce::ArgumentList ({}, "--random-seed 0x7f2da1")), (juce::int64) 8334753);
+            expectEquals (getRandomSeed (juce::ArgumentList ({}, "--random-seed 0x692bc1f")), (juce::int64) 110279711);
         }
 
         beginTest ("Implicit validate options");
@@ -156,7 +156,7 @@ struct CommandLineTests : public UnitTest
 
         beginTest ("Allows for other options after explicit --validate");
         {
-            const auto currentDir = File::getCurrentWorkingDirectory();
+            const auto currentDir = juce::File::getCurrentWorkingDirectory();
             const auto args = createCommandLineArgs ("--validate MyPlugin.vst3 --randomise");
             expectEquals (parseCommandLine (args).first, currentDir.getChildFile ("MyPlugin.vst3").getFullPathName());
             expect (parseCommandLine(args).second.randomiseTestOrder);

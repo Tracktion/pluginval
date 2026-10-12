@@ -44,7 +44,7 @@ inline void violationError (const std::string& text)
     }
 }
 
-inline bool thowIfRequiredAndReturnShouldLog()
+inline bool throwIfRequiredAndReturnShouldLog()
 {
     switch (AllocatorInterceptor::getViolationBehaviour())
     {
@@ -70,7 +70,7 @@ inline bool thowIfRequiredAndReturnShouldLog()
 ATTRIBUTE_USED void* operator new (std::size_t sz)
 {
     if (! logAllocationViolationIfNotAllowed())
-        if (thowIfRequiredAndReturnShouldLog())
+        if (throwIfRequiredAndReturnShouldLog())
             std::cerr << "!!! WARNING: Illegal allocation of " << sz << " bytes\n";
 
     return std::malloc (sz);
@@ -79,7 +79,7 @@ ATTRIBUTE_USED void* operator new (std::size_t sz)
 ATTRIBUTE_USED void* operator new[] (std::size_t sz)
 {
     if (! logAllocationViolationIfNotAllowed())
-        if (thowIfRequiredAndReturnShouldLog())
+        if (throwIfRequiredAndReturnShouldLog())
             std::cerr << "!!! WARNING: Illegal array allocation of " << sz << " bytes\n";
 
     return std::malloc (sz);
@@ -88,7 +88,7 @@ ATTRIBUTE_USED void* operator new[] (std::size_t sz)
 ATTRIBUTE_USED void operator delete (void* ptr) noexcept
 {
     if (! logAllocationViolationIfNotAllowed())
-        if (thowIfRequiredAndReturnShouldLog())
+        if (throwIfRequiredAndReturnShouldLog())
             std::cerr << "!!! WARNING: Illegal deletion\n";
 
     std::free (ptr);
@@ -97,7 +97,7 @@ ATTRIBUTE_USED void operator delete (void* ptr) noexcept
 ATTRIBUTE_USED void operator delete[] (void* ptr) noexcept
 {
     if (! logAllocationViolationIfNotAllowed())
-        if (thowIfRequiredAndReturnShouldLog())
+        if (throwIfRequiredAndReturnShouldLog())
             std::cerr << "!!! WARNING: Illegal array deletion\n";
 
     std::free (ptr);
@@ -107,7 +107,7 @@ ATTRIBUTE_USED void operator delete[] (void* ptr) noexcept
 void operator delete (void* ptr, size_t) noexcept
 {
     if (! logAllocationViolationIfNotAllowed())
-        if (thowIfRequiredAndReturnShouldLog())
+        if (throwIfRequiredAndReturnShouldLog())
             std::cerr << "!!! WARNING: Illegal deletion\n";
 
     std::free (ptr);
@@ -116,7 +116,7 @@ void operator delete (void* ptr, size_t) noexcept
 void operator delete[] (void* ptr, size_t) noexcept
 {
     if (! logAllocationViolationIfNotAllowed())
-        if (thowIfRequiredAndReturnShouldLog())
+        if (throwIfRequiredAndReturnShouldLog())
             std::cerr << "!!! WARNING: Illegal array deletion\n";
 
     std::free (ptr);
@@ -147,11 +147,11 @@ ScopedAllocationDisabler::ScopedAllocationDisabler()    { getAllocatorIntercepto
 ScopedAllocationDisabler::~ScopedAllocationDisabler()   { getAllocatorInterceptor().enableAllocations(); }
 
 //==============================================================================
-struct AllocatorInterceptorTests    : public UnitTest,
-                                      private AsyncUpdater
+struct AllocatorInterceptorTests    : public juce::UnitTest,
+                                      private juce::AsyncUpdater
 {
     AllocatorInterceptorTests()
-        : UnitTest ("AllocatorInterceptorTests", "pluginval")
+        : juce::UnitTest ("AllocatorInterceptorTests", "pluginval")
     {
     }
 
@@ -242,7 +242,7 @@ struct AllocatorInterceptorTests    : public UnitTest,
 private:
     void performAllocations()
     {
-        String s ("Hello world");
+        juce::String s ("Hello world");
         std::vector<float> floats (42);
         triggerAsyncUpdate();
 

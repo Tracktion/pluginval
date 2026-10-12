@@ -1,5 +1,27 @@
 # pluginval Change List
 
+### 1.0.5
+- Added drag-and-drop of plug-in files onto the main window, with two drop zones to either validate the plug-in or add it to the plugin list [#170]
+- Added static linking to the Windows runtime so it should run on more Windows systems (particularly non-dev machines)
+- Made `PluginInfoTest` run on the message thread as the functions it calls aren't thread-safe 
+
+### 1.0.4
+- Limit auval's stress test to 20 seconds (vs 600) [#135]
+- Fixed incorrect "ALL TESTS PASSED" message when validating out of process [#125]
+- Updated juce to 8.0.3 [#133]
+- Added LV2 support [#25]
+- Provide CMake module for registering pluginval tests with CTest [#123] 
+- Changed minimum Linux version to Ubuntu 22.04
+
+### 1.0.3
+-  Fix VST3 host bus issue
+
+### 1.0.2
+- Added com.apple.security.get-task-allow to allow debugging on pluginval [macOS]
+
+### 1.0.1
+- Fixed support for Ubuntu 18.04
+
 ### 1.0.0
 - Added running auval as a test for Audio Units on macOS (levels 5 and up)
 - Added running VST3's validator as a test for VST3s (levels 5 and up)
