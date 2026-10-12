@@ -18,7 +18,6 @@
 #include "PluginTests.h"
 
 #if JUCE_MAC
- #include <signal.h>
  #include <sys/types.h>
  #include <unistd.h>
 #endif
@@ -59,36 +58,9 @@ inline void logAndFlush (const juce::String& m)
 }
 
 //==============================================================================
-#if JUCE_MAC
-static void kill9WithSomeMercy (int signal)
-{
-    juce::Logger::writeToLog ("pluginval received " + juce::String(::strsignal(signal)) + ", exiting immediately");
-
-    // Use std::_Exit here instead of kill as kill doesn't seem to set the exit code of the process so is picked up as a "pass" in the host process
-    std::_Exit (SIGKILL);
-}
-
-// Avoid showing the macOS crash dialog, which can cause the process to hang
-static void setupSignalHandling()
-{
-    const int signals[] = { SIGFPE, SIGILL, SIGSEGV, SIGBUS, SIGABRT };
-
-    for (int i = 0; i < juce::numElementsInArray (signals); ++i)
-    {
-        ::signal (signals[i], kill9WithSomeMercy);
-        ::siginterrupt (signals[i], 1);
-    }
-}
-#endif
-
-
-//==============================================================================
 //==============================================================================
 CommandLineValidator::CommandLineValidator()
 {
-   #if JUCE_MAC
-    setupSignalHandling();
-   #endif
 }
 
 CommandLineValidator::~CommandLineValidator()
