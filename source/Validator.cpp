@@ -22,7 +22,7 @@
 
 //==============================================================================
 struct PluginsUnitTestRunner    : public juce::UnitTestRunner,
-                               private juce::Thread
+                                  private juce::Thread
 {
     PluginsUnitTestRunner (std::function<void (const juce::String&)> logCallback, std::unique_ptr<juce::FileOutputStream> logDestination, juce::int64 timeoutInMs)
         : Thread ("TimoutThread"),
@@ -32,6 +32,9 @@ struct PluginsUnitTestRunner    : public juce::UnitTestRunner,
     {
         jassert (callback);
         resetTimeout();
+
+        // Initialise the crash handler to clear any previous crash logs
+        initialiseCrashHandler();
 
         if (timeoutInMs > 0)
             startThread (juce::Thread::Priority::low);
