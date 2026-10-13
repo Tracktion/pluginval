@@ -18,6 +18,8 @@ COMMANDS:
                                                     pass instead.
                                   --timeout-ms <ms> Fail if the run takes longer
                                                     (default 30000, -1 = never).
+                                  --junit-xml <file>    Write a JUnit XML report.
+                                  --json-results <file> Write a JSON report.
                                 Any other option is an error.
 
 The flat flags --validate <plugin>, --run-tests and --strictness-help [level]
@@ -46,6 +48,8 @@ OPTIONS (for the validate command):
           --output-dir TEXT   Directory in which to write the log files.
           --output-filename TEXT 
                               Filename to write logs into.
+          --junit-xml TEXT    File to write a JUnit XML report to.
+          --json-results TEXT File to write a JSON report to.
           --disabled-tests TEXT 
                               Comma-separated test names, or a path to a file listing them.
           --random-seed TEXT  Random seed (hex 0x.. or int) for replicable test runs.

@@ -16,6 +16,7 @@
 #include "PluginTests.h"
 #include "CrashHandler.h"
 #include "CommandLine.h"
+#include "ReportWriter.h"
 #include <numeric>
 #include <thread>
 #include <chrono>
@@ -24,9 +25,11 @@
 struct PluginsUnitTestRunner    : public juce::UnitTestRunner,
                                   private juce::Thread
 {
-    PluginsUnitTestRunner (std::function<void (const juce::String&)> logCallback, std::unique_ptr<juce::FileOutputStream> logDestination, juce::int64 timeoutInMs)
+    PluginsUnitTestRunner (std::function<void (const juce::String&)> logCallback, std::unique_ptr<juce::FileOutputStream> logDestination, juce::int64 timeoutInMs,
+                           std::function<void()> timeoutCallback = {})
         : Thread ("TimoutThread"),
           callback (std::move (logCallback)),
+          onTimeout (std::move (timeoutCallback)),
           outputStream (std::move (logDestination)),
           timeoutMs (timeoutInMs)
     {
@@ -73,6 +76,7 @@ struct PluginsUnitTestRunner    : public juce::UnitTestRunner,
 
 private:
     std::function<void (const juce::String&)> callback;
+    std::function<void()> onTimeout; // Called on the timeout thread just before the process is terminated
     std::unique_ptr<juce::FileOutputStream> outputStream;
     const juce::int64 timeoutMs = -1;
     std::atomic<juce::int64> timoutTime { -1 };
@@ -95,6 +99,10 @@ private:
 
                 // Give the log a second to flush the message before terminating
                 juce::Thread::sleep (1000);
+
+                if (onTimeout)
+                    onTimeout();
+
                 juce::Process::terminate();
             }
 
@@ -187,6 +195,47 @@ static void updateFileNameIfPossible (PluginTests& test, PluginsUnitTestRunner& 
 
 
 //==============================================================================
+/** Converts the results of a validation into a report for --junit-xml / --json-results. */
+static report_writer::Report toReport (PluginTests& test, const juce::Array<juce::UnitTestRunner::TestResult>& results)
+{
+    const auto options = test.getOptions();
+
+    report_writer::Report report;
+    report.command = "validate";
+    report.target = test.getFileOrID();
+
+    if (! results.isEmpty())
+        report.startTime = results.getReference (0).startTime;
+
+    if (auto pd = test.getDescriptions().getFirst())
+    {
+        report.properties.push_back ({ "plugin_name", pd->name });
+        report.properties.push_back ({ "plugin_version", pd->version });
+        report.properties.push_back ({ "plugin_format", pd->pluginFormatName });
+        report.properties.push_back ({ "plugin_manufacturer", pd->manufacturerName });
+    }
+
+    report.properties.push_back ({ "strictness_level", juce::String (options.strictnessLevel) });
+    report.properties.push_back ({ "timeout_ms", juce::String (options.timeoutMs) });
+
+    if (options.randomSeed != 0)
+        report.properties.push_back ({ "random_seed", "0x" + juce::String::toHexString (options.randomSeed) });
+
+    for (const auto& r : results)
+    {
+        report_writer::TestCase c;
+        c.name = r.subcategoryName;
+        c.status = r.failures > 0 ? report_writer::TestCase::Outcome::failed
+                                  : report_writer::TestCase::Outcome::passed;
+        c.messages = r.messages;
+        c.durationSeconds = juce::jmax (0.0, (r.endTime - r.startTime).inSeconds());
+        report.cases.push_back (c);
+    }
+
+    return report;
+}
+
+//==============================================================================
 //==============================================================================
 inline int getNumFailures (juce::Array<juce::UnitTestRunner::TestResult> results);
 
@@ -194,8 +243,23 @@ inline juce::Array<juce::UnitTestRunner::TestResult> runTests (PluginTests& test
 {
     const auto options = test.getOptions();
     juce::Array<juce::UnitTestRunner::TestResult> results;
-    PluginsUnitTestRunner testRunner (std::move (callback), createDestinationFileStream (test), options.timeoutMs);
+    const auto writeIncompleteReport = [options, fileOrID = test.getFileOrID()] (const juce::String& reason)
+    {
+        report_writer::write (report_writer::makeIncomplete ("validate", fileOrID, reason),
+                              options.junitXmlFile, options.jsonResultsFile);
+    };
+
+    // Written last on a timeout, so the report always agrees with the exit code
+    // (the tests can finish in the moment between the timeout and the process ending)
+    PluginsUnitTestRunner testRunner (std::move (callback), createDestinationFileStream (test), options.timeoutMs,
+                                      [options, writeIncompleteReport]
+                                      {
+                                          writeIncompleteReport ("Validation timed out after " + juce::RelativeTime::milliseconds (options.timeoutMs).getDescription());
+                                      });
     testRunner.setAssertOnFailure (false);
+
+    // Written up front so a crash can't leave a stale (or missing) report behind
+    writeIncompleteReport ("Validation did not complete (crashed)");
 
     juce::Array<juce::UnitTest*> testsToRun;
     testsToRun.add (&test);
@@ -205,6 +269,19 @@ inline juce::Array<juce::UnitTestRunner::TestResult> runTests (PluginTests& test
         results.add (*testRunner.getResult (i));
 
     updateFileNameIfPossible (test, testRunner);
+
+    // A report that was asked for but couldn't be written is a failure, so CI doesn't silently lose it
+    if (! report_writer::write (toReport (test, results), options.junitXmlFile, options.jsonResultsFile))
+    {
+        juce::UnitTestRunner::TestResult writeFailure ("pluginval", "Write report files");
+        writeFailure.failures = 1;
+        writeFailure.messages.add ("Unable to write the report file(s)");
+        writeFailure.endTime = writeFailure.startTime;
+        results.add (writeFailure);
+
+        testRunner.logMessage ("*** FAILED: Unable to write the report file(s)");
+    }
+
     const int failures = getNumFailures (results);
 
     if (! failures)

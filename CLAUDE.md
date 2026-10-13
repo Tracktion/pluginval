@@ -84,6 +84,7 @@ pluginval/
 │   ├── PluginvalSettings.h   # Unified settings struct + JSON mapping + toPluginTestOptions()
 │   ├── SettingsParser.cpp/h  # CLI/env/config -> merged JSON -> settings; child-process handoff
 │   ├── SettingsSerializer.cpp/h # JSON load/save + value coercions (comma lists, hex seed)
+│   ├── ReportWriter.cpp/h    # JUnit XML + JSON report files (shared by validate and test)
 │   ├── CrashHandler.cpp/h    # Crash reporting utilities
 │   ├── TestUtilities.cpp/h   # Helper functions for tests
 │   ├── RTCheck.h             # Real-time safety checking macros
@@ -98,7 +99,7 @@ pluginval/
 │   │   ├── TestConfig.cpp/h        # snake_case JSON config struct (independent of PluginvalSettings)
 │   │   ├── AcceptanceTest.cpp/h    # plugin load + state + input + render; record-or-compare orchestrator
 │   │   ├── ReferenceComparator.cpp/h # Comparator interface + registry + SampleComparator
-│   │   └── TestReporter.cpp/h      # text + JSON result, exit code
+│   │   └── TestReporter.cpp/h      # text + JSON result, exit code, conversion to a report_writer::Report
 │   └── tests/                # Individual test implementations
 │       ├── BasicTests.cpp    # Core plugin tests (info, state, audio)
 │       ├── BusTests.cpp      # Audio bus configuration tests
@@ -316,6 +317,36 @@ spec: `tests/acceptance/Acceptance testing design.md`; end-user guide:
   multiplexing, automation, extra comparators, child-process isolation) are notes
   only.
 
+### Report Output (`--junit-xml` / `--json-results`)
+
+Both `validate` and `test` can write machine-readable report files through one
+shared writer, `report_writer` (`source/ReportWriter.cpp/h`). Stdout and the text
+log are unaffected.
+
+- **Model**: a neutral `report_writer::Report` (command, target, properties and a
+  list of `TestCase`s with a `passed` / `failed` / `error` status, messages,
+  duration and optional JSON `details`). `toJUnitXml()` builds a single
+  `<testsuite>` with `juce::XmlElement`; `toJson()` emits snake_case keys with a
+  `summary` block. `write()` skips unset files and creates parent directories; if it fails, the
+  run fails (exit `1`).
+- **Two adapters**: `toReport()` in `Validator.cpp` converts the
+  `juce::UnitTestRunner::TestResult` array collected in `runTests()` (one case per
+  `beginTest`); `acceptance::reporter::toReport()` converts an acceptance
+  `TestResult` (its existing JSON goes in `details`).
+- **Options**: for `validate` they are ordinary settings (`junitXml` /
+  `jsonResults` in `PluginvalSettings`, resolved to `juce::File`s on
+  `PluginTests::Options`), so env vars (`JUNIT_XML` / `JSON_RESULTS`), `--config`
+  and the child-process handoff all work. For `test` they are parsed in
+  `settings_parser::dispatch()` into `DispatchResult` and carried on
+  `acceptance::RunOptions`.
+- **Incomplete runs**: before a run starts, `makeIncomplete()` writes a
+  placeholder report with a single `error` case; the real report overwrites it on
+  completion, so a crash leaves an error report rather than a stale or missing
+  one. On a timeout the thread that ends the process writes a "timed out" error
+  report as its last act (`PluginsUnitTestRunner`'s `onTimeout` for validate, the
+  acceptance `Watchdog` for test), so the report always agrees with the exit code
+  even if the tests finish in the moment before the process is terminated.
+
 ### Test Framework
 
 Tests are self-registering. To find all tests, look for static instances:
@@ -467,6 +498,8 @@ Key options (for `validate`):
 - `--timeout-ms [ms]` - Test timeout (default: 30000, -1 for none)
 - `--verbose` - Enable verbose logging
 - `--output-dir [dir]` - Directory for log files
+- `--junit-xml [file]` - Write a JUnit XML report (also accepted by `test`)
+- `--json-results [file]` - Write a JSON report (also accepted by `test`)
 - `--sample-rates [list]` - Comma-separated sample rates
 - `--block-sizes [list]` - Comma-separated block sizes
 - `--rtcheck [disabled|enabled|relaxed]` - Real-time safety checking

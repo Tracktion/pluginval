@@ -54,6 +54,8 @@ struct PluginvalSettings
     std::string dataFile;
     std::string outputDir;
     std::string outputFilename;
+    std::string junitXml;
+    std::string jsonResults;
     std::vector<std::string> disabledTests;
     std::vector<double> sampleRates;
     std::vector<int> blockSizes;
@@ -83,6 +85,8 @@ struct PluginvalSettings
         o.dataFile           = juce::String (dataFile);
         o.outputDir          = juce::String (outputDir);
         o.outputFilename     = juce::String (outputFilename);
+        o.junitXmlFile       = toReportFile (junitXml);
+        o.jsonResultsFile    = toReportFile (jsonResults);
         o.disabledTests      = toStringArray (disabledTests);
         o.sampleRates        = sampleRates.empty() ? defaultSampleRates() : sampleRates;
         o.blockSizes         = blockSizes.empty()  ? defaultBlockSizes()  : blockSizes;
@@ -106,6 +110,8 @@ struct PluginvalSettings
         s.dataFile           = o.dataFile.getFullPathName().toStdString();
         s.outputDir          = o.outputDir.getFullPathName().toStdString();
         s.outputFilename     = o.outputFilename.toStdString();
+        s.junitXml           = o.junitXmlFile.getFullPathName().toStdString();
+        s.jsonResults        = o.jsonResultsFile.getFullPathName().toStdString();
         s.disabledTests      = fromStringArray (o.disabledTests);
         s.sampleRates        = o.sampleRates;
         s.blockSizes         = o.blockSizes;
@@ -115,6 +121,15 @@ struct PluginvalSettings
     }
 
 private:
+    /** Resolves a report path against the working directory ("" means no report). */
+    static juce::File toReportFile (const std::string& path)
+    {
+        if (path.empty())
+            return {};
+
+        return juce::File::getCurrentWorkingDirectory().getChildFile (juce::String (path));
+    }
+
     static juce::StringArray toStringArray (const std::vector<std::string>& v)
     {
         juce::StringArray a;
@@ -139,4 +154,5 @@ private:
 NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_WITH_DEFAULT (PluginvalSettings,
     strictnessLevel, randomSeed, timeoutMs, verbose, numRepeats,
     randomiseTestOrder, skipGuiTests, dataFile, outputDir, outputFilename,
-    disabledTests, sampleRates, blockSizes, realtimeCheck, validatePath)
+    junitXml, jsonResults, disabledTests, sampleRates, blockSizes, realtimeCheck,
+    validatePath)

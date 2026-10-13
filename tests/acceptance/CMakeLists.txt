@@ -34,6 +34,10 @@ foreach(case ${acceptance_cases})
     file(GENERATE OUTPUT "${CMAKE_CURRENT_BINARY_DIR}/$<CONFIG>/${case}.json"
                   INPUT  "${CMAKE_CURRENT_BINARY_DIR}/${case}.json.gen")
 
+    # The report options are passed so the JUnit / JSON writers are exercised too.
     add_test(NAME "pluginval.acceptance.${case}"
-             COMMAND pluginval test "${CMAKE_CURRENT_BINARY_DIR}/$<CONFIG>/${case}.json")
+             COMMAND pluginval test
+                     --junit-xml    "${CMAKE_CURRENT_BINARY_DIR}/$<CONFIG>/reports/${case}.junit.xml"
+                     --json-results "${CMAKE_CURRENT_BINARY_DIR}/$<CONFIG>/reports/${case}.json"
+                     "${CMAKE_CURRENT_BINARY_DIR}/$<CONFIG>/${case}.json")
 endforeach()

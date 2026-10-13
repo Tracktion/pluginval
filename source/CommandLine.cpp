@@ -232,6 +232,14 @@ void performCommandLine (CommandLineValidator& validator, const juce::String& co
         options.recordMissing = routed.recordMissing;
         options.timeoutMs = routed.timeoutMs;
 
+        const auto toReportFile = [] (const juce::String& path)
+        {
+            return path.isEmpty() ? juce::File() : juce::File::getCurrentWorkingDirectory().getChildFile (path);
+        };
+
+        options.junitXmlFile = toReportFile (routed.junitXmlPath);
+        options.jsonResultsFile = toReportFile (routed.jsonResultsPath);
+
         // Runs async so will quit itself when done
         validator.runAcceptanceTest (juce::File::getCurrentWorkingDirectory().getChildFile (routed.testConfigPath), options);
         return;

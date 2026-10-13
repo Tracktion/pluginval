@@ -41,3 +41,62 @@ $ ./pluginval validate --output-dir "./bin" "<path_to_plugin>" || exit 1
 ```sh
 > choco install pluginval
 ```
+
+### Machine-readable reports
+Both `pluginval validate` and `pluginval test` can write their results to a file, as well as printing them:
+
+ - `--junit-xml <file>` writes a JUnit XML report, which most CI systems (GitHub Actions, GitLab, Jenkins, Azure Pipelines) can display as per-test results
+ - `--json-results <file>` writes the same results as JSON, for scripts and dashboards
+
+Relative paths are resolved against the working directory and any missing directories are created. Both options can be used together, and can also be set as the `JUNIT_XML` and `JSON_RESULTS` environment variables. The text output and log files are unchanged. If a report can't be written (e.g. the path isn't writable) the run fails with exit code `1`.
+
+```sh
+$ ./pluginval validate --strictness-level 5 --junit-xml "./reports/MyPlugin.xml" --json-results "./reports/MyPlugin.json" "<path_to_plugin>"
+```
+
+Each test pluginval runs becomes one `<testcase>`, with a `<failure>` holding the failure messages if it failed:
+
+```xml
+<testsuites name="pluginval" tests="20" failures="1" errors="0" time="12.345">
+  <testsuite name="pluginval validate: MyPlugin.vst3" tests="20" failures="1" errors="0" time="12.345" skipped="0" timestamp="...">
+    <testcase classname="pluginval.validate" name="Open plugin (cold)" time="0.150"/>
+    <testcase classname="pluginval.validate" name="Plugin state" time="0.020">
+      <failure message="...">...</failure>
+    </testcase>
+  </testsuite>
+</testsuites>
+```
+
+The JSON report has the same content:
+
+```json
+{
+  "pluginval_version": "2.0.0",
+  "command": "validate",
+  "target": "/path/to/MyPlugin.vst3",
+  "start_time": "...",
+  "duration_ms": 12345,
+  "properties": { "plugin_name": "MyPlugin", "strictness_level": "5" },
+  "summary": { "tests": 20, "passed": 19, "failed": 1, "errors": 0 },
+  "tests": [
+    { "name": "Open plugin (cold)", "status": "passed", "duration_ms": 150, "messages": [] }
+  ]
+}
+```
+
+`status` is `passed`, `failed` or `error`. For `pluginval test`, each test also has a `details` object holding the comparison results.
+
+If pluginval doesn't finish (the plugin crashes it, or the run times out), the report contains a single `error` entry saying so, so a report left over from an earlier run is never mistaken for a pass.
+
+##### GitHub Actions
+```yaml
+- name: Validate plugin
+  run: ./pluginval validate --strictness-level 5 --skip-gui-tests --junit-xml reports/pluginval.xml ./build/MyPlugin.vst3
+
+- name: Upload pluginval report
+  if: always()
+  uses: actions/upload-artifact@v4
+  with:
+    name: pluginval-report
+    path: reports/
+```
