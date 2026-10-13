@@ -115,7 +115,8 @@ pluginval/
 │   ├── test_plugins/         # Test plugin files
 │   │   ├── tone_generator/   # Deterministic dogfood generator (PLUGINVAL_BUILD_TEST_PLUGINS)
 │   │   ├── gain/             # Deterministic dogfood gain effect (for the input.audio path)
-│   │   └── playhead_probe/   # Writes the host transport to output (for the playhead path)
+│   │   ├── playhead_probe/   # Writes the host transport to output (for the playhead path)
+│   │   └── discrete_params/  # Bool/choice-only plugin (for the discrete parameter state test)
 │   ├── acceptance/           # Acceptance self-tests: configs (*.json.in), inputs/, checked-in refs/ WAVs
 │   ├── mac_tests/            # macOS-specific tests
 │   └── windows_tests.bat     # Windows test scripts
@@ -340,7 +341,7 @@ struct Requirements {
 
 | File | Tests Included |
 |------|----------------|
-| `BasicTests.cpp` | PluginInfo, Programs, Editor, AudioProcessing, PluginState, Automation, auval, VST3validator |
+| `BasicTests.cpp` | PluginInfo, Programs, Editor, AudioProcessing, PluginState, DiscreteParameterState, Automation, auval, VST3validator |
 | `BusTests.cpp` | Bus layout, channel configuration |
 | `EditorTests.cpp` | Editor creation, resizing |
 | `ParameterFuzzTests.cpp` | Random parameter value testing |

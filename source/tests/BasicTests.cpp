@@ -418,6 +418,67 @@ static PluginStateTestRestoration pluginStateTestRestoration;
 
 
 //==============================================================================
+/**
+    Tests that a discrete parameter reports the same value after a state restore
+    regardless of the value it held beforehand.
+
+    A host can send any normalised value to a discrete parameter and only the
+    plugin knows which step that maps to. If the plugin keeps the raw value for
+    a single parameter change but saves/restores the step, the value it reports
+    depends on how it got there.
+    See https://forum.juce.com/t/pluginval-can-set-an-audioparameterbools-to-odd-values/50971
+*/
+struct DiscreteParameterStateTest   : public PluginTest
+{
+    DiscreteParameterStateTest()
+        : PluginTest ("Discrete parameter state restoration", 8)
+    {
+    }
+
+    void runTest (PluginTests& ut, juce::AudioPluginInstance& instance) override
+    {
+        auto r = ut.getRandom();
+
+        for (auto parameter : getNonBypassAutomatableParameters (instance))
+        {
+            if (! parameter->isDiscrete())
+                continue;
+
+            // Any normalised value is valid so use ones that are unlikely to be on a step
+            const auto value = 0.1f + 0.8f * r.nextFloat();
+            const auto otherValue = value < 0.5f ? value + 0.4f : value - 0.4f;
+
+            parameter->setValue (value);
+            const auto state = callGetStateInformationOnMessageThreadIfVST3 (instance);
+
+            // Restore the state with the parameter still at the value it was saved with
+            callSetStateInformationOnMessageThreadIfVST3 (instance, state);
+            const auto restoredFromValue = parameter->getValue();
+
+            // Then restore it again from a different value
+            parameter->setValue (otherValue);
+            callSetStateInformationOnMessageThreadIfVST3 (instance, state);
+            const auto restoredFromOtherValue = parameter->getValue();
+
+            ut.logVerboseMessage (parameter->getName (1024) + ": set " + juce::String (value) + ", restored as " + juce::String (restoredFromValue)
+                                  + "; set " + juce::String (otherValue) + ", restored as " + juce::String (restoredFromOtherValue));
+
+            ut.expectWithinAbsoluteError (restoredFromOtherValue, restoredFromValue, 0.0001f,
+                                          parameter->getName (1024) + " has a different value after restoring the same state");
+        }
+    }
+
+    std::vector<TestDescription> getDescription (int) const override
+    {
+        return { { name, "For each discrete param: sets a random value, saves state, then restores that state twice - "
+                         "once unchanged and once after setting a different value - and expects the same value both times" } };
+    }
+};
+
+static DiscreteParameterStateTest discreteParameterStateTest;
+
+
+//==============================================================================
 struct AutomationTest  : public PluginTest
 {
     AutomationTest()
