@@ -2,6 +2,8 @@
 # Shared helpers for the pluginval composite actions (sourced, not run).
 # Kept compatible with bash 3.2, which is what macOS runners ship.
 
+COMMON_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
 # Defaults so the scripts can also be run outside of GitHub Actions.
 if [ -z "${RUNNER_OS:-}" ]; then
     if [ "$(uname -s)" = "Darwin" ]; then RUNNER_OS=macOS
@@ -71,4 +73,35 @@ run_pluginval()
 sanitise()
 {
     printf '%s' "$1" | tr -c 'A-Za-z0-9._-' '_'
+}
+
+# Reads a JUnit XML report written by pluginval and sets:
+#   REPORT_TESTS    a summary-table cell, e.g. "17" or "2 of 17 failed"
+#   REPORT_NAMES    "name: message" per failed test, "; " separated (for the annotation)
+#   REPORT_DETAILS  a markdown list item per failed test (for the job summary)
+# All three are empty if there is no report.
+read_report()
+{
+    REPORT_TESTS=""
+    REPORT_NAMES=""
+    REPORT_DETAILS=""
+
+    [ -f "$1" ] || return 0
+
+    local kind first second
+    while IFS=$'\t' read -r kind first second; do
+        if [ "$kind" = "T" ]; then
+            if [ "$second" -gt 0 ]; then REPORT_TESTS="$second of $first failed"; else REPORT_TESTS="$first"; fi
+        elif [ "$kind" = "F" ]; then
+            REPORT_NAMES="${REPORT_NAMES:+$REPORT_NAMES; }$first: $second"
+            REPORT_DETAILS="$REPORT_DETAILS  - **${first//|/\\|}**: ${second//|/\\|}"$'\n'
+        fi
+    done < <(awk -f "$COMMON_DIR/junit.awk" "$1")
+}
+
+# Prints an ::error annotation, escaping the message as workflow commands need.
+annotate_error()
+{
+    local message="${2//%/%25}"
+    echo "::error title=$1::$message"
 }

@@ -544,7 +544,10 @@ runs its sibling bash script (`validate.sh` / `acceptance.sh`); shared helpers
 are in `common/common.sh`. The scripts must stay bash 3.2 compatible (macOS
 runners) and can be run locally by setting the `INPUT_*` variables. They run
 every item, write a job-summary table and `passed` / `failed` / `report-dir`
-outputs, and exit non-zero if anything failed. `.github/workflows/acceptance.yml`
+outputs, and exit non-zero if anything failed. Pass / fail comes from the exit
+code; the per-test counts, failed-test names and messages in the summary and
+error annotations are parsed from each item's `--junit-xml` report by
+`common/junit.awk` (POSIX awk, no gawk extensions). `.github/workflows/acceptance.yml`
 dogfoods both against the in-repo build, including the expected-failure cases.
 
 Without the actions:

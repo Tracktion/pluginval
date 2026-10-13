@@ -16,6 +16,9 @@ inputs:
       "--skip-gui-tests --timeout-ms 60000"). Any option can also be set as an
       environment variable on the step.
     default: ''
+  report-dir:
+    description: Directory to write the JUnit XML reports to (a temporary directory if empty).
+    default: ''
   pluginval-version:
     description: The pluginval release to download - a tag (e.g. v2.0.0-beta1) or "latest".
     default: v2.0.0-beta1
@@ -43,6 +46,7 @@ runs:
         INPUT_PLUGINS: ${{ inputs.plugins }}
         INPUT_STRICTNESS_LEVEL: ${{ inputs.strictness-level }}
         INPUT_ARGS: ${{ inputs.args }}
+        INPUT_REPORT_DIR: ${{ inputs.report-dir }}
         INPUT_PLUGINVAL_VERSION: ${{ inputs.pluginval-version }}
         INPUT_PLUGINVAL_PATH: ${{ inputs.pluginval-path }}
       run: bash "$GITHUB_ACTION_PATH/validate.sh"
