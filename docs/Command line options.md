@@ -20,6 +20,8 @@ COMMANDS:
                                                     (default 30000, -1 = never).
                                   --junit-xml <file>    Write a JUnit XML report.
                                   --json-results <file> Write a JSON report.
+                                  --plugin <plugin> Test this plugin path or AU id
+                                                    instead of the config's.
                                 Any other option is an error.
 
 The flat flags --validate <plugin>, --run-tests and --strictness-help [level]

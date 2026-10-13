@@ -9,6 +9,21 @@ There a couple of different ways this can be done but the simplest is as follows
 4. If validation fails, fail your build
 5. If validation passes, retain the generated log files ready to submit to "Verified by pluginval"
 
+### GitHub Actions
+On GitHub Actions the simplest route is the `validate` action, which downloads pluginval, validates each plugin and fails the job if any fail:
+
+```yaml
+- uses: Tracktion/pluginval/.github/actions/validate@v2
+  with:
+    plugins: |
+      build/MyPlugin_artefacts/Release/VST3/MyPlugin.vst3
+      build/MyPlugin_artefacts/Release/AU/MyPlugin.component
+    strictness-level: 5
+    args: --skip-gui-tests
+```
+
+There is also an `acceptance` action for [acceptance tests](Acceptance%20testing.md). See the [actions README](../.github/actions/README.md) for all the inputs and outputs.
+
 ### Examples
 In these examples the following is assumed:
  - macOS/Linux, curl is installed

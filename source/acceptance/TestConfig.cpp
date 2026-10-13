@@ -134,10 +134,8 @@ void from_json (const nlohmann::ordered_json& j, TestConfig& c)
         c.comparison = *comp;
     }
 
-    // Validation.
-    if (c.plugin.empty())
-        fail ("plugin is required");
-
+    // Validation. (The plugin may instead come from --plugin, so it's checked
+    // by the runner once any override has been applied.)
     if (c.name.empty() && c.reference.empty())
         fail ("name or reference is required");
 

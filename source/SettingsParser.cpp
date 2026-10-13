@@ -137,6 +137,8 @@ R"(Commands:
                                                     (default 30000, -1 to never time out).
                                   --junit-xml <file>    Write a JUnit XML report.
                                   --json-results <file> Write a JSON report.
+                                  --plugin <plugin> Test this plugin path or AU id instead
+                                                    of the one in the config.
 
 The flat flags --validate <plugin>, --run-tests and --strictness-help [level] are
 deprecated aliases for the commands above and will be removed in a future version.
@@ -423,6 +425,18 @@ Precedence (lowest to highest): defaults, environment variables, --config, comma
                         }
 
                         (token == "--junit-xml" ? result.junitXmlPath : result.jsonResultsPath) = value;
+                    }
+                    else if (token == "--plugin")
+                    {
+                        const auto value = i + 1 < tokensIn.size() ? tokensIn.getReference (++i) : juce::String();
+
+                        if (value.isEmpty() || value.startsWith ("--"))
+                        {
+                            result.error = "--plugin needs a plugin path or AU id";
+                            break;
+                        }
+
+                        result.testPluginOverride = value;
                     }
                     else if (token.startsWith ("-"))
                     {

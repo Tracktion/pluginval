@@ -121,6 +121,9 @@ pluginval/
 │   ├── acceptance/           # Acceptance self-tests: configs (*.json.in), inputs/, checked-in refs/ WAVs
 │   ├── mac_tests/            # macOS-specific tests
 │   └── windows_tests.bat     # Windows test scripts
+├── .github/
+│   ├── actions/              # Composite actions for other repos: validate/, acceptance/, common/ (see README.md there)
+│   └── workflows/            # build.yaml (release build), acceptance.yml (acceptance self-tests + action dogfooding)
 ├── docs/                     # Documentation
 │   ├── Adding pluginval to CI.md
 │   ├── Command line options.md
@@ -281,7 +284,9 @@ spec: `tests/acceptance/Acceptance testing design.md`; end-user guide:
 - **CLI**: `pluginval test <config.json>`. A new `Command::test` is recognised
   by `settings_parser::dispatch()` (captures the positional config path into
   `DispatchResult::testConfigPath`, plus `recordMissing` / `timeoutMs` from
-  `--record-missing` / `--timeout-ms` or `RECORD_MISSING` / `TIMEOUT_MS`),
+  `--record-missing` / `--timeout-ms` or `RECORD_MISSING` / `TIMEOUT_MS`, and
+  `testPluginOverride` from `--plugin`, which replaces the config's `plugin`
+  in `runTestFile()` - so `plugin` is only required when `--plugin` is absent),
   `isCommandLine()` and `getFooterText()`; `CommandLine.cpp`'s
   `performCommandLine()` has a `Command::test` branch that starts an
   `acceptance::TestRunner`, which renders on a **background thread** (message
@@ -523,7 +528,26 @@ add_pluginval_tests(MyPluginTarget
 )
 ```
 
-### GitHub Actions Example
+### GitHub Actions
+
+Two composite actions for other repositories live in `.github/actions/`
+(documented in `.github/actions/README.md`):
+
+- `validate/` - validates a newline-separated list of plugins / globs / AU ids.
+- `acceptance/` - runs `pluginval test` for every `*.json` (recursively, skipping
+  the `*.wav.json` manifests and rejecting array configs) under a directory,
+  optionally passing one built plugin via `--plugin`.
+
+Each `action.yml` only maps its inputs to `INPUT_*` environment variables and
+runs its sibling bash script (`validate.sh` / `acceptance.sh`); shared helpers
+(downloading the release or using `pluginval-path`, the Linux `xvfb-run` wrapper)
+are in `common/common.sh`. The scripts must stay bash 3.2 compatible (macOS
+runners) and can be run locally by setting the `INPUT_*` variables. They run
+every item, write a job-summary table and `passed` / `failed` / `report-dir`
+outputs, and exit non-zero if anything failed. `.github/workflows/acceptance.yml`
+dogfoods both against the in-repo build, including the expected-failure cases.
+
+Without the actions:
 
 ```yaml
 - name: Download pluginval
@@ -573,6 +597,11 @@ Run internal tests via CLI:
 3. Commit: `git commit -am "Version X.Y.Z"`
 4. Tag: `git tag -a vX.Y.Z -m "X.Y.Z release"`
 5. Push: `git push --tags`
+6. Once the release binaries are published, bump the `pluginval-version` default
+   in both `.github/actions/*/action.yml` (and the README tables) to the new tag
+
+A tag with a hyphen (e.g. `v2.0.0-beta1`) is published as a pre-release, so it
+doesn't become the "latest" release that the download URLs in the docs point at.
 
 ## Common Tasks for AI Assistants
 

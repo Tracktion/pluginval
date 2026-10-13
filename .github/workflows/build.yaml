@@ -218,6 +218,8 @@ jobs:
         uses: softprops/action-gh-release@v2
         with:
           body_path: CHANGELIST.md
+          # Tags like v2.0.0-beta1 are pre-releases, so they don't become "latest"
+          prerelease: ${{ contains(github.ref_name, '-') }}
           files: |
             CHANGELIST.md/*
             pluginval_Linux.zip/*

@@ -140,7 +140,7 @@ member names verbatim). Missing keys still fall back to the defaults.
 | Field | Type | Default | Notes |
 |---|---|---|---|
 | `name` | string | reference's basename | Used to derive the default reference path and to label results. `name` or `reference` is required. |
-| `plugin` | string | (required) | Absolute/relative path, or an AU identifier string. Relative paths resolve against the working directory. |
+| `plugin` | string | (required) | Absolute/relative path, or an AU identifier string. Relative paths resolve against the working directory. `--plugin <plugin>` on the command line overrides it, in which case it may be omitted. |
 | `input.audio` | string | none | Path to an input audio file (WAV/AIFF/FLAC via `AudioFormatManager`). Used for effects. Its sample rate must equal `sample_rate`. File channel N feeds plugin input channel N; a mono file feeds channel 0 only (deliberately not duplicated). |
 | `input.midi` | string | none | Path to a `.mid` file (`juce::MidiFile`). Used for instruments. Meta events are skipped. |
 | `reference` | string | `<dir-of-config>/<name>.wav` | The golden file. Absent -> record mode; present -> compare mode. |
