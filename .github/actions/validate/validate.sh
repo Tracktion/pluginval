@@ -14,6 +14,7 @@ passed=0
 failed=0
 index=0
 rows=""
+details=""
 
 # One plugin per line (not comma-separated: AU ids contain commas). Globs are
 # left to expand; anything that matches nothing is passed through and fails.
@@ -33,14 +34,20 @@ for plugin in ${plugins[@]+"${plugins[@]}"}; do
     run_pluginval validate --strictness-level "${INPUT_STRICTNESS_LEVEL:-5}" --junit-xml "$report" ${INPUT_ARGS:-} "$plugin"
     code=$?
     echo "::endgroup::"
+    failure="pluginval exited with code $code (see the log)"
+
+    # The per-test results come from the JUnit report; pass / fail from the exit code.
+    read_report "$report"
 
     if [ $code -eq 0 ]; then
         passed=$((passed + 1))
-        rows="$rows| \`$plugin\` | :white_check_mark: passed |"$'\n'
+        rows="$rows| \`$plugin\` | :white_check_mark: passed | $REPORT_TESTS |"$'\n'
     else
         failed=$((failed + 1))
-        rows="$rows| \`$plugin\` | :x: failed |"$'\n'
-        echo "::error::pluginval validation failed: $plugin"
+        rows="$rows| \`$plugin\` | :x: failed | $REPORT_TESTS |"$'\n'
+        [ -z "$REPORT_DETAILS" ] && REPORT_DETAILS="  - $failure"$'\n'
+        details="$details- \`$plugin\`"$'\n'"$REPORT_DETAILS"
+        annotate_error "pluginval validation failed: $plugin" "${REPORT_NAMES:-$failure}"
     fi
 done
 
@@ -52,9 +59,16 @@ fi
 {
     echo "### pluginval validate"
     echo
-    echo "| Plugin | Result |"
-    echo "| --- | --- |"
+    echo "| Plugin | Result | Tests |"
+    echo "| --- | --- | --- |"
     printf '%s' "$rows"
+
+    if [ -n "$details" ]; then
+        echo
+        echo "#### Failed tests"
+        echo
+        printf '%s' "$details"
+    fi
 } >> "$GITHUB_STEP_SUMMARY"
 
 {

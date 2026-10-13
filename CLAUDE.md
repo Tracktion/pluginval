@@ -122,8 +122,10 @@ pluginval/
 │   ├── mac_tests/            # macOS-specific tests
 │   └── windows_tests.bat     # Windows test scripts
 ├── .github/
-│   ├── actions/              # Composite actions for other repos: validate/, acceptance/, common/ (see README.md there)
+│   ├── actions/              # Scripts + README for the composite actions: validate/, acceptance/, common/
 │   └── workflows/            # build.yaml (release build), acceptance.yml (acceptance self-tests + action dogfooding)
+├── validate/action.yml       # Composite action: Tracktion/pluginval/validate (runs .github/actions/validate/validate.sh)
+├── acceptance/action.yml     # Composite action: Tracktion/pluginval/acceptance (runs .github/actions/acceptance/acceptance.sh)
 ├── docs/                     # Documentation
 │   ├── Adding pluginval to CI.md
 │   ├── Command line options.md
@@ -530,8 +532,10 @@ add_pluginval_tests(MyPluginTarget
 
 ### GitHub Actions
 
-Two composite actions for other repositories live in `.github/actions/`
-(documented in `.github/actions/README.md`):
+Two composite actions for other repositories, referenced as
+`Tracktion/pluginval/validate@v2` and `Tracktion/pluginval/acceptance@v2`. Only
+their `action.yml` files sit at the repo root (`validate/`, `acceptance/`), to
+keep those references short; the scripts and `README.md` are in `.github/actions/`:
 
 - `validate/` - validates a newline-separated list of plugins / globs / AU ids.
 - `acceptance/` - runs `pluginval test` for every `*.json` (recursively, skipping
@@ -539,12 +543,16 @@ Two composite actions for other repositories live in `.github/actions/`
   optionally passing one built plugin via `--plugin`.
 
 Each `action.yml` only maps its inputs to `INPUT_*` environment variables and
-runs its sibling bash script (`validate.sh` / `acceptance.sh`); shared helpers
+runs its bash script (`.github/actions/validate/validate.sh` / `acceptance/acceptance.sh`,
+found relative to `$GITHUB_ACTION_PATH`); shared helpers
 (downloading the release or using `pluginval-path`, the Linux `xvfb-run` wrapper)
 are in `common/common.sh`. The scripts must stay bash 3.2 compatible (macOS
 runners) and can be run locally by setting the `INPUT_*` variables. They run
 every item, write a job-summary table and `passed` / `failed` / `report-dir`
-outputs, and exit non-zero if anything failed. `.github/workflows/acceptance.yml`
+outputs, and exit non-zero if anything failed. Pass / fail comes from the exit
+code; the per-test counts, failed-test names and messages in the summary and
+error annotations are parsed from each item's `--junit-xml` report by
+`common/junit.awk` (POSIX awk, no gawk extensions). `.github/workflows/acceptance.yml`
 dogfoods both against the in-repo build, including the expected-failure cases.
 
 Without the actions:
@@ -598,7 +606,7 @@ Run internal tests via CLI:
 4. Tag: `git tag -a vX.Y.Z -m "X.Y.Z release"`
 5. Push: `git push --tags`
 6. Once the release binaries are published, bump the `pluginval-version` default
-   in both `.github/actions/*/action.yml` (and the README tables) to the new tag
+   in `validate/action.yml` and `acceptance/action.yml` (and the README tables) to the new tag
 
 A tag with a hyphen (e.g. `v2.0.0-beta1`) is published as a pre-release, so it
 doesn't become the "latest" release that the download URLs in the docs point at.

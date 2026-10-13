@@ -1,9 +1,16 @@
 # pluginval GitHub Actions
 
 Two composite actions for using pluginval from another repository's workflows.
+Their `action.yml` files are in `validate/` and `acceptance/` at the repository
+root, which keeps the references short; the scripts they run are in this directory.
 Both run on Linux, macOS and Windows runners, download the matching pluginval
-release (or use a binary you give them), run everything they are given, write a
-results table to the job summary and fail the step if anything failed.
+release (or use a binary you give them), run everything they are given and fail
+the step if anything failed.
+
+Results are shown in two places: the job summary gets a table with a row per
+plugin / config and its test count, followed by the name and message of every
+failed test; and each failed plugin / config gets an error annotation naming its
+failed tests, which also appears in the pull request's checks.
 
 On Linux the plugin is run under `xvfb-run` when there is no `DISPLAY` (install
 `xvfb` on runners that don't have it).
@@ -13,7 +20,7 @@ On Linux the plugin is run under `xvfb-run` when there is no `DISPLAY` (install
 Validates one or more plugins.
 
 ```yaml
-- uses: Tracktion/pluginval/.github/actions/validate@v2
+- uses: Tracktion/pluginval/validate@v2
   with:
     plugins: |
       build/MyPlugin_artefacts/Release/VST3/MyPlugin.vst3
@@ -27,6 +34,7 @@ Validates one or more plugins.
 | `plugins` | (required) | The plugins to validate, one per line. Each is a path, a glob or an AU id. A glob that matches nothing fails. |
 | `strictness-level` | `5` | The strictness level (1-10). |
 | `args` | | Extra options for `pluginval validate`, split on whitespace. |
+| `report-dir` | | Directory to write the JUnit XML reports to (a temporary directory if empty). |
 | `pluginval-version` | `v2.0.0-beta1` | The pluginval release to download: a tag, or `latest`. |
 | `pluginval-path` | | An existing pluginval binary to use instead of downloading one. |
 
@@ -41,7 +49,7 @@ Runs the [acceptance tests](../../docs/Acceptance%20testing.md) for every config
 plugin.
 
 ```yaml
-- uses: Tracktion/pluginval/.github/actions/acceptance@v2
+- uses: Tracktion/pluginval/acceptance@v2
   with:
     config-dir: tests/acceptance
     plugin: build/MyPlugin_artefacts/Release/VST3/MyPlugin.vst3
@@ -53,6 +61,7 @@ plugin.
 | `plugin` | | Plugin path or AU id to test every config against, instead of the `plugin` in each config. |
 | `record-missing` | `false` | Record a missing reference and pass, instead of failing. |
 | `timeout-ms` | | Fail a test if it takes longer than this (pluginval's default if empty). |
+| `report-dir` | | Directory to write the JUnit XML reports to (a temporary directory if empty). |
 | `pluginval-version` | `v2.0.0-beta1` | The pluginval release to download: a tag, or `latest`. |
 | `pluginval-path` | | An existing pluginval binary to use instead of downloading one. |
 
@@ -78,7 +87,7 @@ Both actions set:
 To keep the reports and diffs from a failed run:
 
 ```yaml
-- uses: Tracktion/pluginval/.github/actions/acceptance@v2
+- uses: Tracktion/pluginval/acceptance@v2
   id: acceptance
   with:
     config-dir: tests/acceptance
@@ -90,3 +99,36 @@ To keep the reports and diffs from a failed run:
     name: pluginval-acceptance-${{ runner.os }}
     path: ${{ steps.acceptance.outputs.report-dir }}
 ```
+
+### Per-test results as a pull request check
+
+The actions report failures through the job summary and annotations, which need
+no extra permissions. If you would rather have every pluginval test listed as its
+own check on the pull request, feed the JUnit reports to a reporter action such
+as [mikepenz/action-junit-report](https://github.com/mikepenz/action-junit-report)
+or [dorny/test-reporter](https://github.com/dorny/test-reporter):
+
+```yaml
+jobs:
+  validate:
+    runs-on: macos-latest
+    permissions:
+      contents: read
+      checks: write
+    steps:
+      # ... build the plugin ...
+
+      - uses: Tracktion/pluginval/validate@v2
+        with:
+          plugins: build/MyPlugin_artefacts/Release/VST3/MyPlugin.vst3
+          report-dir: pluginval-reports
+
+      - uses: mikepenz/action-junit-report@v5
+        if: always()
+        with:
+          report_paths: pluginval-reports/*.xml
+          check_name: pluginval
+```
+
+This needs the `checks: write` permission, which workflows triggered by pull
+requests from forks don't get, so on those the reporter step can't publish.

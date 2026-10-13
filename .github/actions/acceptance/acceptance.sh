@@ -27,6 +27,7 @@ passed=0
 failed=0
 index=0
 rows=""
+details=""
 
 # Every *.json is a config, except the <reference>.wav.json manifests that
 # pluginval writes next to each reference.
@@ -44,22 +45,29 @@ for config in ${configs[@]+"${configs[@]}"}; do
     # pluginval only runs the first entry of an array config, so reject them
     # rather than silently skipping tests.
     if [ "$(tr -d '[:space:]' < "$config" | head -c 1)" = "[" ]; then
-        echo "Array configs aren't supported: use one config per file."
+        failure="Array configs aren't supported: use one config per file."
+        echo "$failure"
         code=1
     else
         run_pluginval test ${options[@]+"${options[@]}"} --junit-xml "$report" "$config"
         code=$?
+        failure="pluginval exited with code $code (see the log)"
     fi
 
     echo "::endgroup::"
 
+    # The per-test results come from the JUnit report; pass / fail from the exit code.
+    read_report "$report"
+
     if [ $code -eq 0 ]; then
         passed=$((passed + 1))
-        rows="$rows| \`$name\` | :white_check_mark: passed |"$'\n'
+        rows="$rows| \`$name\` | :white_check_mark: passed | $REPORT_TESTS |"$'\n'
     else
         failed=$((failed + 1))
-        rows="$rows| \`$name\` | :x: failed |"$'\n'
-        echo "::error::pluginval acceptance test failed: $name"
+        rows="$rows| \`$name\` | :x: failed | $REPORT_TESTS |"$'\n'
+        [ -z "$REPORT_DETAILS" ] && REPORT_DETAILS="  - $failure"$'\n'
+        details="$details- \`$name\`"$'\n'"$REPORT_DETAILS"
+        annotate_error "pluginval acceptance test failed: $name" "${REPORT_NAMES:-$failure}"
     fi
 done
 
@@ -78,9 +86,16 @@ done
 {
     echo "### pluginval acceptance tests"
     echo
-    echo "| Config | Result |"
-    echo "| --- | --- |"
+    echo "| Config | Result | Tests |"
+    echo "| --- | --- | --- |"
     printf '%s' "$rows"
+
+    if [ -n "$details" ]; then
+        echo
+        echo "#### Failed tests"
+        echo
+        printf '%s' "$details"
+    fi
 } >> "$GITHUB_STEP_SUMMARY"
 
 {

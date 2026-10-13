@@ -104,7 +104,7 @@ On GitHub Actions, the `acceptance` action runs every config in a directory
 (recursively) against a built plugin:
 
 ```yaml
-- uses: Tracktion/pluginval/.github/actions/acceptance@v2
+- uses: Tracktion/pluginval/acceptance@v2
   with:
     config-dir: tests/acceptance
     plugin: build/MyPlugin_artefacts/Release/VST3/MyPlugin.vst3
