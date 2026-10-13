@@ -405,6 +405,7 @@ static MyNewTest myNewTest;
 
 Located in `TestUtilities.h`:
 - `getNonBypassAutomatableParameters()` - Get automatable params
+- `getRandomParameterValue()` - Random value to set on a param (only 0 or 1 for two-step params below strictness 8)
 - `fillNoise()` - Fill buffer with random audio
 - `countNaNs()`, `countInfs()`, `countSubnormals()` - Audio validation
 - `ScopedEditorShower` - RAII editor creation/destruction

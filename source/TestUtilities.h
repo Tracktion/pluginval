@@ -53,6 +53,23 @@ static inline juce::Array<juce::AudioProcessorParameter*> getNonBypassAutomatabl
     return parameters;
 }
 
+/** Returns a random normalised value to set on a parameter.
+
+    Below strictness level 8, two-step (on/off) parameters are only sent 0 or 1.
+    Any value is valid, but some plugins keep the values in between rather than
+    mapping them to a step, which the state restoration tests then pick up.
+*/
+static inline float getRandomParameterValue (juce::Random& r, const juce::AudioProcessorParameter& parameter, int strictnessLevel)
+{
+    // N.B. hosted VST3 parameters don't report isBoolean so also check the number of steps
+    const bool isTwoStep = parameter.isBoolean() || parameter.getNumSteps() == 2;
+
+    if (isTwoStep && strictnessLevel < 8)
+        return r.nextBool() ? 1.0f : 0.0f;
+
+    return r.nextFloat();
+}
+
 //==============================================================================
 template<typename UnaryFunction>
 void iterateAudioBuffer (juce::AudioBuffer<float>& ab, UnaryFunction fn)

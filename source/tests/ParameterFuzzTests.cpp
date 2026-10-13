@@ -44,7 +44,7 @@ private:
 
         for (int i = 0; i < 5; ++i)
         {
-            const float value = r.nextFloat();
+            const float value = getRandomParameterValue (r, parameter, ut.getOptions().strictnessLevel);
 
             parameter.setValue (value);
             const float v = parameter.getValue();

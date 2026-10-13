@@ -347,7 +347,7 @@ struct PluginStateTest  : public PluginTest
 
         // Set random parameter values
         for (auto parameter : getNonBypassAutomatableParameters (instance))
-            parameter->setValue (r.nextFloat());
+            parameter->setValue (getRandomParameterValue (r, *parameter, ut.getOptions().strictnessLevel));
 
         // Restore original state
         callSetStateInformationOnMessageThreadIfVST3 (instance, originalState);
@@ -388,7 +388,7 @@ struct PluginStateTestRestoration   : public PluginTest
         for (auto parameter : getNonBypassAutomatableParameters(instance))
         {
 			const auto originalValue = parameter->getValue();
-            parameter->setValue(r.nextFloat());
+            parameter->setValue (getRandomParameterValue (r, *parameter, ut.getOptions().strictnessLevel));
 
             // Restore original state
             callSetStateInformationOnMessageThreadIfVST3(instance, originalState);
@@ -539,7 +539,7 @@ struct AutomationTest  : public PluginTest
                         for (int i = 0; i < juce::jmin (10, parameters.size()); ++i)
                         {
                             const int paramIndex = r.nextInt (parameters.size());
-                            parameters[paramIndex]->setValue (r.nextFloat());
+                            parameters[paramIndex]->setValue (getRandomParameterValue (r, *parameters[paramIndex], ut.getOptions().strictnessLevel));
                         }
                     }
 
@@ -617,7 +617,7 @@ struct EditorAutomationTest : public PluginTest
         while (--numBlocks >= 0)
         {
             for (auto parameter : parameters)
-                parameter->setValue (r.nextFloat());
+                parameter->setValue (getRandomParameterValue (r, *parameter, ut.getOptions().strictnessLevel));
 
             ut.resetTimeout();
             juce::Thread::sleep (10);
@@ -767,7 +767,7 @@ struct BackgroundThreadStateTest    : public PluginTest
 
         // Set random parameter values
         for (auto parameter : parameters)
-            parameter->setValue (r.nextFloat());
+            parameter->setValue (getRandomParameterValue (r, *parameter, ut.getOptions().strictnessLevel));
 
         // Restore original state
         callSetStateInformationOnMessageThreadIfVST3 (instance, originalState);
@@ -804,6 +804,7 @@ struct ParameterThreadSafetyTest    : public PluginTest
         auto parameters = getNonBypassAutomatableParameters (instance);
         const bool isPluginInstrument = instance.getPluginDescription().isInstrument;
         const int numBlocks = 500;
+        const int runStrictnessLevel = ut.getOptions().strictnessLevel;
 
         // This emulates the plugin itself setting a value for example from a slider within its UI
         juce::MessageManager::callAsync ([&, threadRandom = r]() mutable
@@ -812,7 +813,7 @@ struct ParameterThreadSafetyTest    : public PluginTest
 
                                        for (int i = 0; i < numBlocks; ++i)
                                            for (auto param : parameters)
-                                               param->setValueNotifyingHost (threadRandom.nextFloat());
+                                               param->setValueNotifyingHost (getRandomParameterValue (threadRandom, *param, runStrictnessLevel));
 
                                        endWaiter.signal();
                                    });
@@ -842,7 +843,7 @@ struct ParameterThreadSafetyTest    : public PluginTest
                 addNoteOff (mb, noteChannel, noteNumber, 0);
 
             for (auto param : parameters)
-                param->setValue (r.nextFloat());
+                param->setValue (getRandomParameterValue (r, *param, runStrictnessLevel));
 
             fillNoise (ab);
 
