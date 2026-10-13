@@ -13,7 +13,7 @@ There a couple of different ways this can be done but the simplest is as follows
 On GitHub Actions the simplest route is the `validate` action, which downloads pluginval, validates each plugin and fails the job if any fail:
 
 ```yaml
-- uses: Tracktion/pluginval/.github/actions/validate@v2
+- uses: Tracktion/pluginval/validate@v2
   with:
     plugins: |
       build/MyPlugin_artefacts/Release/VST3/MyPlugin.vst3

@@ -1,6 +1,8 @@
 # pluginval GitHub Actions
 
 Two composite actions for using pluginval from another repository's workflows.
+Their `action.yml` files are in `validate/` and `acceptance/` at the repository
+root, which keeps the references short; the scripts they run are in this directory.
 Both run on Linux, macOS and Windows runners, download the matching pluginval
 release (or use a binary you give them), run everything they are given and fail
 the step if anything failed.
@@ -18,7 +20,7 @@ On Linux the plugin is run under `xvfb-run` when there is no `DISPLAY` (install
 Validates one or more plugins.
 
 ```yaml
-- uses: Tracktion/pluginval/.github/actions/validate@v2
+- uses: Tracktion/pluginval/validate@v2
   with:
     plugins: |
       build/MyPlugin_artefacts/Release/VST3/MyPlugin.vst3
@@ -47,7 +49,7 @@ Runs the [acceptance tests](../../docs/Acceptance%20testing.md) for every config
 plugin.
 
 ```yaml
-- uses: Tracktion/pluginval/.github/actions/acceptance@v2
+- uses: Tracktion/pluginval/acceptance@v2
   with:
     config-dir: tests/acceptance
     plugin: build/MyPlugin_artefacts/Release/VST3/MyPlugin.vst3
@@ -85,7 +87,7 @@ Both actions set:
 To keep the reports and diffs from a failed run:
 
 ```yaml
-- uses: Tracktion/pluginval/.github/actions/acceptance@v2
+- uses: Tracktion/pluginval/acceptance@v2
   id: acceptance
   with:
     config-dir: tests/acceptance
@@ -116,7 +118,7 @@ jobs:
     steps:
       # ... build the plugin ...
 
-      - uses: Tracktion/pluginval/.github/actions/validate@v2
+      - uses: Tracktion/pluginval/validate@v2
         with:
           plugins: build/MyPlugin_artefacts/Release/VST3/MyPlugin.vst3
           report-dir: pluginval-reports

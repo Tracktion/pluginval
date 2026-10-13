@@ -49,4 +49,5 @@ runs:
         INPUT_REPORT_DIR: ${{ inputs.report-dir }}
         INPUT_PLUGINVAL_VERSION: ${{ inputs.pluginval-version }}
         INPUT_PLUGINVAL_PATH: ${{ inputs.pluginval-path }}
-      run: bash "$GITHUB_ACTION_PATH/validate.sh"
+      # The scripts live in .github/actions so only this file sits at the repo root.
+      run: bash "$GITHUB_ACTION_PATH/../.github/actions/validate/validate.sh"

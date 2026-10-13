@@ -69,7 +69,7 @@ jobs:
         working-directory: build
         run: ctest -C Release --output-on-failure -R pluginval.acceptance
 
-      # The reusable actions in .github/actions, run against the build above
+      # The reusable actions (validate/ and acceptance/), run against the build above
       # (pluginval-path) rather than a downloaded release.
       - name: Prepare action fixtures
         id: fixtures
@@ -100,7 +100,7 @@ jobs:
 
       - name: "Action: validate"
         id: validate
-        uses: ./.github/actions/validate
+        uses: ./validate
         with:
           pluginval-path: ${{ steps.fixtures.outputs.pluginval }}
           args: --skip-gui-tests
@@ -109,7 +109,7 @@ jobs:
       - name: "Action: validate (missing plugin, expected to fail)"
         id: validate-missing
         continue-on-error: true
-        uses: ./.github/actions/validate
+        uses: ./validate
         with:
           pluginval-path: ${{ steps.fixtures.outputs.pluginval }}
           args: --skip-gui-tests
@@ -119,7 +119,7 @@ jobs:
 
       - name: "Action: acceptance"
         id: acceptance
-        uses: ./.github/actions/acceptance
+        uses: ./acceptance
         with:
           pluginval-path: ${{ steps.fixtures.outputs.pluginval }}
           config-dir: build/action-fixtures/good
@@ -128,7 +128,7 @@ jobs:
       - name: "Action: acceptance (bad configs, expected to fail)"
         id: acceptance-bad
         continue-on-error: true
-        uses: ./.github/actions/acceptance
+        uses: ./acceptance
         with:
           pluginval-path: ${{ steps.fixtures.outputs.pluginval }}
           config-dir: build/action-fixtures/bad
@@ -137,7 +137,7 @@ jobs:
       - name: "Action: acceptance (missing reference, expected to fail)"
         id: acceptance-missing
         continue-on-error: true
-        uses: ./.github/actions/acceptance
+        uses: ./acceptance
         with:
           pluginval-path: ${{ steps.fixtures.outputs.pluginval }}
           config-dir: build/action-fixtures/missing
@@ -145,7 +145,7 @@ jobs:
 
       - name: "Action: acceptance (record the missing reference)"
         id: acceptance-record
-        uses: ./.github/actions/acceptance
+        uses: ./acceptance
         with:
           pluginval-path: ${{ steps.fixtures.outputs.pluginval }}
           config-dir: build/action-fixtures/missing
