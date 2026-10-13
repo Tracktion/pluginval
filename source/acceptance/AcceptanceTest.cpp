@@ -593,6 +593,23 @@ TestResult runTest (const TestConfig& config, const RunOptions& options)
 //==============================================================================
 int runTestFile (const juce::File& configFile, const RunOptions& options)
 {
+    const auto finish = [&options] (const TestResult& result)
+    {
+        // A report that was asked for but couldn't be written is a failure
+        if (! reporter::report (result, options.junitXmlFile, options.jsonResultsFile))
+        {
+            std::cout << "*** FAILED: Unable to write the report file(s)" << std::endl;
+            return 1;
+        }
+
+        return reporter::exitCode (result);
+    };
+
+    // Written up front so a crash can't leave a stale (or missing) report behind
+    report_writer::write (report_writer::makeIncomplete ("test", configFile.getFileNameWithoutExtension(),
+                                                         "Test did not complete (crashed)"),
+                          options.junitXmlFile, options.jsonResultsFile);
+
     std::vector<TestConfig> configs;
 
     try
@@ -601,33 +618,28 @@ int runTestFile (const juce::File& configFile, const RunOptions& options)
     }
     catch (const std::exception& e)
     {
-        const auto result = TestResult::makeError (configFile.getFileNameWithoutExtension(), e.what());
-        reporter::report (result);
-        return reporter::exitCode (result);
+        return finish (TestResult::makeError (configFile.getFileNameWithoutExtension(), e.what()));
     }
 
     if (configs.empty())
-    {
-        const auto result = TestResult::makeError (configFile.getFileNameWithoutExtension(), "no test configs in file");
-        reporter::report (result);
-        return reporter::exitCode (result);
-    }
+        return finish (TestResult::makeError (configFile.getFileNameWithoutExtension(), "no test configs in file"));
 
     // v1 runs the first entry only; the parser already accepts arrays for the
     // phase-2 multiplexing extension.
     if (configs.size() > 1)
         std::cout << "Note: " << configs.size() << " configs found; v1 runs the first only." << std::endl;
 
-    const auto result = runTest (configs.front(), options);
-    reporter::report (result);
-    return reporter::exitCode (result);
+    const auto startTime = juce::Time::getMillisecondCounterHiRes();
+    auto result = runTest (configs.front(), options);
+    result.durationSeconds = (juce::Time::getMillisecondCounterHiRes() - startTime) / 1000.0;
+    return finish (result);
 }
 
 //==============================================================================
 struct TestRunner::Watchdog  : private juce::Thread
 {
-    Watchdog (const juce::File& file, juce::int64 timeout)
-        : Thread ("pluginval test watchdog"), configFile (file), timeoutMs (timeout)
+    Watchdog (const juce::File& file, const RunOptions& opts)
+        : Thread ("pluginval test watchdog"), configFile (file), options (opts)
     {
         startThread (juce::Thread::Priority::low);
     }
@@ -645,19 +657,20 @@ struct TestRunner::Watchdog  : private juce::Thread
 
 private:
     const juce::File configFile;
-    const juce::int64 timeoutMs;
+    const RunOptions options;
     juce::WaitableEvent finished;
 
     void run() override
     {
-        if (finished.wait ((double) timeoutMs))
+        if (finished.wait ((double) options.timeoutMs))
             return;
 
         // The worker is stuck in a plugin call that can't be interrupted, so
         // report the failure and end the process.
-        const auto result = TestResult::makeError (configFile.getFileNameWithoutExtension(),
-                                                   "timed out after " + juce::RelativeTime::milliseconds (timeoutMs).getDescription());
-        reporter::report (result);
+        auto result = TestResult::makeError (configFile.getFileNameWithoutExtension(),
+                                             "timed out after " + juce::RelativeTime::milliseconds (options.timeoutMs).getDescription());
+        result.durationSeconds = (double) options.timeoutMs / 1000.0;
+        reporter::report (result, options.junitXmlFile, options.jsonResultsFile);
         std::cout << std::flush;
         std::_Exit (reporter::exitCode (result));
     }
@@ -673,7 +686,7 @@ TestRunner::TestRunner (const juce::File& file, const RunOptions& opts, std::fun
     jassert (onComplete);
 
     if (options.timeoutMs > 0)
-        watchdog = std::make_unique<Watchdog> (configFile, options.timeoutMs);
+        watchdog = std::make_unique<Watchdog> (configFile, options);
 
     startThread();
 }

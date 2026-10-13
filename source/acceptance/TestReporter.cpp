@@ -70,7 +70,43 @@ nlohmann::json toJson (const TestResult& r)
     return j;
 }
 
-void report (const TestResult& r)
+report_writer::Report toReport (const TestResult& r)
+{
+    report_writer::TestCase c;
+    c.name = r.name;
+    c.durationSeconds = r.durationSeconds;
+    c.details = toJson (r);
+
+    if (r.outcome == TestResult::Outcome::failed)
+    {
+        c.status = report_writer::TestCase::Status::failed;
+
+        for (const auto& [method, result] : r.comparisons)
+            if (! result.passed)
+                c.messages.add ("[" + method + "] " + result.summary);
+
+        if (r.diffFile != juce::File())
+            c.messages.add ("diff written to: " + r.diffFile.getFullPathName());
+    }
+    else if (r.outcome == TestResult::Outcome::error)
+    {
+        c.status = report_writer::TestCase::Status::error;
+        c.messages.add (r.message);
+    }
+
+    report_writer::Report report;
+    report.command = "test";
+    report.target = r.name;
+    report.startTime = juce::Time::getCurrentTime() - juce::RelativeTime::seconds (r.durationSeconds);
+
+    if (r.referenceFile != juce::File())
+        report.properties.push_back ({ "reference", r.referenceFile.getFullPathName() });
+
+    report.cases.push_back (c);
+    return report;
+}
+
+bool report (const TestResult& r, const juce::File& junitXml, const juce::File& jsonResults)
 {
     switch (r.outcome)
     {
@@ -99,6 +135,8 @@ void report (const TestResult& r)
 
     // The structured result for machine consumers.
     std::cout << toJson (r).dump (2) << std::endl;
+
+    return report_writer::write (toReport (r), junitXml, jsonResults);
 }
 
 int exitCode (const TestResult& r)

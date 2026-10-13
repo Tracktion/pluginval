@@ -15,6 +15,7 @@
 #pragma once
 
 #include "ReferenceComparator.h"
+#include "../ReportWriter.h"
 
 #include <juce_core/juce_core.h>
 #include <nlohmann/json.hpp>
@@ -46,6 +47,8 @@ struct TestResult
     juce::File referenceFile;
     juce::File diffFile;        /**< Written only on failure. */
 
+    double durationSeconds = 0.0;   /**< How long the test took to run. */
+
     //==============================================================================
     static TestResult makeError (const juce::String& name, const juce::String& message)
     {
@@ -63,8 +66,13 @@ namespace reporter
     /** Structured, machine-readable representation of a result. */
     nlohmann::json toJson (const TestResult&);
 
-    /** Prints a human-readable summary followed by the JSON to stdout. */
-    void report (const TestResult&);
+    /** The result as a report for --junit-xml / --json-results. */
+    report_writer::Report toReport (const TestResult&);
+
+    /** Prints a human-readable summary followed by the JSON to stdout, then
+        writes the report files that are set (a default juce::File is skipped).
+        Returns false if a report file couldn't be written. */
+    bool report (const TestResult&, const juce::File& junitXml = {}, const juce::File& jsonResults = {});
 
     /** 0 for referenceCreated / passed, 1 for failed / error. */
     int exitCode (const TestResult&);

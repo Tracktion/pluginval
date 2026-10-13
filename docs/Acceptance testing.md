@@ -89,6 +89,13 @@ Any other option is an error.
   `RECORD_MISSING=1`.
 - `--timeout-ms <ms>` - fail (exit `1`) if the run takes longer than this
   (default `30000`, `-1` to never time out). Also settable as `TIMEOUT_MS`.
+- `--junit-xml <file>` - write a JUnit XML report, for CI systems that display
+  test results. Also settable as `JUNIT_XML`.
+- `--json-results <file>` - write a JSON report (the same result that is printed
+  to stdout, wrapped in a summary). Also settable as `JSON_RESULTS`.
+
+See [Adding pluginval to CI](Adding%20pluginval%20to%20CI.md#machine-readable-reports)
+for the report formats.
 
 The render runs on a background thread, as a host's audio thread would, leaving
 the message thread free for the plugin.
