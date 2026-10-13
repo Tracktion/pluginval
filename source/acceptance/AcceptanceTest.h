@@ -54,6 +54,7 @@ struct RunOptions
     juce::int64 timeoutMs = 30000; /**< Abort the whole run after this long. <= 0 never times out. */
     juce::File junitXmlFile;       /**< File to write a JUnit XML report to (none if default). */
     juce::File jsonResultsFile;    /**< File to write a JSON report to (none if default). */
+    std::string pluginOverride;    /**< Plugin path or AU id to test instead of the config's (none if empty). */
 };
 
 //==============================================================================

@@ -46,7 +46,7 @@ JSON keys are `snake_case`. The most useful fields:
 | Field | Notes |
 |---|---|
 | `name` | Labels the result and gives the default reference path. **Required** unless `reference` is given. |
-| `plugin` | Path to the plugin (or an AU identifier). **Required.** |
+| `plugin` | Path to the plugin (or an AU identifier). **Required**, unless `--plugin` is given on the command line. |
 | `input.audio` / `input.midi` | Input files to feed it. Omit both for silence (e.g. instruments driven only by MIDI, or generators). The audio file's sample rate must match `sample_rate`. Each file channel feeds the plugin input channel with the same index: a mono file feeds channel 0 only (it isn't duplicated), and extra channels on either side are silent / ignored. MIDI meta events (tempo, track names) aren't sent to the plugin. |
 | `state.parameters` | A map of parameter → **normalised** value (`0` to `1`), applied before rendering, **in file order**. A key of digits only is a parameter index; otherwise it matches the format's parameter ID, then the display name (case-insensitively). |
 | `state.file` | A binary `getStateInformation` blob to restore first (e.g. a captured preset). Applied before `state.parameters`. |
@@ -89,6 +89,9 @@ Any other option is an error.
   `RECORD_MISSING=1`.
 - `--timeout-ms <ms>` - fail (exit `1`) if the run takes longer than this
   (default `30000`, `-1` to never time out). Also settable as `TIMEOUT_MS`.
+- `--plugin <plugin>` - test this plugin path (or AU identifier) instead of the
+  config's `plugin`, which can then be left out. This lets one set of configs be
+  run against whichever binary was just built (e.g. both the VST3 and the AU).
 - `--junit-xml <file>` - write a JUnit XML report, for CI systems that display
   test results. Also settable as `JUNIT_XML`.
 - `--json-results <file>` - write a JSON report (the same result that is printed
@@ -96,6 +99,18 @@ Any other option is an error.
 
 See [Adding pluginval to CI](Adding%20pluginval%20to%20CI.md#machine-readable-reports)
 for the report formats.
+
+On GitHub Actions, the `acceptance` action runs every config in a directory
+(recursively) against a built plugin:
+
+```yaml
+- uses: Tracktion/pluginval/.github/actions/acceptance@v2
+  with:
+    config-dir: tests/acceptance
+    plugin: build/MyPlugin_artefacts/Release/VST3/MyPlugin.vst3
+```
+
+See the [actions README](../.github/actions/README.md) for its inputs and outputs.
 
 The render runs on a background thread, as a host's audio thread would, leaving
 the message thread free for the plugin.

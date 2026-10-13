@@ -543,6 +543,29 @@ struct CommandLineTests : public juce::UnitTest
             }
         }
 
+        beginTest ("Subcommand: test plugin override (--plugin)");
+        {
+            {
+                const auto d = settings_parser::dispatch (settings_parser::tokenise ("test --plugin build/P.vst3 config.json"));
+                expect (d.error.isEmpty());
+                expectEquals (d.testPluginOverride, juce::String ("build/P.vst3"));
+                expectEquals (d.testConfigPath, juce::String ("config.json"));
+            }
+            {
+                const auto d = settings_parser::dispatch (settings_parser::tokenise ("test config.json"));
+                expect (d.testPluginOverride.isEmpty());
+            }
+            {
+                const auto d = settings_parser::dispatch (settings_parser::tokenise ("test config.json --plugin"));
+                expect (d.error.contains ("--plugin"));
+            }
+            {
+                // The following option isn't taken as the plugin.
+                const auto d = settings_parser::dispatch (settings_parser::tokenise ("test config.json --plugin --record-missing"));
+                expect (d.error.contains ("--plugin"));
+            }
+        }
+
         beginTest ("Subcommand: test report options (--junit-xml, --json-results)");
         {
             {
@@ -840,7 +863,7 @@ struct CommandLineTests : public juce::UnitTest
             expect (! rejects (R"({ "name": "t", "plugin": "P.vst3" })"));
             expect (! rejects (R"({ "reference": "r.wav", "plugin": "P.vst3" })"), "reference alone names the test");
 
-            expect (rejects (R"({ "name": "t" })"), "plugin is required");
+            expect (! rejects (R"({ "name": "t" })"), "plugin can come from --plugin instead");
             expect (rejects (R"({ "plugin": "P.vst3" })"), "name or reference is required");
             expect (rejects (R"({ "name": "t", "plugin": "P.vst3", "comparison": {} })"), "empty comparison");
             expect (rejects (R"({ "name": "t", "plugin": "P.vst3", "comparison": 1 })"), "non-object comparison");

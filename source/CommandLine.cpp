@@ -231,6 +231,7 @@ void performCommandLine (CommandLineValidator& validator, const juce::String& co
         acceptance::RunOptions options;
         options.recordMissing = routed.recordMissing;
         options.timeoutMs = routed.timeoutMs;
+        options.pluginOverride = routed.testPluginOverride.toStdString();
 
         const auto toReportFile = [] (const juce::String& path)
         {

@@ -68,3 +68,102 @@ jobs:
         if: runner.os != 'Linux'
         working-directory: build
         run: ctest -C Release --output-on-failure -R pluginval.acceptance
+
+      # The reusable actions in .github/actions, run against the build above
+      # (pluginval-path) rather than a downloaded release.
+      - name: Prepare action fixtures
+        id: fixtures
+        shell: bash
+        run: |
+          case "$RUNNER_OS" in
+            macOS)   echo "pluginval=build/pluginval_artefacts/Release/pluginval.app/Contents/MacOS/pluginval" >> "$GITHUB_OUTPUT" ;;
+            Windows) echo "pluginval=build/pluginval_artefacts/Release/pluginval.exe" >> "$GITHUB_OUTPUT" ;;
+            *)       echo "pluginval=build/pluginval_artefacts/Release/pluginval" >> "$GITHUB_OUTPUT" ;;
+          esac
+
+          # Tone generator configs with the plugin removed, so it has to come from
+          # the action's "plugin" input. One is nested and a reference manifest is
+          # added, to check the recursion and that manifests aren't run as configs.
+          generated=build/tests/acceptance/Release
+          fixtures=build/action-fixtures
+          mkdir -p $fixtures/good/nested $fixtures/bad $fixtures/missing
+          sed '/"plugin"/d' $generated/sine-440.json > $fixtures/good/sine-440.json
+          sed '/"plugin"/d' $generated/square-220.json > $fixtures/good/nested/square-220.json
+          cp tests/acceptance/refs/sine-440.wav.json $fixtures/good/nested/
+
+          # A mismatching reference and an (unsupported) array config.
+          sed -e '/"plugin"/d' -e 's#refs/sine-440.wav#refs/square-220.wav#' $generated/sine-440.json > $fixtures/bad/wrong-ref.json
+          (echo "["; cat $fixtures/good/sine-440.json; echo "]") > $fixtures/bad/array.json
+
+          # A reference that doesn't exist yet.
+          sed -e '/"plugin"/d' -e 's#"reference": ".*"#"reference": "recorded.wav"#' $generated/sine-440.json > $fixtures/missing/missing.json
+
+      - name: "Action: validate"
+        id: validate
+        uses: ./.github/actions/validate
+        with:
+          pluginval-path: ${{ steps.fixtures.outputs.pluginval }}
+          args: --skip-gui-tests
+          plugins: build/tests/test_plugins/*/*_artefacts/Release/VST3/*.vst3
+
+      - name: "Action: validate (missing plugin, expected to fail)"
+        id: validate-missing
+        continue-on-error: true
+        uses: ./.github/actions/validate
+        with:
+          pluginval-path: ${{ steps.fixtures.outputs.pluginval }}
+          args: --skip-gui-tests
+          plugins: |
+            build/tests/test_plugins/gain/*_artefacts/Release/VST3/*.vst3
+            build/Missing.vst3
+
+      - name: "Action: acceptance"
+        id: acceptance
+        uses: ./.github/actions/acceptance
+        with:
+          pluginval-path: ${{ steps.fixtures.outputs.pluginval }}
+          config-dir: build/action-fixtures/good
+          plugin: build/tests/test_plugins/tone_generator/pluginval_tone_generator_artefacts/Release/VST3/pluginval Tone Generator.vst3
+
+      - name: "Action: acceptance (bad configs, expected to fail)"
+        id: acceptance-bad
+        continue-on-error: true
+        uses: ./.github/actions/acceptance
+        with:
+          pluginval-path: ${{ steps.fixtures.outputs.pluginval }}
+          config-dir: build/action-fixtures/bad
+          plugin: build/tests/test_plugins/tone_generator/pluginval_tone_generator_artefacts/Release/VST3/pluginval Tone Generator.vst3
+
+      - name: "Action: acceptance (missing reference, expected to fail)"
+        id: acceptance-missing
+        continue-on-error: true
+        uses: ./.github/actions/acceptance
+        with:
+          pluginval-path: ${{ steps.fixtures.outputs.pluginval }}
+          config-dir: build/action-fixtures/missing
+          plugin: build/tests/test_plugins/tone_generator/pluginval_tone_generator_artefacts/Release/VST3/pluginval Tone Generator.vst3
+
+      - name: "Action: acceptance (record the missing reference)"
+        id: acceptance-record
+        uses: ./.github/actions/acceptance
+        with:
+          pluginval-path: ${{ steps.fixtures.outputs.pluginval }}
+          config-dir: build/action-fixtures/missing
+          plugin: build/tests/test_plugins/tone_generator/pluginval_tone_generator_artefacts/Release/VST3/pluginval Tone Generator.vst3
+          record-missing: true
+
+      - name: Check the action results
+        shell: bash
+        run: |
+          check() { echo "$1: got '$2', expected '$3'"; [ "$2" = "$3" ] || exit 1; }
+          check "validate passed"            "${{ steps.validate.outputs.passed }}"           3
+          check "validate failed"            "${{ steps.validate.outputs.failed }}"           0
+          check "validate-missing outcome"   "${{ steps.validate-missing.outcome }}"          failure
+          check "validate-missing passed"    "${{ steps.validate-missing.outputs.passed }}"   1
+          check "validate-missing failed"    "${{ steps.validate-missing.outputs.failed }}"   1
+          check "acceptance passed"          "${{ steps.acceptance.outputs.passed }}"         2
+          check "acceptance failed"          "${{ steps.acceptance.outputs.failed }}"         0
+          check "acceptance-bad outcome"     "${{ steps.acceptance-bad.outcome }}"            failure
+          check "acceptance-bad failed"      "${{ steps.acceptance-bad.outputs.failed }}"     2
+          check "acceptance-missing outcome" "${{ steps.acceptance-missing.outcome }}"        failure
+          check "acceptance-record passed"   "${{ steps.acceptance-record.outputs.passed }}"  1

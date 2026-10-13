@@ -85,6 +85,7 @@ namespace settings_parser
         juce::int64 timeoutMs = 30000;      /**< test: abort the run after this long (-1 to never time out). */
         juce::String junitXmlPath;          /**< test: file to write a JUnit XML report to. */
         juce::String jsonResultsPath;       /**< test: file to write a JSON report to. */
+        juce::String testPluginOverride;    /**< test: plugin path or AU id to use instead of the config's. */
         juce::String error;                 /**< test: an invalid option / argument, to report instead of running. */
     };
 

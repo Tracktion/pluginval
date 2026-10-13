@@ -629,8 +629,16 @@ int runTestFile (const juce::File& configFile, const RunOptions& options)
     if (configs.size() > 1)
         std::cout << "Note: " << configs.size() << " configs found; v1 runs the first only." << std::endl;
 
+    auto& config = configs.front();
+
+    if (! options.pluginOverride.empty())
+        config.plugin = options.pluginOverride;
+
+    if (config.plugin.empty())
+        return finish (TestResult::makeError (config.getName(), "plugin is required (in the config, or via --plugin)"));
+
     const auto startTime = juce::Time::getMillisecondCounterHiRes();
-    auto result = runTest (configs.front(), options);
+    auto result = runTest (config, options);
     result.durationSeconds = (juce::Time::getMillisecondCounterHiRes() - startTime) / 1000.0;
     return finish (result);
 }
