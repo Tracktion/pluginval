@@ -398,7 +398,7 @@ struct PluginStateTestRestoration   : public PluginTest
                 parameter->getName(1024) + juce::String(" not restored on setStateInformation"));
         }
 
-        if (strictnessLevel >= 8)
+        if (ut.getOptions().strictnessLevel >= 8)
         {
             // Read state again and compare to what we set
             auto duplicateState = callGetStateInformationOnMessageThreadIfVST3 (instance);
