@@ -225,8 +225,8 @@ static report_writer::Report toReport (PluginTests& test, const juce::Array<juce
     {
         report_writer::TestCase c;
         c.name = r.subcategoryName;
-        c.status = r.failures > 0 ? report_writer::TestCase::Status::failed
-                                  : report_writer::TestCase::Status::passed;
+        c.status = r.failures > 0 ? report_writer::TestCase::Outcome::failed
+                                  : report_writer::TestCase::Outcome::passed;
         c.messages = r.messages;
         c.durationSeconds = juce::jmax (0.0, (r.endTime - r.startTime).inSeconds());
         report.cases.push_back (c);

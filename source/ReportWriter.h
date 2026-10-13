@@ -32,7 +32,7 @@ namespace report_writer
     /** One test within a run. */
     struct TestCase
     {
-        enum class Status
+        enum class Outcome
         {
             passed,
             failed,     /**< The test ran and a check failed. */
@@ -40,7 +40,7 @@ namespace report_writer
         };
 
         juce::String name;
-        Status status = Status::passed;
+        Outcome status = Outcome::passed;
         juce::StringArray messages;     /**< Failure / error text. */
         double durationSeconds = 0.0;
         nlohmann::json details;         /**< Optional command-specific data (JSON report only). */

@@ -36,21 +36,21 @@ namespace
         for (const auto& c : report.cases)
         {
             ++t.tests;
-            t.failed += c.status == TestCase::Status::failed ? 1 : 0;
-            t.errors += c.status == TestCase::Status::error ? 1 : 0;
+            t.failed += c.status == TestCase::Outcome::failed ? 1 : 0;
+            t.errors += c.status == TestCase::Outcome::error ? 1 : 0;
             t.seconds += c.durationSeconds;
         }
 
         return t;
     }
 
-    const char* toString (TestCase::Status s)
+    const char* toString (TestCase::Outcome s)
     {
         switch (s)
         {
-            case TestCase::Status::passed:  return "passed";
-            case TestCase::Status::failed:  return "failed";
-            case TestCase::Status::error:   return "error";
+            case TestCase::Outcome::passed:  return "passed";
+            case TestCase::Outcome::failed:  return "failed";
+            case TestCase::Outcome::error:   return "error";
         }
 
         return "error";
@@ -116,9 +116,9 @@ juce::String toJUnitXml (const Report& report)
         testCase->setAttribute ("name", c.name);
         testCase->setAttribute ("time", formatSeconds (c.durationSeconds));
 
-        if (c.status != TestCase::Status::passed)
+        if (c.status != TestCase::Outcome::passed)
         {
-            auto problem = testCase->createNewChildElement (c.status == TestCase::Status::failed ? "failure" : "error");
+            auto problem = testCase->createNewChildElement (c.status == TestCase::Outcome::failed ? "failure" : "error");
             problem->setAttribute ("message", c.messages[0].upToFirstOccurrenceOf ("\n", false, false));
             problem->addTextElement (c.messages.joinIntoString ("\n"));
         }
@@ -180,7 +180,7 @@ Report makeIncomplete (const juce::String& command, const juce::String& target, 
 {
     TestCase c;
     c.name = "pluginval " + command;
-    c.status = TestCase::Status::error;
+    c.status = TestCase::Outcome::error;
     c.messages.add (reason);
 
     Report report;

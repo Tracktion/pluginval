@@ -576,14 +576,14 @@ struct CommandLineTests : public juce::UnitTest
 
             report_writer::TestCase failed;
             failed.name = "Plugin state";
-            failed.status = report_writer::TestCase::Status::failed;
+            failed.status = report_writer::TestCase::Outcome::failed;
             failed.messages.add ("Expected <1 & \"2\">");
             failed.messages.add ("second message");
             failed.durationSeconds = 1.0;
 
             report_writer::TestCase errored;
             errored.name = "Editor";
-            errored.status = report_writer::TestCase::Status::error;
+            errored.status = report_writer::TestCase::Outcome::error;
             errored.messages.add ("couldn't run");
 
             report.cases = { passed, failed, errored };
@@ -647,7 +647,7 @@ struct CommandLineTests : public juce::UnitTest
 
             report_writer::TestCase failed;
             failed.name = "b";
-            failed.status = report_writer::TestCase::Status::failed;
+            failed.status = report_writer::TestCase::Outcome::failed;
             failed.messages.add ("[sample] too different");
             failed.details = { { "outcome", "failed" } };
 
@@ -709,18 +709,18 @@ struct CommandLineTests : public juce::UnitTest
             const auto failed = acceptance::reporter::toReport (result);
             expectEquals (failed.command, juce::String ("test"));
             expectEquals ((int) failed.cases.size(), 1);
-            expect (failed.cases[0].status == report_writer::TestCase::Status::failed);
+            expect (failed.cases[0].status == report_writer::TestCase::Outcome::failed);
             expectEquals (failed.cases[0].messages[0], juce::String ("[sample] max abs diff 0.5"));
             expectEquals (failed.cases[0].durationSeconds, 2.0);
             expectEquals (juce::String (failed.cases[0].details["outcome"].get<std::string>()), juce::String ("failed"));
 
             const auto error = acceptance::reporter::toReport (acceptance::TestResult::makeError ("t", "no plugin"));
-            expect (error.cases[0].status == report_writer::TestCase::Status::error);
+            expect (error.cases[0].status == report_writer::TestCase::Outcome::error);
             expectEquals (error.cases[0].messages[0], juce::String ("no plugin"));
 
             result.outcome = acceptance::TestResult::Outcome::referenceCreated;
             result.comparisons.clear();
-            expect (acceptance::reporter::toReport (result).cases[0].status == report_writer::TestCase::Status::passed);
+            expect (acceptance::reporter::toReport (result).cases[0].status == report_writer::TestCase::Outcome::passed);
         }
 
         beginTest ("Acceptance TestConfig JSON parsing (snake_case keys, defaults)");

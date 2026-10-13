@@ -79,7 +79,7 @@ report_writer::Report toReport (const TestResult& r)
 
     if (r.outcome == TestResult::Outcome::failed)
     {
-        c.status = report_writer::TestCase::Status::failed;
+        c.status = report_writer::TestCase::Outcome::failed;
 
         for (const auto& [method, result] : r.comparisons)
             if (! result.passed)
@@ -90,7 +90,7 @@ report_writer::Report toReport (const TestResult& r)
     }
     else if (r.outcome == TestResult::Outcome::error)
     {
-        c.status = report_writer::TestCase::Status::error;
+        c.status = report_writer::TestCase::Outcome::error;
         c.messages.add (r.message);
     }
 
