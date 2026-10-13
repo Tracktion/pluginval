@@ -378,6 +378,10 @@ struct PluginStateTestRestoration   : public PluginTest
         // Read state
         auto originalState = callGetStateInformationOnMessageThreadIfVST3 (instance);
 
+        // Hosted parameters report the last value sent to them until a state is
+        // restored, so restore once here to start from the plugin's own values
+        callSetStateInformationOnMessageThreadIfVST3 (instance, originalState);
+
         const auto tolaratedDiff = 0.1f;
 
         // Set random parameter values
