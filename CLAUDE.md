@@ -289,7 +289,7 @@ spec: `tests/acceptance/Acceptance testing design.md`; end-user guide:
   `DispatchResult::testConfigPath`, plus `recordMissing` / `timeoutMs` from
   `--record-missing` / `--timeout-ms` or `RECORD_MISSING` / `TIMEOUT_MS`, and
   `testPluginOverride` from `--plugin`, which replaces the config's `plugin`
-  in `runTestFile()` - so `plugin` is only required when `--plugin` is absent),
+  in `loadAndRunTestFile()` - so `plugin` is only required when `--plugin` is absent),
   `isCommandLine()` and `getFooterText()`; `CommandLine.cpp`'s
   `performCommandLine()` has a `Command::test` branch that starts an
   `acceptance::TestRunner`, which renders on a **background thread** (message
@@ -352,8 +352,10 @@ log are unaffected.
   completion, so a crash leaves an error report rather than a stale or missing
   one. On a timeout the thread that ends the process writes a "timed out" error
   report as its last act (`PluginsUnitTestRunner`'s `onTimeout` for validate, the
-  acceptance `Watchdog` for test), so the report always agrees with the exit code
-  even if the tests finish in the moment before the process is terminated.
+  acceptance `Watchdog` for test). The two writers never overlap: validate stops
+  the timeout thread before writing the real report, and for test the worker and
+  the `Watchdog` each claim the report (an atomic flag) and only the first to
+  claim it writes, so the report always agrees with the exit code.
 
 ### Test Framework
 

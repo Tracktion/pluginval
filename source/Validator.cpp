@@ -20,6 +20,7 @@
 #include <numeric>
 #include <thread>
 #include <chrono>
+#include <mutex>
 
 //==============================================================================
 struct PluginsUnitTestRunner    : public juce::UnitTestRunner,
@@ -53,6 +54,15 @@ struct PluginsUnitTestRunner    : public juce::UnitTestRunner,
         return outputStream.get();
     }
 
+    /** Stops the timeout thread. Call once the tests have finished so a timeout
+        can't fire (and write its report) while the results are being written.
+        If the timeout has already fired, this blocks until the process ends.
+    */
+    void stopTimeoutThread()
+    {
+        stopThread (5000);
+    }
+
     void resultsUpdated() override
     {
         resetTimeout();
@@ -67,8 +77,13 @@ struct PluginsUnitTestRunner    : public juce::UnitTestRunner,
 
         if (message.isNotEmpty())
         {
-            if (outputStream)
-                *outputStream << message << "\n";
+            {
+                // The timeout thread can reset the stream at any point
+                const std::scoped_lock sl (outputStreamLock);
+
+                if (outputStream)
+                    *outputStream << message << "\n";
+            }
 
             callback (message + "\n");
         }
@@ -78,6 +93,7 @@ private:
     std::function<void (const juce::String&)> callback;
     std::function<void()> onTimeout; // Called on the timeout thread just before the process is terminated
     std::unique_ptr<juce::FileOutputStream> outputStream;
+    std::mutex outputStreamLock;
     const juce::int64 timeoutMs = -1;
     std::atomic<juce::int64> timoutTime { -1 };
     std::atomic<bool> canSendLogMessage { true };
@@ -95,7 +111,11 @@ private:
             {
                 logMessage ("*** FAILED: Timeout after " + juce::RelativeTime::milliseconds (timeoutMs).getDescription());
                 canSendLogMessage = false;
-                outputStream.reset();
+
+                {
+                    const std::scoped_lock sl (outputStreamLock);
+                    outputStream.reset();
+                }
 
                 // Give the log a second to flush the message before terminating
                 juce::Thread::sleep (1000);
@@ -249,8 +269,8 @@ inline juce::Array<juce::UnitTestRunner::TestResult> runTests (PluginTests& test
                               options.junitXmlFile, options.jsonResultsFile);
     };
 
-    // Written last on a timeout, so the report always agrees with the exit code
-    // (the tests can finish in the moment between the timeout and the process ending)
+    // Written by the timeout thread just before it ends the process. The thread
+    // is stopped before the final report is written, so the two never overlap.
     PluginsUnitTestRunner testRunner (std::move (callback), createDestinationFileStream (test), options.timeoutMs,
                                       [options, writeIncompleteReport]
                                       {
@@ -264,6 +284,7 @@ inline juce::Array<juce::UnitTestRunner::TestResult> runTests (PluginTests& test
     juce::Array<juce::UnitTest*> testsToRun;
     testsToRun.add (&test);
     testRunner.runTests (testsToRun, options.randomSeed);
+    testRunner.stopTimeoutThread();
 
     for (int i = 0; i < testRunner.getNumResults(); ++i)
         results.add (*testRunner.getResult (i));

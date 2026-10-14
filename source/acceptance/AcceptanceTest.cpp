@@ -20,6 +20,7 @@
 #define XXH_INLINE_ALL
 #include <xxhash.h>
 
+#include <atomic>
 #include <cmath>
 #include <cstdint>
 #include <cstdlib>
@@ -591,25 +592,15 @@ TestResult runTest (const TestConfig& config, const RunOptions& options)
 }
 
 //==============================================================================
-int runTestFile (const juce::File& configFile, const RunOptions& options)
+static void writeIncompleteReport (const juce::File& configFile, const RunOptions& options)
 {
-    const auto finish = [&options] (const TestResult& result)
-    {
-        // A report that was asked for but couldn't be written is a failure
-        if (! reporter::report (result, options.junitXmlFile, options.jsonResultsFile))
-        {
-            std::cout << "*** FAILED: Unable to write the report file(s)" << std::endl;
-            return 1;
-        }
-
-        return reporter::exitCode (result);
-    };
-
-    // Written up front so a crash can't leave a stale (or missing) report behind
     report_writer::write (report_writer::makeIncomplete ("test", configFile.getFileNameWithoutExtension(),
                                                          "Test did not complete (crashed)"),
                           options.junitXmlFile, options.jsonResultsFile);
+}
 
+static TestResult loadAndRunTestFile (const juce::File& configFile, const RunOptions& options)
+{
     std::vector<TestConfig> configs;
 
     try
@@ -618,11 +609,11 @@ int runTestFile (const juce::File& configFile, const RunOptions& options)
     }
     catch (const std::exception& e)
     {
-        return finish (TestResult::makeError (configFile.getFileNameWithoutExtension(), e.what()));
+        return TestResult::makeError (configFile.getFileNameWithoutExtension(), e.what());
     }
 
     if (configs.empty())
-        return finish (TestResult::makeError (configFile.getFileNameWithoutExtension(), "no test configs in file"));
+        return TestResult::makeError (configFile.getFileNameWithoutExtension(), "no test configs in file");
 
     // v1 runs the first entry only; the parser already accepts arrays for the
     // phase-2 multiplexing extension.
@@ -635,12 +626,31 @@ int runTestFile (const juce::File& configFile, const RunOptions& options)
         config.plugin = options.pluginOverride;
 
     if (config.plugin.empty())
-        return finish (TestResult::makeError (config.getName(), "plugin is required (in the config, or via --plugin)"));
+        return TestResult::makeError (config.getName(), "plugin is required (in the config, or via --plugin)");
 
     const auto startTime = juce::Time::getMillisecondCounterHiRes();
     auto result = runTest (config, options);
     result.durationSeconds = (juce::Time::getMillisecondCounterHiRes() - startTime) / 1000.0;
-    return finish (result);
+    return result;
+}
+
+static int reportResult (const TestResult& result, const RunOptions& options)
+{
+    // A report that was asked for but couldn't be written is a failure
+    if (! reporter::report (result, options.junitXmlFile, options.jsonResultsFile))
+    {
+        std::cout << "*** FAILED: Unable to write the report file(s)" << std::endl;
+        return 1;
+    }
+
+    return reporter::exitCode (result);
+}
+
+int runTestFile (const juce::File& configFile, const RunOptions& options)
+{
+    // Written up front so a crash can't leave a stale (or missing) report behind
+    writeIncompleteReport (configFile, options);
+    return reportResult (loadAndRunTestFile (configFile, options), options);
 }
 
 //==============================================================================
@@ -654,23 +664,34 @@ struct TestRunner::Watchdog  : private juce::Thread
 
     ~Watchdog() override
     {
-        markFinished();
+        finished.signal();
         stopThread (5000);
     }
 
-    void markFinished()
+    /** Called by the test thread before it writes the final report. Returns
+        false if the timeout got there first, in which case the watchdog is
+        writing the timed-out report and is about to end the process.
+    */
+    bool claimReport()
     {
         finished.signal();
+        return ! reportClaimed.exchange (true);
     }
 
 private:
     const juce::File configFile;
     const RunOptions options;
     juce::WaitableEvent finished;
+    std::atomic<bool> reportClaimed { false };
 
     void run() override
     {
         if (finished.wait ((double) options.timeoutMs))
+            return;
+
+        // The test finished in the moment before the timeout and is writing its
+        // own report, so let it complete normally
+        if (reportClaimed.exchange (true))
             return;
 
         // The worker is stuck in a plugin call that can't be interrupted, so
@@ -693,6 +714,10 @@ TestRunner::TestRunner (const juce::File& file, const RunOptions& opts, std::fun
 {
     jassert (onComplete);
 
+    // Written up front so a crash can't leave a stale (or missing) report
+    // behind. Done before the watchdog starts so it can't overwrite a timeout.
+    writeIncompleteReport (configFile, options);
+
     if (options.timeoutMs > 0)
         watchdog = std::make_unique<Watchdog> (configFile, options);
 
@@ -707,10 +732,11 @@ TestRunner::~TestRunner()
 
 void TestRunner::run()
 {
-    const auto exitCode = runTestFile (configFile, options);
+    const auto result = loadAndRunTestFile (configFile, options);
 
-    if (watchdog != nullptr)
-        watchdog->markFinished();
+    // If the watchdog has already claimed the report it writes it and ends the
+    // process, so don't write over it
+    const auto exitCode = (watchdog == nullptr || watchdog->claimReport()) ? reportResult (result, options) : 1;
 
     juce::MessageManager::callAsync ([callback = onComplete, exitCode] { callback (exitCode); });
 }
