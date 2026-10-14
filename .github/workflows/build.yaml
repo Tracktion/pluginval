@@ -166,6 +166,18 @@ jobs:
         working-directory: ${{ env.APP_DIR }}
         run: 7z a -aoa -tzip ${{ env.ZIP_FILE_NAME }} ${{ matrix.app }}
 
+      # Run the packaged app away from the build tree, as a user would, so anything
+      # that only resolves on the build machine (e.g. a dylib rpath) fails here
+      # rather than in a published release.
+      - name: Smoke test the zip
+        shell: bash
+        run: |
+          mkdir -p "$RUNNER_TEMP/smoke"
+          7z x -y -o"$RUNNER_TEMP/smoke" "${{ env.APP_DIR }}/${{ env.ZIP_FILE_NAME }}" > /dev/null
+          cd "$RUNNER_TEMP/smoke"
+          chmod +x ${{ matrix.test-binary }}
+          ${{ matrix.test-binary }} --version
+
       - name: Upload zip files
         uses: actions/upload-artifact@v4
         with:
