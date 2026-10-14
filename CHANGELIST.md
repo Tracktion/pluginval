@@ -21,6 +21,7 @@
 - Fixed false failures in the "Plugin state restoration" test where the first parameter was compared against the last value sent by a previous test rather than the plugin's own value
 - Below strictness level 8, two-step (on/off) parameters are now only sent 0 or 1 when tests randomise parameter values. Arbitrary values are still sent to them at level 8 and above, and to all other parameters at every level
 - Fixed the "Plugin state restoration" test's exact binary state comparison never running. It was documented as running at strictness level 8 and above but checked the test's own level instead of the run's
+- Fixed the macOS app failing to start on any machine other than the one that built it ("Library not loaded: @rpath/librtcheck.dylib"); this affected the `v2.0.0-beta1` and `v2.0.0-beta2` releases
 - Enabled the editor stress and extreme (real-time allocation / oversized block) tests that were present in the source tree but had not been compiled into the build
 
 ### 1.0.5

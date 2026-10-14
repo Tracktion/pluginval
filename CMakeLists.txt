@@ -238,6 +238,11 @@ if (PLUGINVAL_ENABLE_RTCHECK)
         rtcheck)
 
     if (APPLE)
+        # The dylib is copied into the app bundle (below), so also look for it there.
+        # Otherwise the only rpath is the build tree's, and the app only starts on the
+        # machine that built it.
+        set_target_properties(pluginval PROPERTIES BUILD_RPATH "@executable_path/../Libraries")
+
         add_custom_command(TARGET pluginval POST_BUILD
                 COMMAND ${CMAKE_COMMAND} -E echo "Executable path: $<TARGET_FILE_DIR:pluginval>")
         add_custom_command(TARGET pluginval POST_BUILD
