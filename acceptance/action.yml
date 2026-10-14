@@ -1,0 +1,56 @@
+name: pluginval acceptance tests
+description: Runs pluginval's golden-file acceptance tests for every config in a directory.
+
+inputs:
+  config-dir:
+    description: >
+      Directory searched recursively for test configs (*.json). The
+      <reference>.wav.json manifests are skipped.
+    required: true
+  plugin:
+    description: >
+      Plugin path or AU id to test every config against, instead of the
+      "plugin" in each config.
+    default: ''
+  record-missing:
+    description: Record a missing reference and pass, instead of failing.
+    default: 'false'
+  timeout-ms:
+    description: Fail a test if it takes longer than this (pluginval's default if empty).
+    default: ''
+  report-dir:
+    description: Directory to write the JUnit XML reports to (a temporary directory if empty).
+    default: ''
+  pluginval-version:
+    description: The pluginval release to download - a tag (e.g. v2.0.0-beta1) or "latest".
+    default: v2.0.0-beta1
+  pluginval-path:
+    description: Path to an existing pluginval binary to use instead of downloading one.
+    default: ''
+
+outputs:
+  passed:
+    description: The number of configs that passed.
+    value: ${{ steps.run.outputs.passed }}
+  failed:
+    description: The number of configs that failed.
+    value: ${{ steps.run.outputs.failed }}
+  report-dir:
+    description: Directory holding a JUnit XML report per config, plus diffs/ with any diff WAVs.
+    value: ${{ steps.run.outputs.report-dir }}
+
+runs:
+  using: composite
+  steps:
+    - id: run
+      shell: bash
+      env:
+        INPUT_CONFIG_DIR: ${{ inputs.config-dir }}
+        INPUT_PLUGIN: ${{ inputs.plugin }}
+        INPUT_RECORD_MISSING: ${{ inputs.record-missing }}
+        INPUT_TIMEOUT_MS: ${{ inputs.timeout-ms }}
+        INPUT_REPORT_DIR: ${{ inputs.report-dir }}
+        INPUT_PLUGINVAL_VERSION: ${{ inputs.pluginval-version }}
+        INPUT_PLUGINVAL_PATH: ${{ inputs.pluginval-path }}
+      # The scripts live in .github/actions so only this file sits at the repo root.
+      run: bash "$GITHUB_ACTION_PATH/../.github/actions/acceptance/acceptance.sh"

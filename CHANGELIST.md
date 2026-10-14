@@ -2,7 +2,11 @@
 
 ### 2.0.0
 - Updated JUCE to 9.0.3
+- Fixed the crash handler so a backtrace is shown again when a plugin crashes, and made it async-signal-safe [#144]
+- Added `--junit-xml <file>` and `--json-results <file>` to both `pluginval validate` and `pluginval test` to write machine-readable reports for CI (also settable as `JUNIT_XML` / `JSON_RESULTS`). A report that can't be written fails the run. See `docs/Adding pluginval to CI.md`
 - Added acceptance testing: `pluginval test <config.json>` renders a plugin with a known state, input (audio/MIDI) and optional playhead, then compares the output against a checked-in reference WAV, exiting `0` on a match and `1` on a mismatch (with a diff WAV). Use `--record-missing` to record new references. See `docs/Acceptance testing.md`
+- Added `--plugin <plugin>` to `pluginval test` to run a config against a given plugin instead of the one it names (the config's `plugin` can then be omitted)
+- Added two GitHub Actions for use from other repositories: `Tracktion/pluginval/validate` (validate a list of plugins) and `Tracktion/pluginval/acceptance` (run every acceptance config in a directory against a built plugin). See `.github/actions/README.md`
 - Restructured the command line into subcommands: `pluginval validate [options] <plugin>` (the default), `pluginval run-tests` and `pluginval strictness-help [level]`. The plugin path is now a positional argument of `validate`
 - **Deprecated:** the flat flags `--validate <plugin>`, `--run-tests` and `--strictness-help [level]` still work as aliases (with a one-line notice) but will be removed in a future version. `pluginval <plugin>` remains a silent shorthand for `validate`
 - Replaced the hand-rolled command-line parser with CLI11 and a single JSON-based settings pipeline

@@ -134,6 +134,7 @@ set(SourceFiles
     source/MainComponent.h
     source/PluginTests.h
     source/PluginvalSettings.h
+    source/ReportWriter.h
     source/SettingsParser.h
     source/SettingsSerializer.h
     source/TestUtilities.h
@@ -151,6 +152,7 @@ set(SourceFiles
     source/Main.cpp
     source/MainComponent.cpp
     source/PluginTests.cpp
+    source/ReportWriter.cpp
     source/SettingsParser.cpp
     source/SettingsSerializer.cpp
     source/tests/BasicTests.cpp

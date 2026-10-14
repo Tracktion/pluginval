@@ -47,6 +47,8 @@ struct PluginTests : public juce::UnitTest
         juce::File dataFile;                                    /**< juce::File which tests can use to run user provided data. */
         juce::File outputDir;                                   /**< Directory in which to write the log files for each test run. */
         juce::String outputFilename;                            /**< Filename to write logs into */
+        juce::File junitXmlFile;                                /**< File to write a JUnit XML report to (none if default). */
+        juce::File jsonResultsFile;                             /**< File to write a JSON report to (none if default). */
         juce::StringArray disabledTests;                        /**< List of disabled tests. */
         std::vector<double> sampleRates;                        /**< List of sample rates. */
         std::vector<int> blockSizes;                            /**< List of block sizes. */

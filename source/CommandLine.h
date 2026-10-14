@@ -21,8 +21,8 @@
 //==============================================================================
 struct CommandLineValidator
 {
-    CommandLineValidator();
-    ~CommandLineValidator();
+    CommandLineValidator() = default;
+    ~CommandLineValidator() = default;
 
     void validate (const juce::String&, PluginTests::Options);
     void runAcceptanceTest (const juce::File& configFile, const acceptance::RunOptions&);

@@ -135,6 +135,10 @@ R"(Commands:
                                                     (default: a missing reference fails).
                                   --timeout-ms <ms> Fail if the run takes longer than this
                                                     (default 30000, -1 to never time out).
+                                  --junit-xml <file>    Write a JUnit XML report.
+                                  --json-results <file> Write a JSON report.
+                                  --plugin <plugin> Test this plugin path or AU id instead
+                                                    of the one in the config.
 
 The flat flags --validate <plugin>, --run-tests and --strictness-help [level] are
 deprecated aliases for the commands above and will be removed in a future version.
@@ -195,6 +199,8 @@ Precedence (lowest to highest): defaults, environment variables, --config, comma
             app.add_option ("--data-file", s.dataFile, "Path to a data file tests can use to configure themselves.");
             app.add_option ("--output-dir", s.outputDir, "Directory in which to write the log files.");
             app.add_option ("--output-filename", s.outputFilename, "Filename to write logs into.");
+            app.add_option ("--junit-xml", s.junitXml, "File to write a JUnit XML report to.");
+            app.add_option ("--json-results", s.jsonResults, "File to write a JSON report to.");
 
             app.add_option_function<std::string> ("--disabled-tests",
                 [&s] (const std::string& v) { s.disabledTests = settings_serializer::disabledTestsToList (juce::String (v)); },
@@ -382,6 +388,9 @@ Precedence (lowest to highest): defaults, environment variables, --config, comma
                 if (const auto env = juce::SystemStats::getEnvironmentVariable ("TIMEOUT_MS", {}); env.isNotEmpty())
                     result.timeoutMs = env.getLargeIntValue();
 
+                result.junitXmlPath    = juce::SystemStats::getEnvironmentVariable ("JUNIT_XML", {});
+                result.jsonResultsPath = juce::SystemStats::getEnvironmentVariable ("JSON_RESULTS", {});
+
                 // The options, plus the positional acceptance-test config (the first
                 // non-option token after the verb).
                 for (int i = 1; i < tokensIn.size(); ++i)
@@ -404,6 +413,30 @@ Precedence (lowest to highest): defaults, environment variables, --config, comma
                         }
 
                         result.timeoutMs = value.getLargeIntValue();
+                    }
+                    else if (token == "--junit-xml" || token == "--json-results")
+                    {
+                        const auto value = i + 1 < tokensIn.size() ? tokensIn.getReference (++i) : juce::String();
+
+                        if (value.isEmpty() || value.startsWith ("--"))
+                        {
+                            result.error = token + " needs a file path";
+                            break;
+                        }
+
+                        (token == "--junit-xml" ? result.junitXmlPath : result.jsonResultsPath) = value;
+                    }
+                    else if (token == "--plugin")
+                    {
+                        const auto value = i + 1 < tokensIn.size() ? tokensIn.getReference (++i) : juce::String();
+
+                        if (value.isEmpty() || value.startsWith ("--"))
+                        {
+                            result.error = "--plugin needs a plugin path or AU id";
+                            break;
+                        }
+
+                        result.testPluginOverride = value;
                     }
                     else if (token.startsWith ("-"))
                     {

@@ -24,7 +24,6 @@
 #include <iostream>
 
 #if JUCE_MAC
- #include <signal.h>
  #include <sys/types.h>
  #include <unistd.h>
 #endif
@@ -63,42 +62,7 @@ inline void logAndFlush (const juce::String& m)
 }
 
 //==============================================================================
-#if JUCE_MAC
-static void kill9WithSomeMercy (int signal)
-{
-    juce::Logger::writeToLog ("pluginval received " + juce::String(::strsignal(signal)) + ", exiting immediately");
-
-    // Use std::_Exit here instead of kill as kill doesn't seem to set the exit code of the process so is picked up as a "pass" in the host process
-    std::_Exit (SIGKILL);
-}
-
-// Avoid showing the macOS crash dialog, which can cause the process to hang
-static void setupSignalHandling()
-{
-    const int signals[] = { SIGFPE, SIGILL, SIGSEGV, SIGBUS, SIGABRT };
-
-    for (int i = 0; i < juce::numElementsInArray (signals); ++i)
-    {
-        ::signal (signals[i], kill9WithSomeMercy);
-        ::siginterrupt (signals[i], 1);
-    }
-}
-#endif
-
-
 //==============================================================================
-//==============================================================================
-CommandLineValidator::CommandLineValidator()
-{
-   #if JUCE_MAC
-    setupSignalHandling();
-   #endif
-}
-
-CommandLineValidator::~CommandLineValidator()
-{
-}
-
 void CommandLineValidator::validate (const juce::String& fileOrID, PluginTests::Options options)
 {
     validator = std::make_unique<ValidationPass> (fileOrID, options, ValidationType::inProcess,
@@ -267,6 +231,15 @@ void performCommandLine (CommandLineValidator& validator, const juce::String& co
         acceptance::RunOptions options;
         options.recordMissing = routed.recordMissing;
         options.timeoutMs = routed.timeoutMs;
+        options.pluginOverride = routed.testPluginOverride.toStdString();
+
+        const auto toReportFile = [] (const juce::String& path)
+        {
+            return path.isEmpty() ? juce::File() : juce::File::getCurrentWorkingDirectory().getChildFile (path);
+        };
+
+        options.junitXmlFile = toReportFile (routed.junitXmlPath);
+        options.jsonResultsFile = toReportFile (routed.jsonResultsPath);
 
         // Runs async so will quit itself when done
         validator.runAcceptanceTest (juce::File::getCurrentWorkingDirectory().getChildFile (routed.testConfigPath), options);

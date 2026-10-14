@@ -84,12 +84,14 @@ pluginval/
 │   ├── PluginvalSettings.h   # Unified settings struct + JSON mapping + toPluginTestOptions()
 │   ├── SettingsParser.cpp/h  # CLI/env/config -> merged JSON -> settings; child-process handoff
 │   ├── SettingsSerializer.cpp/h # JSON load/save + value coercions (comma lists, hex seed)
+│   ├── ReportWriter.cpp/h    # JUnit XML + JSON report files (shared by validate and test)
 │   ├── CrashHandler.cpp/h    # Crash reporting utilities
 │   ├── TestUtilities.cpp/h   # Helper functions for tests
 │   ├── RTCheck.h             # Real-time safety checking macros
 │   ├── PluginvalLookAndFeel.h # Custom UI styling
 │   ├── StrictnessInfoPopup.h # Strictness level info UI
 │   ├── binarydata/           # Binary resources (icons)
+│   ├── native/               # Platform helpers (pluginval_native_posix.h: async-signal-safe stack trace writing)
 │   ├── vst3validator/        # Embedded VST3 validator integration
 │   │   ├── VST3ValidatorRunner.h
 │   │   └── VST3ValidatorRunner.cpp
@@ -97,7 +99,7 @@ pluginval/
 │   │   ├── TestConfig.cpp/h        # snake_case JSON config struct (independent of PluginvalSettings)
 │   │   ├── AcceptanceTest.cpp/h    # plugin load + state + input + render; record-or-compare orchestrator
 │   │   ├── ReferenceComparator.cpp/h # Comparator interface + registry + SampleComparator
-│   │   └── TestReporter.cpp/h      # text + JSON result, exit code
+│   │   └── TestReporter.cpp/h      # text + JSON result, exit code, conversion to a report_writer::Report
 │   └── tests/                # Individual test implementations
 │       ├── BasicTests.cpp    # Core plugin tests (info, state, audio)
 │       ├── BusTests.cpp      # Audio bus configuration tests
@@ -120,6 +122,11 @@ pluginval/
 │   ├── acceptance/           # Acceptance self-tests: configs (*.json.in), inputs/, checked-in refs/ WAVs
 │   ├── mac_tests/            # macOS-specific tests
 │   └── windows_tests.bat     # Windows test scripts
+├── .github/
+│   ├── actions/              # Scripts + README for the composite actions: validate/, acceptance/, common/
+│   └── workflows/            # build.yaml (release build), acceptance.yml (acceptance self-tests + action dogfooding)
+├── validate/action.yml       # Composite action: Tracktion/pluginval/validate (runs .github/actions/validate/validate.sh)
+├── acceptance/action.yml     # Composite action: Tracktion/pluginval/acceptance (runs .github/actions/acceptance/acceptance.sh)
 ├── docs/                     # Documentation
 │   ├── Adding pluginval to CI.md
 │   ├── Command line options.md
@@ -280,7 +287,9 @@ spec: `tests/acceptance/Acceptance testing design.md`; end-user guide:
 - **CLI**: `pluginval test <config.json>`. A new `Command::test` is recognised
   by `settings_parser::dispatch()` (captures the positional config path into
   `DispatchResult::testConfigPath`, plus `recordMissing` / `timeoutMs` from
-  `--record-missing` / `--timeout-ms` or `RECORD_MISSING` / `TIMEOUT_MS`),
+  `--record-missing` / `--timeout-ms` or `RECORD_MISSING` / `TIMEOUT_MS`, and
+  `testPluginOverride` from `--plugin`, which replaces the config's `plugin`
+  in `runTestFile()` - so `plugin` is only required when `--plugin` is absent),
   `isCommandLine()` and `getFooterText()`; `CommandLine.cpp`'s
   `performCommandLine()` has a `Command::test` branch that starts an
   `acceptance::TestRunner`, which renders on a **background thread** (message
@@ -315,6 +324,36 @@ spec: `tests/acceptance/Acceptance testing design.md`; end-user guide:
   square-220, square-state, gain-half, playhead-120). Phase 2 items (config-array
   multiplexing, automation, extra comparators, child-process isolation) are notes
   only.
+
+### Report Output (`--junit-xml` / `--json-results`)
+
+Both `validate` and `test` can write machine-readable report files through one
+shared writer, `report_writer` (`source/ReportWriter.cpp/h`). Stdout and the text
+log are unaffected.
+
+- **Model**: a neutral `report_writer::Report` (command, target, properties and a
+  list of `TestCase`s with a `passed` / `failed` / `error` status, messages,
+  duration and optional JSON `details`). `toJUnitXml()` builds a single
+  `<testsuite>` with `juce::XmlElement`; `toJson()` emits snake_case keys with a
+  `summary` block. `write()` skips unset files and creates parent directories; if it fails, the
+  run fails (exit `1`).
+- **Two adapters**: `toReport()` in `Validator.cpp` converts the
+  `juce::UnitTestRunner::TestResult` array collected in `runTests()` (one case per
+  `beginTest`); `acceptance::reporter::toReport()` converts an acceptance
+  `TestResult` (its existing JSON goes in `details`).
+- **Options**: for `validate` they are ordinary settings (`junitXml` /
+  `jsonResults` in `PluginvalSettings`, resolved to `juce::File`s on
+  `PluginTests::Options`), so env vars (`JUNIT_XML` / `JSON_RESULTS`), `--config`
+  and the child-process handoff all work. For `test` they are parsed in
+  `settings_parser::dispatch()` into `DispatchResult` and carried on
+  `acceptance::RunOptions`.
+- **Incomplete runs**: before a run starts, `makeIncomplete()` writes a
+  placeholder report with a single `error` case; the real report overwrites it on
+  completion, so a crash leaves an error report rather than a stale or missing
+  one. On a timeout the thread that ends the process writes a "timed out" error
+  report as its last act (`PluginsUnitTestRunner`'s `onTimeout` for validate, the
+  acceptance `Watchdog` for test), so the report always agrees with the exit code
+  even if the tests finish in the moment before the process is terminated.
 
 ### Test Framework
 
@@ -468,6 +507,8 @@ Key options (for `validate`):
 - `--timeout-ms [ms]` - Test timeout (default: 30000, -1 for none)
 - `--verbose` - Enable verbose logging
 - `--output-dir [dir]` - Directory for log files
+- `--junit-xml [file]` - Write a JUnit XML report (also accepted by `test`)
+- `--json-results [file]` - Write a JSON report (also accepted by `test`)
 - `--sample-rates [list]` - Comma-separated sample rates
 - `--block-sizes [list]` - Comma-separated block sizes
 - `--rtcheck [disabled|enabled|relaxed]` - Real-time safety checking
@@ -491,7 +532,32 @@ add_pluginval_tests(MyPluginTarget
 )
 ```
 
-### GitHub Actions Example
+### GitHub Actions
+
+Two composite actions for other repositories, referenced as
+`Tracktion/pluginval/validate@v2` and `Tracktion/pluginval/acceptance@v2`. Only
+their `action.yml` files sit at the repo root (`validate/`, `acceptance/`), to
+keep those references short; the scripts and `README.md` are in `.github/actions/`:
+
+- `validate/` - validates a newline-separated list of plugins / globs / AU ids.
+- `acceptance/` - runs `pluginval test` for every `*.json` (recursively, skipping
+  the `*.wav.json` manifests and rejecting array configs) under a directory,
+  optionally passing one built plugin via `--plugin`.
+
+Each `action.yml` only maps its inputs to `INPUT_*` environment variables and
+runs its bash script (`.github/actions/validate/validate.sh` / `acceptance/acceptance.sh`,
+found relative to `$GITHUB_ACTION_PATH`); shared helpers
+(downloading the release or using `pluginval-path`, the Linux `xvfb-run` wrapper)
+are in `common/common.sh`. The scripts must stay bash 3.2 compatible (macOS
+runners) and can be run locally by setting the `INPUT_*` variables. They run
+every item, write a job-summary table and `passed` / `failed` / `report-dir`
+outputs, and exit non-zero if anything failed. Pass / fail comes from the exit
+code; the per-test counts, failed-test names and messages in the summary and
+error annotations are parsed from each item's `--junit-xml` report by
+`common/junit.awk` (POSIX awk, no gawk extensions). `.github/workflows/acceptance.yml`
+dogfoods both against the in-repo build, including the expected-failure cases.
+
+Without the actions:
 
 ```yaml
 - name: Download pluginval
@@ -541,6 +607,11 @@ Run internal tests via CLI:
 3. Commit: `git commit -am "Version X.Y.Z"`
 4. Tag: `git tag -a vX.Y.Z -m "X.Y.Z release"`
 5. Push: `git push --tags`
+6. Once the release binaries are published, bump the `pluginval-version` default
+   in `validate/action.yml` and `acceptance/action.yml` (and the README tables) to the new tag
+
+A tag with a hyphen (e.g. `v2.0.0-beta1`) is published as a pre-release, so it
+doesn't become the "latest" release that the download URLs in the docs point at.
 
 ## Common Tasks for AI Assistants
 

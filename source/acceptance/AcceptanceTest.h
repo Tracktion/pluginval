@@ -52,6 +52,9 @@ struct RunOptions
 {
     bool recordMissing = false;    /**< Record a missing reference and pass, rather than failing. */
     juce::int64 timeoutMs = 30000; /**< Abort the whole run after this long. <= 0 never times out. */
+    juce::File junitXmlFile;       /**< File to write a JUnit XML report to (none if default). */
+    juce::File jsonResultsFile;    /**< File to write a JSON report to (none if default). */
+    std::string pluginOverride;    /**< Plugin path or AU id to test instead of the config's (none if empty). */
 };
 
 //==============================================================================
@@ -60,7 +63,8 @@ struct RunOptions
 TestResult runTest (const TestConfig&, const RunOptions&);
 
 /** Loads the config file (first entry only for v1), runs it, reports the result
-    to stdout and returns the process exit code (0 success, 1 failure). */
+    to stdout (and any report files in the options) and returns the process exit
+    code (0 success, 1 failure). */
 int runTestFile (const juce::File& configFile, const RunOptions&);
 
 //==============================================================================

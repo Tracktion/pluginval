@@ -61,6 +61,8 @@ struct CommandLineTests : public juce::UnitTest
             expect (opts.realtimeCheck == RealtimeCheck::disabled);
             expect (opts.dataFile == juce::File());
             expect (opts.outputDir == juce::File());
+            expect (opts.junitXmlFile == juce::File());
+            expect (opts.jsonResultsFile == juce::File());
             expect (opts.sampleRates == PluginvalSettings::defaultSampleRates());
             expect (opts.blockSizes == PluginvalSettings::defaultBlockSizes());
         }
@@ -260,6 +262,39 @@ struct CommandLineTests : public juce::UnitTest
             }
         }
 
+        beginTest ("Report options (--junit-xml, --json-results)");
+        {
+            const auto cwd = juce::File::getCurrentWorkingDirectory();
+
+            // Command line: relative paths resolve against the working directory.
+            {
+                const auto settings = parse ("--junit-xml out/report.xml --json-results out/report.json --validate x");
+                expectEquals (juce::String (settings.junitXml), juce::String ("out/report.xml"));
+                expectEquals (juce::String (settings.jsonResults), juce::String ("out/report.json"));
+
+                const auto opts = settings.toPluginTestOptions();
+                expect (opts.junitXmlFile == cwd.getChildFile ("out/report.xml"));
+                expect (opts.jsonResultsFile == cwd.getChildFile ("out/report.json"));
+            }
+
+            // Environment variables (names derived from the options).
+            {
+                const auto settings = parse ("--validate x", envFrom ({ { "JUNIT_XML", "env.xml" }, { "JSON_RESULTS", "env.json" } }));
+                expectEquals (juce::String (settings.junitXml), juce::String ("env.xml"));
+                expectEquals (juce::String (settings.jsonResults), juce::String ("env.json"));
+            }
+
+            // --config keys mirror the field names.
+            {
+                juce::TemporaryFile configFile (".json");
+                configFile.getFile().replaceWithText (R"({ "junitXml": "cfg.xml", "jsonResults": "cfg.json" })");
+
+                const auto settings = parse ("--config " + configFile.getFile().getFullPathName().quoted() + " --validate x");
+                expectEquals (juce::String (settings.junitXml), juce::String ("cfg.xml"));
+                expectEquals (juce::String (settings.jsonResults), juce::String ("cfg.json"));
+            }
+        }
+
         beginTest ("Repeatable --config merges per key, last wins");
         {
             juce::TemporaryFile baseFile (".json");
@@ -288,6 +323,8 @@ struct CommandLineTests : public juce::UnitTest
             opts.randomiseTestOrder = true;
             opts.withGUI            = false;
             opts.outputFilename     = "log.txt";
+            opts.junitXmlFile       = juce::File::getCurrentWorkingDirectory().getChildFile ("report.xml");
+            opts.jsonResultsFile    = juce::File::getCurrentWorkingDirectory().getChildFile ("report.json");
             opts.disabledTests      = juce::StringArray ({ "Test A", "Test B" });
             opts.sampleRates        = { 44100.0, 96000.0 };
             opts.blockSizes         = { 64, 512 };
@@ -506,6 +543,209 @@ struct CommandLineTests : public juce::UnitTest
             }
         }
 
+        beginTest ("Subcommand: test plugin override (--plugin)");
+        {
+            {
+                const auto d = settings_parser::dispatch (settings_parser::tokenise ("test --plugin build/P.vst3 config.json"));
+                expect (d.error.isEmpty());
+                expectEquals (d.testPluginOverride, juce::String ("build/P.vst3"));
+                expectEquals (d.testConfigPath, juce::String ("config.json"));
+            }
+            {
+                const auto d = settings_parser::dispatch (settings_parser::tokenise ("test config.json"));
+                expect (d.testPluginOverride.isEmpty());
+            }
+            {
+                const auto d = settings_parser::dispatch (settings_parser::tokenise ("test config.json --plugin"));
+                expect (d.error.contains ("--plugin"));
+            }
+            {
+                // The following option isn't taken as the plugin.
+                const auto d = settings_parser::dispatch (settings_parser::tokenise ("test config.json --plugin --record-missing"));
+                expect (d.error.contains ("--plugin"));
+            }
+        }
+
+        beginTest ("Subcommand: test report options (--junit-xml, --json-results)");
+        {
+            {
+                const auto d = settings_parser::dispatch (settings_parser::tokenise ("test --junit-xml out/r.xml config.json --json-results out/r.json"));
+                expect (d.error.isEmpty());
+                expectEquals (d.junitXmlPath, juce::String ("out/r.xml"));
+                expectEquals (d.jsonResultsPath, juce::String ("out/r.json"));
+                expectEquals (d.testConfigPath, juce::String ("config.json"));
+            }
+            {
+                const auto d = settings_parser::dispatch (settings_parser::tokenise ("test config.json --junit-xml"));
+                expect (d.error.contains ("--junit-xml"));
+            }
+            {
+                // The following option isn't taken as the file path.
+                const auto d = settings_parser::dispatch (settings_parser::tokenise ("test config.json --json-results --record-missing"));
+                expect (d.error.contains ("--json-results"));
+            }
+        }
+
+        beginTest ("Report writer: JUnit XML");
+        {
+            report_writer::Report report;
+            report.command = "validate";
+            report.target = "MyPlugin";
+            report.properties.push_back ({ "strictness_level", "5" });
+
+            report_writer::TestCase passed;
+            passed.name = "Open plugin (cold)";
+            passed.durationSeconds = 0.25;
+
+            report_writer::TestCase failed;
+            failed.name = "Plugin state";
+            failed.status = report_writer::TestCase::Outcome::failed;
+            failed.messages.add ("Expected <1 & \"2\">");
+            failed.messages.add ("second message");
+            failed.durationSeconds = 1.0;
+
+            report_writer::TestCase errored;
+            errored.name = "Editor";
+            errored.status = report_writer::TestCase::Outcome::error;
+            errored.messages.add ("couldn't run");
+
+            report.cases = { passed, failed, errored };
+
+            const auto xml = juce::parseXML (report_writer::toJUnitXml (report));
+            expect (xml != nullptr, "the report must be well-formed XML");
+
+            if (xml != nullptr)
+            {
+                expect (xml->hasTagName ("testsuites"));
+                expectEquals (xml->getIntAttribute ("tests"), 3);
+                expectEquals (xml->getIntAttribute ("failures"), 1);
+                expectEquals (xml->getIntAttribute ("errors"), 1);
+                expectEquals (xml->getStringAttribute ("time"), juce::String ("1.250"));
+
+                const auto suite = xml->getChildByName ("testsuite");
+                expect (suite != nullptr);
+
+                if (suite != nullptr)
+                {
+                    expectEquals (suite->getStringAttribute ("name"), juce::String ("pluginval validate: MyPlugin"));
+                    expectEquals (suite->getIntAttribute ("tests"), 3);
+                    expectEquals (suite->getNumChildElements(), 4); // properties + 3 testcases
+
+                    const auto property = suite->getChildByName ("properties")->getChildByName ("property");
+                    expectEquals (property->getStringAttribute ("name"), juce::String ("strictness_level"));
+                    expectEquals (property->getStringAttribute ("value"), juce::String ("5"));
+
+                    const auto case0 = suite->getChildElement (1);
+                    expectEquals (case0->getStringAttribute ("classname"), juce::String ("pluginval.validate"));
+                    expectEquals (case0->getStringAttribute ("name"), juce::String ("Open plugin (cold)"));
+                    expectEquals (case0->getStringAttribute ("time"), juce::String ("0.250"));
+                    expectEquals (case0->getNumChildElements(), 0);
+
+                    // Special characters survive the round trip (i.e. were escaped).
+                    const auto failure = suite->getChildElement (2)->getChildByName ("failure");
+                    expect (failure != nullptr);
+
+                    if (failure != nullptr)
+                    {
+                        expectEquals (failure->getStringAttribute ("message"), juce::String ("Expected <1 & \"2\">"));
+                        expectEquals (failure->getAllSubText(), juce::String ("Expected <1 & \"2\">\nsecond message"));
+                    }
+
+                    expect (suite->getChildElement (3)->getChildByName ("error") != nullptr);
+                    expect (suite->getChildElement (3)->getChildByName ("failure") == nullptr);
+                }
+            }
+        }
+
+        beginTest ("Report writer: JSON");
+        {
+            report_writer::Report report;
+            report.command = "test";
+            report.target = "sine-440";
+            report.properties.push_back ({ "reference", "/refs/sine-440.wav" });
+
+            report_writer::TestCase passed;
+            passed.name = "a";
+            passed.durationSeconds = 0.5;
+
+            report_writer::TestCase failed;
+            failed.name = "b";
+            failed.status = report_writer::TestCase::Outcome::failed;
+            failed.messages.add ("[sample] too different");
+            failed.details = { { "outcome", "failed" } };
+
+            report.cases = { passed, failed };
+
+            const auto j = report_writer::toJson (report);
+            expectEquals (juce::String (j["command"].get<std::string>()), juce::String ("test"));
+            expectEquals (juce::String (j["target"].get<std::string>()), juce::String ("sine-440"));
+            expectEquals (juce::String (j["properties"]["reference"].get<std::string>()), juce::String ("/refs/sine-440.wav"));
+            expectEquals (j["duration_ms"].get<int>(), 500);
+            expectEquals (j["summary"]["tests"].get<int>(), 2);
+            expectEquals (j["summary"]["passed"].get<int>(), 1);
+            expectEquals (j["summary"]["failed"].get<int>(), 1);
+            expectEquals (j["summary"]["errors"].get<int>(), 0);
+            expectEquals ((int) j["tests"].size(), 2);
+            expectEquals (juce::String (j["tests"][0]["status"].get<std::string>()), juce::String ("passed"));
+            expect (! j["tests"][0].contains ("details"));
+            expectEquals (juce::String (j["tests"][1]["status"].get<std::string>()), juce::String ("failed"));
+            expectEquals (juce::String (j["tests"][1]["messages"][0].get<std::string>()), juce::String ("[sample] too different"));
+            expectEquals (juce::String (j["tests"][1]["details"]["outcome"].get<std::string>()), juce::String ("failed"));
+        }
+
+        beginTest ("Report writer: incomplete report and file output");
+        {
+            const auto report = report_writer::makeIncomplete ("validate", "MyPlugin", "did not complete");
+            const auto j = report_writer::toJson (report);
+            expectEquals (j["summary"]["tests"].get<int>(), 1);
+            expectEquals (j["summary"]["errors"].get<int>(), 1);
+            expectEquals (juce::String (j["tests"][0]["messages"][0].get<std::string>()), juce::String ("did not complete"));
+
+            // Files are written (creating parent directories); unset files are skipped.
+            const auto dir = juce::File::getSpecialLocation (juce::File::tempDirectory)
+                                 .getChildFile ("pluginval_report_test_" + juce::String::toHexString (juce::Random::getSystemRandom().nextInt()));
+            const auto xmlFile = dir.getChildFile ("nested/report.xml");
+            const auto jsonFile = dir.getChildFile ("nested/report.json");
+
+            expect (report_writer::write (report, {}, {}));
+            expect (! dir.exists());
+
+            expect (report_writer::write (report, xmlFile, jsonFile));
+            expect (juce::parseXML (xmlFile) != nullptr);
+            expectEquals (nlohmann::json::parse (jsonFile.loadFileAsString().toStdString())["summary"]["errors"].get<int>(), 1);
+
+            dir.deleteRecursively();
+        }
+
+        beginTest ("Acceptance result to report");
+        {
+            acceptance::TestResult result;
+            result.name = "sine-440";
+            result.outcome = acceptance::TestResult::Outcome::failed;
+            result.durationSeconds = 2.0;
+
+            acceptance::ComparisonResult comparison;
+            comparison.passed = false;
+            comparison.summary = "max abs diff 0.5";
+            result.comparisons.push_back ({ "sample", comparison });
+
+            const auto failed = acceptance::reporter::toReport (result);
+            expectEquals (failed.command, juce::String ("test"));
+            expectEquals ((int) failed.cases.size(), 1);
+            expect (failed.cases[0].status == report_writer::TestCase::Outcome::failed);
+            expectEquals (failed.cases[0].messages[0], juce::String ("[sample] max abs diff 0.5"));
+            expectEquals (failed.cases[0].durationSeconds, 2.0);
+            expectEquals (juce::String (failed.cases[0].details["outcome"].get<std::string>()), juce::String ("failed"));
+
+            const auto error = acceptance::reporter::toReport (acceptance::TestResult::makeError ("t", "no plugin"));
+            expect (error.cases[0].status == report_writer::TestCase::Outcome::error);
+            expectEquals (error.cases[0].messages[0], juce::String ("no plugin"));
+
+            result.outcome = acceptance::TestResult::Outcome::referenceCreated;
+            result.comparisons.clear();
+            expect (acceptance::reporter::toReport (result).cases[0].status == report_writer::TestCase::Outcome::passed);
+        }
+
         beginTest ("Acceptance TestConfig JSON parsing (snake_case keys, defaults)");
         {
             const auto json = R"({
@@ -623,7 +863,7 @@ struct CommandLineTests : public juce::UnitTest
             expect (! rejects (R"({ "name": "t", "plugin": "P.vst3" })"));
             expect (! rejects (R"({ "reference": "r.wav", "plugin": "P.vst3" })"), "reference alone names the test");
 
-            expect (rejects (R"({ "name": "t" })"), "plugin is required");
+            expect (! rejects (R"({ "name": "t" })"), "plugin can come from --plugin instead");
             expect (rejects (R"({ "plugin": "P.vst3" })"), "name or reference is required");
             expect (rejects (R"({ "name": "t", "plugin": "P.vst3", "comparison": {} })"), "empty comparison");
             expect (rejects (R"({ "name": "t", "plugin": "P.vst3", "comparison": 1 })"), "non-object comparison");

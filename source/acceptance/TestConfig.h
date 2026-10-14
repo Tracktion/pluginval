@@ -53,7 +53,7 @@ struct TestConfig
     };
 
     std::string name;                              /**< Labels results; derives the default reference path. */
-    std::string plugin;                            /**< Plugin path or AU id. Required. */
+    std::string plugin;                            /**< Plugin path or AU id. Required unless --plugin is given. */
     std::string inputAudio;                        /**< input.audio: path to an input audio file, or empty for silence. */
     std::string inputMidi;                         /**< input.midi: path to a .mid file, or empty for none. */
     std::string reference;                         /**< The golden file. Empty -> derived from name. */
