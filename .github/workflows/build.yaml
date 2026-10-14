@@ -172,6 +172,12 @@ jobs:
       - name: Smoke test the zip
         shell: bash
         run: |
+          # The macOS binary also has the build tree's rtcheck directory as an rpath,
+          # which exists on this runner but not on a user's machine, so hide it to
+          # make sure the dylib bundled in the app is the one that's found.
+          rtcheck_build="$PWD/${{ env.BUILD_DIR }}/_deps/rtcheck-build"
+          if [ -d "$rtcheck_build" ]; then mv "$rtcheck_build" "$rtcheck_build.hidden"; fi
+
           mkdir -p "$RUNNER_TEMP/smoke"
           7z x -y -o"$RUNNER_TEMP/smoke" "${{ env.APP_DIR }}/${{ env.ZIP_FILE_NAME }}" > /dev/null
           cd "$RUNNER_TEMP/smoke"
