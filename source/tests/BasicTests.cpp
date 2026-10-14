@@ -347,7 +347,7 @@ struct PluginStateTest  : public PluginTest
 
         // Set random parameter values
         for (auto parameter : getNonBypassAutomatableParameters (instance))
-            parameter->setValue (r.nextFloat());
+            parameter->setValue (getRandomParameterValue (r, *parameter, ut.getOptions().strictnessLevel));
 
         // Restore original state
         callSetStateInformationOnMessageThreadIfVST3 (instance, originalState);
@@ -378,13 +378,17 @@ struct PluginStateTestRestoration   : public PluginTest
         // Read state
         auto originalState = callGetStateInformationOnMessageThreadIfVST3 (instance);
 
+        // Hosted parameters report the last value sent to them until a state is
+        // restored, so restore once here to start from the plugin's own values
+        callSetStateInformationOnMessageThreadIfVST3 (instance, originalState);
+
         const auto tolaratedDiff = 0.1f;
 
         // Set random parameter values
         for (auto parameter : getNonBypassAutomatableParameters(instance))
         {
 			const auto originalValue = parameter->getValue();
-            parameter->setValue(r.nextFloat());
+            parameter->setValue (getRandomParameterValue (r, *parameter, ut.getOptions().strictnessLevel));
 
             // Restore original state
             callSetStateInformationOnMessageThreadIfVST3(instance, originalState);
@@ -394,7 +398,7 @@ struct PluginStateTestRestoration   : public PluginTest
                 parameter->getName(1024) + juce::String(" not restored on setStateInformation"));
         }
 
-        if (strictnessLevel >= 8)
+        if (ut.getOptions().strictnessLevel >= 8)
         {
             // Read state again and compare to what we set
             auto duplicateState = callGetStateInformationOnMessageThreadIfVST3 (instance);
@@ -415,6 +419,67 @@ struct PluginStateTestRestoration   : public PluginTest
 };
 
 static PluginStateTestRestoration pluginStateTestRestoration;
+
+
+//==============================================================================
+/**
+    Tests that a discrete parameter reports the same value after a state restore
+    regardless of the value it held beforehand.
+
+    A host can send any normalised value to a discrete parameter and only the
+    plugin knows which step that maps to. If the plugin keeps the raw value for
+    a single parameter change but saves/restores the step, the value it reports
+    depends on how it got there.
+    See https://forum.juce.com/t/pluginval-can-set-an-audioparameterbools-to-odd-values/50971
+*/
+struct DiscreteParameterStateTest   : public PluginTest
+{
+    DiscreteParameterStateTest()
+        : PluginTest ("Discrete parameter state restoration", 8)
+    {
+    }
+
+    void runTest (PluginTests& ut, juce::AudioPluginInstance& instance) override
+    {
+        auto r = ut.getRandom();
+
+        for (auto parameter : getNonBypassAutomatableParameters (instance))
+        {
+            if (! parameter->isDiscrete())
+                continue;
+
+            // Any normalised value is valid so use ones that are unlikely to be on a step
+            const auto value = 0.1f + 0.8f * r.nextFloat();
+            const auto otherValue = value < 0.5f ? value + 0.4f : value - 0.4f;
+
+            parameter->setValue (value);
+            const auto state = callGetStateInformationOnMessageThreadIfVST3 (instance);
+
+            // Restore the state with the parameter still at the value it was saved with
+            callSetStateInformationOnMessageThreadIfVST3 (instance, state);
+            const auto restoredFromValue = parameter->getValue();
+
+            // Then restore it again from a different value
+            parameter->setValue (otherValue);
+            callSetStateInformationOnMessageThreadIfVST3 (instance, state);
+            const auto restoredFromOtherValue = parameter->getValue();
+
+            ut.logVerboseMessage (parameter->getName (1024) + ": set " + juce::String (value) + ", restored as " + juce::String (restoredFromValue)
+                                  + "; set " + juce::String (otherValue) + ", restored as " + juce::String (restoredFromOtherValue));
+
+            ut.expectWithinAbsoluteError (restoredFromOtherValue, restoredFromValue, 0.0001f,
+                                          parameter->getName (1024) + " has a different value after restoring the same state");
+        }
+    }
+
+    std::vector<TestDescription> getDescription (int) const override
+    {
+        return { { name, "For each discrete param: sets a random value, saves state, then restores that state twice - "
+                         "once unchanged and once after setting a different value - and expects the same value both times" } };
+    }
+};
+
+static DiscreteParameterStateTest discreteParameterStateTest;
 
 
 //==============================================================================
@@ -474,7 +539,7 @@ struct AutomationTest  : public PluginTest
                         for (int i = 0; i < juce::jmin (10, parameters.size()); ++i)
                         {
                             const int paramIndex = r.nextInt (parameters.size());
-                            parameters[paramIndex]->setValue (r.nextFloat());
+                            parameters[paramIndex]->setValue (getRandomParameterValue (r, *parameters[paramIndex], ut.getOptions().strictnessLevel));
                         }
                     }
 
@@ -552,7 +617,7 @@ struct EditorAutomationTest : public PluginTest
         while (--numBlocks >= 0)
         {
             for (auto parameter : parameters)
-                parameter->setValue (r.nextFloat());
+                parameter->setValue (getRandomParameterValue (r, *parameter, ut.getOptions().strictnessLevel));
 
             ut.resetTimeout();
             juce::Thread::sleep (10);
@@ -702,7 +767,7 @@ struct BackgroundThreadStateTest    : public PluginTest
 
         // Set random parameter values
         for (auto parameter : parameters)
-            parameter->setValue (r.nextFloat());
+            parameter->setValue (getRandomParameterValue (r, *parameter, ut.getOptions().strictnessLevel));
 
         // Restore original state
         callSetStateInformationOnMessageThreadIfVST3 (instance, originalState);
@@ -739,6 +804,7 @@ struct ParameterThreadSafetyTest    : public PluginTest
         auto parameters = getNonBypassAutomatableParameters (instance);
         const bool isPluginInstrument = instance.getPluginDescription().isInstrument;
         const int numBlocks = 500;
+        const int runStrictnessLevel = ut.getOptions().strictnessLevel;
 
         // This emulates the plugin itself setting a value for example from a slider within its UI
         juce::MessageManager::callAsync ([&, threadRandom = r]() mutable
@@ -747,7 +813,7 @@ struct ParameterThreadSafetyTest    : public PluginTest
 
                                        for (int i = 0; i < numBlocks; ++i)
                                            for (auto param : parameters)
-                                               param->setValueNotifyingHost (threadRandom.nextFloat());
+                                               param->setValueNotifyingHost (getRandomParameterValue (threadRandom, *param, runStrictnessLevel));
 
                                        endWaiter.signal();
                                    });
@@ -777,7 +843,7 @@ struct ParameterThreadSafetyTest    : public PluginTest
                 addNoteOff (mb, noteChannel, noteNumber, 0);
 
             for (auto param : parameters)
-                param->setValue (r.nextFloat());
+                param->setValue (getRandomParameterValue (r, *param, runStrictnessLevel));
 
             fillNoise (ab);
 

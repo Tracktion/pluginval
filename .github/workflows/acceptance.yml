@@ -156,7 +156,7 @@ jobs:
         shell: bash
         run: |
           check() { echo "$1: got '$2', expected '$3'"; [ "$2" = "$3" ] || exit 1; }
-          check "validate passed"            "${{ steps.validate.outputs.passed }}"           3
+          check "validate passed"            "${{ steps.validate.outputs.passed }}"           4
           check "validate failed"            "${{ steps.validate.outputs.failed }}"           0
           check "validate-missing outcome"   "${{ steps.validate-missing.outcome }}"          failure
           check "validate-missing passed"    "${{ steps.validate-missing.outputs.passed }}"   1
