@@ -575,7 +575,7 @@ Without the actions:
 ## Dependencies
 
 ### External
-- **JUCE** (v8.0.x) - Audio application framework (git submodule)
+- **JUCE** (v9.0.x) - Audio application framework (git submodule)
 - **magic_enum** (v0.9.7) - Enum reflection (fetched via CPM)
 - **CLI11** (v2.6.2) - CLI argument parsing, header-only (fetched via CPM)
 - **nlohmann/json** (3.12.0) - JSON settings layering/serialisation (fetched via CPM)

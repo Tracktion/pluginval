@@ -30,11 +30,15 @@ std::unique_ptr<juce::TemporaryFile> getValidatorExecutable()
    #endif
 
     auto exe = tempFile->getFile();
-    exe.replaceWithData (vstvalidator_binary, vstvalidator_binary_len);
+    bool ok = exe.replaceWithData (vstvalidator_binary, vstvalidator_binary_len);
 
    #if ! JUCE_WINDOWS
-    chmod (exe.getFullPathName().toRawUTF8(), 0755);
+    ok = ok && chmod (exe.getFullPathName().toRawUTF8(), 0755) == 0;
    #endif
+
+    // Callers check the file exists, so remove anything that isn't usable
+    if (! ok)
+        exe.deleteFile();
 
     return tempFile;
 }

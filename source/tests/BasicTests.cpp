@@ -382,20 +382,20 @@ struct PluginStateTestRestoration   : public PluginTest
         // restored, so restore once here to start from the plugin's own values
         callSetStateInformationOnMessageThreadIfVST3 (instance, originalState);
 
-        const auto tolaratedDiff = 0.1f;
+        const auto toleratedDiff = 0.1f;
 
         // Set random parameter values
-        for (auto parameter : getNonBypassAutomatableParameters(instance))
+        for (auto parameter : getNonBypassAutomatableParameters (instance))
         {
-			const auto originalValue = parameter->getValue();
+            const auto originalValue = parameter->getValue();
             parameter->setValue (getRandomParameterValue (r, *parameter, ut.getOptions().strictnessLevel));
 
             // Restore original state
-            callSetStateInformationOnMessageThreadIfVST3(instance, originalState);
+            callSetStateInformationOnMessageThreadIfVST3 (instance, originalState);
 
             // Check parameter values return to original
-            ut.expectWithinAbsoluteError(parameter->getValue(), originalValue, tolaratedDiff,
-                parameter->getName(1024) + juce::String(" not restored on setStateInformation"));
+            ut.expectWithinAbsoluteError (parameter->getValue(), originalValue, toleratedDiff,
+                parameter->getName (1024) + juce::String (" not restored on setStateInformation"));
         }
 
         if (ut.getOptions().strictnessLevel >= 8)

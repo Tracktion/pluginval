@@ -163,7 +163,8 @@ static juce::File getDestinationFile (PluginTests& test)
     {
         if (juce::String() == filename)
             return {};
-        return juce::File(filename);
+
+        return juce::File::getCurrentWorkingDirectory().getChildFile (filename);
     }
 
     if (dir.existsAsFile() || ! dir.createDirectory())
@@ -202,7 +203,7 @@ static void updateFileNameIfPossible (PluginTests& test, PluginsUnitTestRunner& 
     {
         const auto sourceFile = os->getFile();
         const auto filename = test.getOptions().outputFilename;
-        const auto destName = (filename == juce::String())?getFileNameFromDescription (test) : filename;
+        const auto destName = (filename == juce::String()) ? getFileNameFromDescription (test) : filename;
 
         if (destName.isEmpty() || sourceFile.getFileName() == destName)
             return;
@@ -306,9 +307,9 @@ inline juce::Array<juce::UnitTestRunner::TestResult> runTests (PluginTests& test
     const int failures = getNumFailures (results);
 
     if (! failures)
-        testRunner.logMessage("SUCCESS");
+        testRunner.logMessage ("SUCCESS");
     else
-        testRunner.logMessage("FAILURE");
+        testRunner.logMessage ("FAILURE");
 
     return results;
 }

@@ -28,6 +28,7 @@ for plugin in ${plugins[@]+"${plugins[@]}"}; do
 
     index=$((index + 1))
     report="$report_dir/$index-$(sanitise "$(basename "$plugin")").xml"
+    rm -f "$report"   # so an earlier run's report can't be read if this one writes none
 
     echo "::group::pluginval validate: $plugin"
     # INPUT_ARGS is deliberately unquoted so it splits into separate arguments.

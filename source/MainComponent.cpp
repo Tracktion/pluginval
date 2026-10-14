@@ -259,7 +259,7 @@ namespace
 
     void showOutputDirDialog()
     {
-        juce::String message = TRANS("Set a desintation directory to place log files");
+        juce::String message = TRANS("Set a destination directory to place log files");
         auto dir = getOutputDir();
 
         if (dir.getFullPathName().isNotEmpty())

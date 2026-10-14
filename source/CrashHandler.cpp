@@ -17,7 +17,9 @@
 
 #if ! JUCE_WINDOWS
  #include "native/pluginval_native_posix.h"
- static const auto crashLogPath = "/tmp/pluginval_crash.txt";
+
+ // Set by initialiseCrashHandler(), as the crash handler can't allocate to build it
+ static char crashLogPath[1024] {};
 #endif
 
 namespace
@@ -29,11 +31,7 @@ namespace
 
     static juce::File getCrashTraceFile()
     {
-       #if JUCE_WINDOWS
         return juce::File::getSpecialLocation (juce::File::tempDirectory).getChildFile ("pluginval_crash.txt");
-       #else
-        return juce::File (crashLogPath);
-       #endif
     }
 
    #if JUCE_WINDOWS
@@ -66,7 +64,13 @@ namespace
 void initialiseCrashHandler()
 {
     // Delete the crash file, this will be created if possible
-    getCrashTraceFile().deleteFile();
+    const auto crashTraceFile = getCrashTraceFile();
+    crashTraceFile.deleteFile();
+
+   #if ! JUCE_WINDOWS
+    crashTraceFile.getFullPathName().copyToUTF8 (crashLogPath, sizeof (crashLogPath));
+   #endif
+
     juce::SystemStats::setApplicationCrashHandler (handleCrash);
 }
 

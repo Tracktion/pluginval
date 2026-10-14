@@ -47,4 +47,4 @@ namespace settings_serializer
         the value is treated as a comma-separated list.
     */
     std::vector<std::string> disabledTestsToList (const juce::String& raw);
-}
+} // namespace settings_serializer
