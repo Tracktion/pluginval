@@ -119,4 +119,4 @@ namespace settings_parser
 
     /** The "--version" output string. */
     juce::String getVersionString();
-}
+} // namespace settings_parser

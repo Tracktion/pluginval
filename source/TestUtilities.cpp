@@ -28,22 +28,6 @@ inline bool logAllocationViolationIfNotAllowed()
     return true;
 }
 
-inline void violationError (const std::string& text)
-{
-    switch (AllocatorInterceptor::getViolationBehaviour())
-    {
-        case AllocatorInterceptor::ViolationBehaviour::logToCerr:
-            std::cerr << text;
-            break;
-        case AllocatorInterceptor::ViolationBehaviour::throwException:
-            throw;
-            break;
-        case AllocatorInterceptor::ViolationBehaviour::none:
-        default:
-            break;
-    }
-}
-
 inline bool throwIfRequiredAndReturnShouldLog()
 {
     switch (AllocatorInterceptor::getViolationBehaviour())
@@ -60,6 +44,14 @@ inline bool throwIfRequiredAndReturnShouldLog()
     return false;
 }
 
+/** The deallocation version: operator delete is noexcept, so a throw from it
+    would terminate the process. Violations are still counted, just not thrown.
+*/
+inline bool shouldLogDeallocationViolation()
+{
+    return AllocatorInterceptor::getViolationBehaviour() == AllocatorInterceptor::ViolationBehaviour::logToCerr;
+}
+
 //==============================================================================
 #if JUCE_CLANG
  #define ATTRIBUTE_USED __attribute__((used))
@@ -73,7 +65,11 @@ ATTRIBUTE_USED void* operator new (std::size_t sz)
         if (throwIfRequiredAndReturnShouldLog())
             std::cerr << "!!! WARNING: Illegal allocation of " << sz << " bytes\n";
 
-    return std::malloc (sz);
+    // operator new must never return null (malloc (0) may)
+    if (auto ptr = std::malloc (sz > 0 ? sz : 1))
+        return ptr;
+
+    throw std::bad_alloc();
 }
 
 ATTRIBUTE_USED void* operator new[] (std::size_t sz)
@@ -82,13 +78,17 @@ ATTRIBUTE_USED void* operator new[] (std::size_t sz)
         if (throwIfRequiredAndReturnShouldLog())
             std::cerr << "!!! WARNING: Illegal array allocation of " << sz << " bytes\n";
 
-    return std::malloc (sz);
+    // operator new must never return null (malloc (0) may)
+    if (auto ptr = std::malloc (sz > 0 ? sz : 1))
+        return ptr;
+
+    throw std::bad_alloc();
 }
 
 ATTRIBUTE_USED void operator delete (void* ptr) noexcept
 {
     if (! logAllocationViolationIfNotAllowed())
-        if (throwIfRequiredAndReturnShouldLog())
+        if (shouldLogDeallocationViolation())
             std::cerr << "!!! WARNING: Illegal deletion\n";
 
     std::free (ptr);
@@ -97,7 +97,7 @@ ATTRIBUTE_USED void operator delete (void* ptr) noexcept
 ATTRIBUTE_USED void operator delete[] (void* ptr) noexcept
 {
     if (! logAllocationViolationIfNotAllowed())
-        if (throwIfRequiredAndReturnShouldLog())
+        if (shouldLogDeallocationViolation())
             std::cerr << "!!! WARNING: Illegal array deletion\n";
 
     std::free (ptr);
@@ -107,7 +107,7 @@ ATTRIBUTE_USED void operator delete[] (void* ptr) noexcept
 void operator delete (void* ptr, size_t) noexcept
 {
     if (! logAllocationViolationIfNotAllowed())
-        if (throwIfRequiredAndReturnShouldLog())
+        if (shouldLogDeallocationViolation())
             std::cerr << "!!! WARNING: Illegal deletion\n";
 
     std::free (ptr);
@@ -116,7 +116,7 @@ void operator delete (void* ptr, size_t) noexcept
 void operator delete[] (void* ptr, size_t) noexcept
 {
     if (! logAllocationViolationIfNotAllowed())
-        if (throwIfRequiredAndReturnShouldLog())
+        if (shouldLogDeallocationViolation())
             std::cerr << "!!! WARNING: Illegal array deletion\n";
 
     std::free (ptr);
@@ -253,3 +253,45 @@ private:
 };
 
 static AllocatorInterceptorTests allocatorInterceptorTests;
+
+
+//==============================================================================
+struct ChildProcessOutputDecoderTests  : public juce::UnitTest
+{
+    ChildProcessOutputDecoderTests()
+        : juce::UnitTest ("ChildProcessOutputDecoder", "pluginval")
+    {
+    }
+
+    void runTest() override
+    {
+        beginTest ("Complete text passes straight through");
+        {
+            ChildProcessOutputDecoder decoder;
+            expectEquals (juce::String (decoder.decode ("abc", 3)), juce::String ("abc"));
+        }
+
+        beginTest ("A character split across reads is held back until complete");
+        {
+            const std::string text = "a\xe2\x82\xac" "b"; // "a€b", the euro sign is 3 bytes
+
+            for (size_t split = 1; split < text.size(); ++split)
+            {
+                ChildProcessOutputDecoder decoder;
+                const auto first = decoder.decode (text.data(), split);
+                const auto second = decoder.decode (text.data() + split, text.size() - split);
+
+                expect (first == text.substr (0, split < 4 ? 1 : split));
+                expect (first + second == text);
+            }
+        }
+
+        beginTest ("Invalid bytes aren't held back");
+        {
+            ChildProcessOutputDecoder decoder;
+            expect (decoder.decode ("a\xff", 2) == "a\xff");
+        }
+    }
+};
+
+static ChildProcessOutputDecoderTests childProcessOutputDecoderTests;

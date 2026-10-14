@@ -76,6 +76,6 @@ namespace reporter
 
     /** 0 for referenceCreated / passed, 1 for failed / error. */
     int exitCode (const TestResult&);
-}
+} // namespace reporter
 
 } // namespace acceptance

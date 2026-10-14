@@ -586,6 +586,32 @@ struct CommandLineTests : public juce::UnitTest
             }
         }
 
+        beginTest ("Subcommand: test options in --name=value form");
+        {
+            {
+                const auto d = settings_parser::dispatch (settings_parser::tokenise ("test --timeout-ms=500 --junit-xml=out/r.xml --json-results=out/r.json --plugin=build/P.vst3 config.json"));
+                expect (d.error.isEmpty());
+                expectEquals (d.timeoutMs, (juce::int64) 500);
+                expectEquals (d.junitXmlPath, juce::String ("out/r.xml"));
+                expectEquals (d.jsonResultsPath, juce::String ("out/r.json"));
+                expectEquals (d.testPluginOverride, juce::String ("build/P.vst3"));
+                expectEquals (d.testConfigPath, juce::String ("config.json"));
+            }
+            {
+                const auto d = settings_parser::dispatch (settings_parser::tokenise ("test config.json --plugin="));
+                expect (d.error.contains ("--plugin"));
+            }
+            {
+                const auto d = settings_parser::dispatch (settings_parser::tokenise ("test --output-dir=out config.json"));
+                expect (d.error.contains ("--output-dir"));
+            }
+            {
+                // A flag doesn't take a value, so the value isn't taken as the config path
+                const auto d = settings_parser::dispatch (settings_parser::tokenise ("test --record-missing=1 config.json"));
+                expect (d.error.contains ("--record-missing"));
+            }
+        }
+
         beginTest ("Report writer: JUnit XML");
         {
             report_writer::Report report;

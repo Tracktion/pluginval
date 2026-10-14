@@ -125,7 +125,7 @@ static BasicBusTest basicBusTest;
     sidechain) channel layouts and calls prepareToPlay / processBlock for each.
 
     This is intended to catch crashes that only occur for non-default channel
-    counts — typically a plugin that hardcodes assumptions about its sidechain
+    counts - typically a plugin that hardcodes assumptions about its sidechain
     being stereo and then accesses out-of-range channels when the host
     reconfigures it to mono. auval exercises this with its "1 Channel Test"
     but pluginval's other tests only process at the plugin's default layout.

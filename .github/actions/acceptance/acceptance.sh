@@ -39,6 +39,7 @@ for config in ${configs[@]+"${configs[@]}"}; do
     index=$((index + 1))
     name="${config#"$config_dir"/}"
     report="$report_dir/$index-$(sanitise "$(basename "$config" .json)").xml"
+    rm -f "$report"   # so an earlier run's report can't be read if this one writes none
 
     echo "::group::pluginval test: $name"
 

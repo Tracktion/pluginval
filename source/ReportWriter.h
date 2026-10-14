@@ -75,4 +75,4 @@ namespace report_writer
         failed run).
     */
     bool write (const Report&, const juce::File& junitXml, const juce::File& jsonResults);
-}
+} // namespace report_writer

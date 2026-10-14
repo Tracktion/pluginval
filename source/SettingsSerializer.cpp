@@ -36,7 +36,7 @@ namespace settings_serializer
     //==============================================================================
     std::int64_t parseRandomSeed (const juce::String& raw)
     {
-        if (! raw.containsOnly ("x-0123456789acbdef"))
+        if (! raw.containsOnly ("x-0123456789abcdef"))
             throw std::invalid_argument ("Invalid random seed argument!");
 
         if (raw.startsWith ("0x"))
@@ -65,4 +65,4 @@ namespace settings_serializer
 
         return out;
     }
-}
+} // namespace settings_serializer

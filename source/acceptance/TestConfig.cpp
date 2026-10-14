@@ -13,6 +13,7 @@
  ==============================================================================*/
 
 #include "TestConfig.h"
+#include "../SettingsParser.h"
 
 #include <cmath>
 #include <limits>
@@ -183,15 +184,8 @@ nlohmann::ordered_json TestConfig::getComparison() const
 
 juce::String TestConfig::getPluginPathOrID() const
 {
-    const juce::String raw (plugin);
-
-    // Resolve relative/home paths against the working directory; leave absolute
-    // paths and bare component IDs (no '.' or '~') untouched. Mirrors
-    // settings_parser::resolvePluginPath.
-    if (raw.contains ("~") || raw.contains ("."))
-        return juce::File::getCurrentWorkingDirectory().getChildFile (raw).getFullPathName();
-
-    return raw;
+    // Resolved against the working directory, as for validate
+    return settings_parser::resolvePluginPath (juce::String (plugin));
 }
 
 juce::File TestConfig::resolveAgainstConfigDir (const std::string& path) const

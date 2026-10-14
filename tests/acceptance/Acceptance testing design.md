@@ -88,11 +88,11 @@ Required edits (small and localised):
 
 | Location | Edit |
 |---|---|
-| `SettingsParser.h` — `enum class Command` | add `test` |
-| `SettingsParser.cpp` — `dispatch()` | recognise the verb `test`, peel it, capture the positional config path(s) |
-| `SettingsParser.cpp` — `isCommandLine()` | recognise `test` so CLI mode is triggered |
-| `SettingsParser.cpp` — `getFooterText()` | add `test` to the `Commands:` help block |
-| `CommandLine.cpp` — `performCommandLine()` | add a `Command::test` branch that runs the acceptance runner and async-quits |
+| `SettingsParser.h` - `enum class Command` | add `test` |
+| `SettingsParser.cpp` - `dispatch()` | recognise the verb `test`, peel it, capture the positional config path(s) |
+| `SettingsParser.cpp` - `isCommandLine()` | recognise `test` so CLI mode is triggered |
+| `SettingsParser.cpp` - `getFooterText()` | add `test` to the `Commands:` help block |
+| `CommandLine.cpp` - `performCommandLine()` | add a `Command::test` branch that runs the acceptance runner and async-quits |
 
 Because `test` is brand new there are **no deprecated-alias** concerns.
 
@@ -193,7 +193,7 @@ struct Comparator
 ```
 
 - A small **registry** maps method name -> factory.
-- `config` is whatever sits under the comparator's key — a bare number
+- `config` is whatever sits under the comparator's key - a bare number
   (`1e-6`) for `sample`, or an object for richer methods
   (e.g. `"spectrum": { "tolerance": 0.05, "fftSize": 2048 }`).
 - When multiple methods are listed, **all must pass** (logical AND); each is
@@ -224,9 +224,9 @@ The `spectrum` / `crosscorr` / `fingerprint` methods are what make the
 
 A reference is **two files**:
 
-1. **`<name>.wav`** — the rendered output as a **32-bit float WAV** (preserves
+1. **`<name>.wav`** - the rendered output as a **32-bit float WAV** (preserves
    full precision; it is the source of truth for comparison).
-2. **`<name>.wav.json`** — a sidecar manifest:
+2. **`<name>.wav.json`** - a sidecar manifest:
 
 ```jsonc
 {
@@ -240,7 +240,7 @@ A reference is **two files**:
 }
 ```
 
-- `created_on` is **informational only** — it is never used for matching, because
+- `created_on` is **informational only** - it is never used for matching, because
   references are meant to be portable and shared.
 - `config_hash` lets the runner detect a **stale** reference (one produced from a
   different config than the one now being run) and warn. It is an XXH3-64 hash
@@ -287,7 +287,7 @@ following the existing test style.
 ## 8. Dogfood test plugin (tone generator)
 
 To develop and self-test the acceptance feature we need a **device under test
-that is fully deterministic** — something whose output is known exactly, doesn't
+that is fully deterministic** - something whose output is known exactly, doesn't
 depend on a third-party binary, and is stable across runs and platforms. We
 build a tiny in-repo **tone-generator plugin** for this purpose ("dogfooding"
 the feature with our own plugin).
@@ -298,9 +298,9 @@ A minimal JUCE plugin (built with `juce_add_plugin`) that synthesises a simple,
 deterministic tone:
 
 - **Parameters** (so we can exercise state / parameter application):
-  - `waveform` — choice: `sine`, `square` (extendable to `saw`, `triangle`).
-  - `frequency` — Hz (e.g. 20–20000, default 440).
-  - `gain` — linear or dB (default −6 dB).
+  - `waveform` - choice: `sine`, `square` (extendable to `saw`, `triangle`).
+  - `frequency` - Hz (e.g. 20-20000, default 440).
+  - `gain` - linear or dB (default −6 dB).
 - **Determinism**: the oscillator **phase resets to 0 on `prepareToPlay`** and
   the waveform is computed in closed form from the sample index, so the same
   config always renders the identical buffer (ideal for the `sample`
@@ -347,24 +347,24 @@ paths and the input/reference directories are substituted at CMake configure
 time (the tests can't hardcode a build-tree plugin path). Each `pluginval test
 <config>` CTest case asserts exit code `0` against the checked-in reference.
 Because the dogfood plugins are closed-form deterministic, these references are
-stable enough to commit — a first smoke test of cross-platform portability for
+stable enough to commit - a first smoke test of cross-platform portability for
 the `sample` comparator and the baseline for future comparators (`spectrum`,
 `crosscorr`, …).
 
 The five cases cover the distinct render paths:
 
-- **`sine-440` / `square-220`** — the `state.parameters` (name/index → normalised
+- **`sine-440` / `square-220`** - the `state.parameters` (name/index → normalised
   value) path. `square-220` compares bit-exact (`"sample": 0`).
-- **`square-state`** — the binary `state.file` (`setStateInformation`) path,
+- **`square-state`** - the binary `state.file` (`setStateInformation`) path,
   plus a `state.parameters` `gain` override on top, exercising the
   state-then-parameters precedence of §4. The blob is captured once and checked
   in alongside its reference WAV.
-- **`gain-half`** — the **`input.audio`** effect path: a second dogfood plugin
+- **`gain-half`** - the **`input.audio`** effect path: a second dogfood plugin
   (`tests/test_plugins/gain/`, a deterministic gain effect) gains a checked-in
   full-height (±1.0) sine by 0.5 and is compared bit-exact (0.5 is exact in
   float). It also omits `render_duration`, so the render length is derived from
   the input file.
-- **`playhead-120`** — the **`playhead`** path: a third dogfood plugin
+- **`playhead-120`** - the **`playhead`** path: a third dogfood plugin
   (`tests/test_plugins/playhead_probe/`) writes the host transport into its
   output (channel 0 = `ppqPosition`, channel 1 = tempo), so the recorded
   reference is a direct check that the fixed transport reached the plugin. If the

@@ -16,6 +16,8 @@
 
 #include "juce_audio_processors/juce_audio_processors.h"
 
+#include <exception>
+
 //==============================================================================
 struct StopwatchTimer
 {
@@ -151,15 +153,105 @@ static inline float getParametersSum (juce::AudioPluginInstance& instance)
 
 
 //==============================================================================
+/** Turns a child process's output, read in arbitrary chunks, into text. A UTF-8
+    character split across two reads is held back until the rest arrives, rather
+    than producing an invalid string.
+*/
+struct ChildProcessOutputDecoder
+{
+    /** Adds the bytes read and returns the complete text so far. */
+    std::string decode (const char* data, size_t numBytes)
+    {
+        pending.append (data, numBytes);
+
+        const auto numComplete = getNumCompleteBytes (pending);
+        auto text = pending.substr (0, numComplete);
+        pending.erase (0, numComplete);
+        return text;
+    }
+
+    /** The number of leading bytes that don't end in a partial UTF-8 character. */
+    static size_t getNumCompleteBytes (const std::string& bytes)
+    {
+        // A character is at most 4 bytes, so only its lead byte in the last 4 matters
+        for (size_t i = bytes.size(), numChecked = 0; i > 0 && numChecked < 4; --i, ++numChecked)
+        {
+            const auto byte = (unsigned char) bytes[i - 1];
+
+            if ((byte & 0xc0) == 0x80)
+                continue; // a continuation byte
+
+            const size_t length = byte < 0x80           ? 1
+                                : (byte & 0xe0) == 0xc0 ? 2
+                                : (byte & 0xf0) == 0xe0 ? 3
+                                : (byte & 0xf8) == 0xf0 ? 4
+                                                        : 1; // invalid, so pass it on
+
+            return i - 1 + length <= bytes.size() ? bytes.size() : i - 1;
+        }
+
+        return bytes.size();
+    }
+
+private:
+    std::string pending;
+};
+
+//==============================================================================
+/** Runs fn on the message thread (directly if already on it) and waits for it to
+    finish. An exception thrown by fn is rethrown here, so the caller is always
+    released rather than left waiting forever.
+*/
+template <typename Fn>
+void callOnMessageThreadAndWait (Fn&& fn)
+{
+    if (juce::MessageManager::getInstance()->isThisTheMessageThread())
+    {
+        fn();
+        return;
+    }
+
+    juce::WaitableEvent waiter;
+    std::exception_ptr error;
+
+    juce::MessageManager::callAsync ([&]
+                                     {
+                                         try
+                                         {
+                                             fn();
+                                         }
+                                         catch (...)
+                                         {
+                                             error = std::current_exception();
+                                         }
+
+                                         waiter.signal();
+                                     });
+    waiter.wait();
+
+    if (error)
+        std::rethrow_exception (error);
+}
+
+/** Calls fn on the message thread if the plugin is a VST3, otherwise on this thread. */
+template <typename Fn>
+void callOnMessageThreadIfVST3 (juce::AudioPluginInstance& instance, Fn&& fn)
+{
+    if (instance.getPluginDescription().pluginFormatName != "VST3")
+        fn();
+    else
+        callOnMessageThreadAndWait (fn);
+}
+
 //==============================================================================
 static std::unique_ptr<juce::AudioProcessorEditor> createAndShowEditorOnMessageThread (juce::AudioPluginInstance& instance)
 {
     std::unique_ptr<juce::AudioProcessorEditor> editor;
 
-    if (juce::MessageManager::getInstance()->isThisTheMessageThread())
+    callOnMessageThreadAndWait ([&]
     {
         if (! instance.hasEditor())
-            return {};
+            return;
 
         jassert (instance.getActiveEditor() == nullptr);
         editor.reset (instance.createEditorAndMakeActive());
@@ -175,39 +267,20 @@ static std::unique_ptr<juce::AudioProcessorEditor> createAndShowEditorOnMessageT
              juce::MessageManager::getInstance()->runDispatchLoopUntil (200);
            #endif
         }
-    }
-    else
-    {
-        juce::WaitableEvent waiter;
-        juce::MessageManager::callAsync ([&]
-                                   {
-                                       editor = createAndShowEditorOnMessageThread (instance);
-                                       waiter.signal();
-                                   });
-        waiter.wait();
-    }
+    });
 
     return editor;
 }
 
 static void deleteEditorOnMessageThread (std::unique_ptr<juce::AudioProcessorEditor> editor)
 {
-    if (juce::MessageManager::getInstance()->isThisTheMessageThread())
+    callOnMessageThreadAndWait ([&]
     {
-        editor->processor.editorBeingDeleted (editor.get());
-        editor.reset();
-        return;
-    }
+        if (editor != nullptr)
+            editor->processor.editorBeingDeleted (editor.get());
 
-    juce::WaitableEvent waiter;
-    juce::MessageManager::callAsync ([&]
-                               {
-                                   if (editor != nullptr)
-                                       editor->processor.editorBeingDeleted (editor.get());
-                                   editor.reset();
-                                   waiter.signal();
-                               });
-    waiter.wait();
+        editor.reset();
+    });
 }
 
 //==============================================================================
@@ -215,80 +288,24 @@ static void deleteEditorOnMessageThread (std::unique_ptr<juce::AudioProcessorEdi
 inline void callPrepareToPlayOnMessageThreadIfVST3 (juce::AudioPluginInstance& instance,
                                                     double sampleRate, int blockSize)
 {
-    if (instance.getPluginDescription().pluginFormatName != "VST3"
-        || juce::MessageManager::getInstance()->isThisTheMessageThread())
-    {
-        instance.prepareToPlay (sampleRate, blockSize);
-        return;
-    }
-
-    juce::WaitableEvent waiter;
-    juce::MessageManager::callAsync ([&]
-                               {
-                                   instance.prepareToPlay (sampleRate, blockSize);
-                                   waiter.signal();
-                               });
-    waiter.wait();
+    callOnMessageThreadIfVST3 (instance, [&] { instance.prepareToPlay (sampleRate, blockSize); });
 }
 
 inline void callReleaseResourcesOnMessageThreadIfVST3 (juce::AudioPluginInstance& instance)
 {
-    if (instance.getPluginDescription().pluginFormatName != "VST3"
-        || juce::MessageManager::getInstance()->isThisTheMessageThread())
-    {
-        instance.releaseResources();
-        return;
-    }
-
-    juce::WaitableEvent waiter;
-    juce::MessageManager::callAsync ([&]
-                               {
-                                   instance.releaseResources();
-                                   waiter.signal();
-                               });
-    waiter.wait();
+    callOnMessageThreadIfVST3 (instance, [&] { instance.releaseResources(); });
 }
 
 inline juce::MemoryBlock callGetStateInformationOnMessageThreadIfVST3 (juce::AudioPluginInstance& instance)
 {
     juce::MemoryBlock state;
-
-    if (instance.getPluginDescription().pluginFormatName != "VST3"
-        || juce::MessageManager::getInstance()->isThisTheMessageThread())
-    {
-        instance.getStateInformation (state);
-    }
-    else
-    {
-        juce::WaitableEvent waiter;
-        juce::MessageManager::callAsync ([&]
-                                   {
-                                       instance.getStateInformation (state);
-                                       waiter.signal();
-                                   });
-        waiter.wait();
-    }
-
+    callOnMessageThreadIfVST3 (instance, [&] { instance.getStateInformation (state); });
     return state;
 }
 
 inline void callSetStateInformationOnMessageThreadIfVST3 (juce::AudioPluginInstance& instance, const juce::MemoryBlock& state)
 {
-    if (instance.getPluginDescription().pluginFormatName != "VST3"
-        || juce::MessageManager::getInstance()->isThisTheMessageThread())
-    {
-        instance.setStateInformation (state.getData(), (int) state.getSize());
-    }
-    else
-    {
-        juce::WaitableEvent waiter;
-        juce::MessageManager::callAsync ([&]
-                                   {
-                                       instance.setStateInformation (state.getData(), (int) state.getSize());
-                                       waiter.signal();
-                                   });
-        waiter.wait();
-    }
+    callOnMessageThreadIfVST3 (instance, [&] { instance.setStateInformation (state.getData(), (int) state.getSize()); });
 }
 
 //==============================================================================

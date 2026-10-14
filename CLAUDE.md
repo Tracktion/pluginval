@@ -217,11 +217,11 @@ The command line is structured into subcommands, peeled off by a thin verb
 dispatcher in front of the settings pipeline (it does **not** use CLI11-native
 subcommands, so the env/config/CLI layering below is untouched):
 
-- `pluginval validate [options] <plugin>` — the default; `<plugin>` is a
+- `pluginval validate [options] <plugin>` - the default; `<plugin>` is a
   positional argument. `pluginval <plugin>` and `pluginval [options] <plugin>`
   (no verb) also resolve to validate.
-- `pluginval run-tests` — runs the internal unit tests.
-- `pluginval strictness-help [level]` — lists tests at a strictness level.
+- `pluginval run-tests` - runs the internal unit tests.
+- `pluginval strictness-help [level]` - lists tests at a strictness level.
 
 `settings_parser::dispatch()` (in `SettingsParser.cpp`) takes the `tokenise()`d
 command line and returns a `DispatchResult { command, validateTokens,
@@ -248,7 +248,7 @@ that CLI11 binds to directly. A single instance is filled by successive layers,
 **lowest to highest precedence: defaults → environment → `--config` → CLI**
 (in `SettingsParser::parseTokens`):
 
-1. **preprocess** the raw command line — rewrite the deprecated `strictnessLevel`,
+1. **preprocess** the raw command line - rewrite the deprecated `strictnessLevel`,
    strip the macOS `-NSDocumentRevisionsDebugMode YES` flag, and insert an
    implicit `--validate` when the last argument is a bare plugin path.
 2. **Environment layer.** Env-var names are *derived* from the registered
@@ -267,7 +267,7 @@ uses a `CheckedTransformer`, and the hex/int seed is a small callback.
 `PluginTests::Options` at the boundary.
 
 Adding a new option is three edits: a struct member, an entry in the nlohmann
-macro list, and one `add_option(...)` line — its environment variable then works
+macro list, and one `add_option(...)` line - its environment variable then works
 automatically. `SettingsSerializer` handles JSON load/save plus the two
 remaining conversions (hex seed, disabled-tests file).
 
@@ -279,7 +279,7 @@ are handled by CLI11 (auto usage + a footer with the env-var/commands notes).
 ### Acceptance Testing (`pluginval test`)
 
 A **parallel subsystem** to validate, in `source/acceptance/`. It answers "does
-this plugin produce the expected output for a known input + state?" — a
+this plugin produce the expected output for a known input + state?" - a
 deterministic *render + golden-file comparison*, not a unit-test pass/fail. Full
 spec: `tests/acceptance/Acceptance testing design.md`; end-user guide:
 `docs/Acceptance testing.md`.
@@ -289,13 +289,13 @@ spec: `tests/acceptance/Acceptance testing design.md`; end-user guide:
   `DispatchResult::testConfigPath`, plus `recordMissing` / `timeoutMs` from
   `--record-missing` / `--timeout-ms` or `RECORD_MISSING` / `TIMEOUT_MS`, and
   `testPluginOverride` from `--plugin`, which replaces the config's `plugin`
-  in `runTestFile()` - so `plugin` is only required when `--plugin` is absent),
+  in `loadAndRunTestFile()` - so `plugin` is only required when `--plugin` is absent),
   `isCommandLine()` and `getFooterText()`; `CommandLine.cpp`'s
   `performCommandLine()` has a `Command::test` branch that starts an
   `acceptance::TestRunner`, which renders on a **background thread** (message
   thread left free; plugin deleted on it), with a watchdog for the timeout, and
   quits via `callAsync` when done.
-- **Config**: `acceptance::TestConfig` (`TestConfig.cpp/h`) — std-typed struct,
+- **Config**: `acceptance::TestConfig` (`TestConfig.cpp/h`) - std-typed struct,
   **snake_case JSON keys** mapped via explicit `to_json`/`from_json` (members
   stay camelCase). It is **independent** of `PluginvalSettings` / the `--config`
   layering: the test config is a positional argument loaded standalone.
@@ -314,7 +314,7 @@ spec: `tests/acceptance/Acceptance testing design.md`; end-user guide:
   tolerance, default one 16-bit LSB = `1/32768`; `0` = bit-exact). Adding
   `spectrum`/`crosscorr`/etc. is one registry entry, no config/runner changes.
 - **Dogfood + self-tests**: three minimal deterministic `juce_add_plugin` targets
-  behind `PLUGINVAL_BUILD_TEST_PLUGINS` — `tests/test_plugins/tone_generator/`
+  behind `PLUGINVAL_BUILD_TEST_PLUGINS` - `tests/test_plugins/tone_generator/`
   (closed-form sine/square generator, phase resets on `prepareToPlay`),
   `tests/test_plugins/gain/` (a gain effect, dogfoods the `input.audio` path) and
   `tests/test_plugins/playhead_probe/` (writes the host transport to its output,
@@ -352,8 +352,10 @@ log are unaffected.
   completion, so a crash leaves an error report rather than a stale or missing
   one. On a timeout the thread that ends the process writes a "timed out" error
   report as its last act (`PluginsUnitTestRunner`'s `onTimeout` for validate, the
-  acceptance `Watchdog` for test), so the report always agrees with the exit code
-  even if the tests finish in the moment before the process is terminated.
+  acceptance `Watchdog` for test). The two writers never overlap: validate stops
+  the timeout thread before writing the real report, and for test the worker and
+  the `Watchdog` each claim the report (an atomic flag) and only the first to
+  claim it writes, so the report always agrees with the exit code.
 
 ### Test Framework
 
@@ -399,8 +401,8 @@ The VST3 validator (Steinberg's vstvalidator) is embedded into pluginval when bu
 5. When the `VST3validator` test runs, it spawns the extracted validator as a subprocess
 
 **Key files:**
-- `cmake/GenerateBinaryHeader.cmake` — binary-to-C-header conversion script
-- `source/vst3validator/VST3ValidatorRunner.h/cpp` — extracts embedded binary, returns `juce::File`
+- `cmake/GenerateBinaryHeader.cmake` - binary-to-C-header conversion script
+- `source/vst3validator/VST3ValidatorRunner.h/cpp` - extracts embedded binary, returns `juce::File`
 
 **Disabling embedded validator:**
 ```bash
@@ -449,6 +451,8 @@ Located in `TestUtilities.h`:
 - `countNaNs()`, `countInfs()`, `countSubnormals()` - Audio validation
 - `ScopedEditorShower` - RAII editor creation/destruction
 - `callPrepareToPlayOnMessageThreadIfVST3()` - VST3-safe lifecycle
+- `callOnMessageThreadAndWait()` - Run code on the message thread and wait; rethrows its exceptions on the caller
+- `ChildProcessOutputDecoder` - Decode child-process output read in chunks without splitting UTF-8 characters
 - `ScopedAllocationDisabler` - Detect allocations in audio thread
 
 ### Real-time Safety Checking
@@ -573,7 +577,7 @@ Without the actions:
 ## Dependencies
 
 ### External
-- **JUCE** (v8.0.x) - Audio application framework (git submodule)
+- **JUCE** (v9.0.x) - Audio application framework (git submodule)
 - **magic_enum** (v0.9.7) - Enum reflection (fetched via CPM)
 - **CLI11** (v2.6.2) - CLI argument parsing, header-only (fetched via CPM)
 - **nlohmann/json** (3.12.0) - JSON settings layering/serialisation (fetched via CPM)

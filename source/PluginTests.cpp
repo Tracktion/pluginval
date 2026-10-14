@@ -117,13 +117,10 @@ void PluginTests::runTest()
     {
         beginTest ("Scan for plugins located in: " + fileOrID);
 
-        juce::WaitableEvent completionEvent;
-        juce::MessageManager::callAsync ([&, this]() mutable
-                                   {
-                                       knownPluginList.scanAndAddDragAndDroppedFiles (formatManager, juce::StringArray (fileOrID), typesFound);
-                                       completionEvent.signal();
-                                   });
-        completionEvent.wait();
+        callOnMessageThreadAndWait ([&]
+        {
+            knownPluginList.scanAndAddDragAndDroppedFiles (formatManager, juce::StringArray (fileOrID), typesFound);
+        });
 
         logMessage ("Num plugins found: " + juce::String (typesFound.size()));
         expect (! typesFound.isEmpty(),
@@ -212,13 +209,7 @@ void PluginTests::testType (const juce::PluginDescription& pd)
 
                     if (t->needsToRunOnMessageThread())
                     {
-                        juce::WaitableEvent completionEvent;
-                        juce::MessageManager::callAsync ([&, this]() mutable
-                                                          {
-                                                              t->runTest (*this, *instance);
-                                                              completionEvent.signal();
-                                                          });
-                        completionEvent.wait();
+                        callOnMessageThreadAndWait ([&] { t->runTest (*this, *instance); });
                     }
                     else
                     {

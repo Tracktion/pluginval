@@ -16,11 +16,13 @@
 
 #if __has_include(<unistd.h>)
 
+#include <algorithm>
 #include <dlfcn.h>
 #include <execinfo.h>
 #include <fcntl.h>
 #include <stdarg.h>
 #include <stdio.h>
+#include <string.h>
 #include <unistd.h>
 
 #ifdef __printflike
@@ -52,7 +54,7 @@ inline void writeStackTrace (const char* filePath)
 {
     // On Linux & Mac this is a signal handler, and therefore only "async-signal-safe" functions should be used.
     // This means nothing that uses malloc (juce::File, juce::String, std::string, std::vector etc.) or buffered I/O.
-    int fd = open (filePath, O_RDWR | O_CREAT | O_TRUNC, 00644);
+    int fd = open (filePath, O_RDWR | O_CREAT | O_TRUNC | O_NOFOLLOW, 00644);
 
     // Write stack traces and images
     {
@@ -81,7 +83,12 @@ inline void writeStackTrace (const char* filePath)
 
             const char* imageName = info.dli_fname ? strrchr (info.dli_fname, '/') : nullptr;
 
-            if (imageName)
+            if (imageName == nullptr)
+            {
+                // Not a path (or no file name at all), so use what there is
+                imageName = info.dli_fname ? info.dli_fname : "?";
+            }
+            else
             {
                 ++imageName;
 
@@ -98,8 +105,8 @@ inline void writeStackTrace (const char* filePath)
             if (info.dli_saddr)
             {
                 ptrdiff_t offset = static_cast<char*> (stacktrace[i]) - static_cast<char*> (info.dli_saddr);
-                writeAsyncSignalSafe (fd, "%-3d %-35s %p %s + %ld\n", i, imageName, stacktrace[i], info.dli_sname,
-                                      offset);
+                writeAsyncSignalSafe (fd, "%-3d %-35s %p %s + %ld\n", i, imageName, stacktrace[i],
+                                      info.dli_sname ? info.dli_sname : "?", (long) offset);
             }
             else
             {

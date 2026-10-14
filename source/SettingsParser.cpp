@@ -393,9 +393,33 @@ Precedence (lowest to highest): defaults, environment variables, --config, comma
 
                 // The options, plus the positional acceptance-test config (the first
                 // non-option token after the verb).
+                // Accept "--name=value" as well as "--name value", as validate (CLI11) does
+                juce::StringArray tokens;
+
                 for (int i = 1; i < tokensIn.size(); ++i)
                 {
                     const auto& token = tokensIn.getReference (i);
+
+                    if (token.startsWith ("--record-missing="))
+                    {
+                        result.error = "--record-missing doesn't take a value (got \"" + token + "\")";
+                        return result;
+                    }
+
+                    if (token.startsWith ("--") && token.contains ("="))
+                    {
+                        tokens.add (token.upToFirstOccurrenceOf ("=", false, false));
+                        tokens.add (token.fromFirstOccurrenceOf ("=", false, false));
+                    }
+                    else
+                    {
+                        tokens.add (token);
+                    }
+                }
+
+                for (int i = 0; i < tokens.size(); ++i)
+                {
+                    const auto& token = tokens.getReference (i);
 
                     if (token == "--record-missing")
                     {
@@ -403,7 +427,7 @@ Precedence (lowest to highest): defaults, environment variables, --config, comma
                     }
                     else if (token == "--timeout-ms")
                     {
-                        const auto value = i + 1 < tokensIn.size() ? tokensIn.getReference (++i) : juce::String();
+                        const auto value = i + 1 < tokens.size() ? tokens.getReference (++i) : juce::String();
                         const auto digits = value.startsWith ("-") ? value.substring (1) : value;
 
                         if (digits.isEmpty() || ! digits.containsOnly ("0123456789"))
@@ -416,7 +440,7 @@ Precedence (lowest to highest): defaults, environment variables, --config, comma
                     }
                     else if (token == "--junit-xml" || token == "--json-results")
                     {
-                        const auto value = i + 1 < tokensIn.size() ? tokensIn.getReference (++i) : juce::String();
+                        const auto value = i + 1 < tokens.size() ? tokens.getReference (++i) : juce::String();
 
                         if (value.isEmpty() || value.startsWith ("--"))
                         {
@@ -428,7 +452,7 @@ Precedence (lowest to highest): defaults, environment variables, --config, comma
                     }
                     else if (token == "--plugin")
                     {
-                        const auto value = i + 1 < tokensIn.size() ? tokensIn.getReference (++i) : juce::String();
+                        const auto value = i + 1 < tokens.size() ? tokens.getReference (++i) : juce::String();
 
                         if (value.isEmpty() || value.startsWith ("--"))
                         {
@@ -599,4 +623,4 @@ Precedence (lowest to highest): defaults, environment variables, --config, comma
         args.addArray ({ "validate", "--config-base64", b64, fileOrID });
         return args;
     }
-}
+} // namespace settings_parser
