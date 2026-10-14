@@ -35,7 +35,7 @@ Validates one or more plugins.
 | `strictness-level` | `5` | The strictness level (1-10). |
 | `args` | | Extra options for `pluginval validate`, split on whitespace. |
 | `report-dir` | | Directory to write the JUnit XML reports to (a temporary directory if empty). |
-| `pluginval-version` | `v2.0.0-beta1` | The pluginval release to download: a tag, or `latest`. |
+| `pluginval-version` | `v2.0.0-beta2` | The pluginval release to download: a tag, or `latest`. |
 | `pluginval-path` | | An existing pluginval binary to use instead of downloading one. |
 
 Every `pluginval validate` option can also be set as an environment variable on
@@ -79,7 +79,7 @@ plugin.
 | `record-missing` | `false` | Record a missing reference and pass, instead of failing. |
 | `timeout-ms` | | Fail a test if it takes longer than this (pluginval's default if empty). |
 | `report-dir` | | Directory to write the JUnit XML reports to (a temporary directory if empty). |
-| `pluginval-version` | `v2.0.0-beta1` | The pluginval release to download: a tag, or `latest`. |
+| `pluginval-version` | `v2.0.0-beta2` | The pluginval release to download: a tag, or `latest`. |
 | `pluginval-path` | | An existing pluginval binary to use instead of downloading one. |
 
 Notes:
