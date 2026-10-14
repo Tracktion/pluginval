@@ -81,6 +81,14 @@ jobs:
             *)       echo "pluginval=build/pluginval_artefacts/Release/pluginval" >> "$GITHUB_OUTPUT" ;;
           esac
 
+          # Every dogfood plugin is validated, so count them rather than hard-coding
+          # the number the check step expects.
+          shopt -s nullglob
+          glob='build/tests/test_plugins/*/*_artefacts/Release/VST3/*.vst3'
+          plugins=( $glob )
+          echo "plugin-glob=$glob" >> "$GITHUB_OUTPUT"
+          echo "plugin-count=${#plugins[@]}" >> "$GITHUB_OUTPUT"
+
           # Tone generator configs with the plugin removed, so it has to come from
           # the action's "plugin" input. One is nested and a reference manifest is
           # added, to check the recursion and that manifests aren't run as configs.
@@ -104,7 +112,7 @@ jobs:
         with:
           pluginval-path: ${{ steps.fixtures.outputs.pluginval }}
           args: --skip-gui-tests
-          plugins: build/tests/test_plugins/*/*_artefacts/Release/VST3/*.vst3
+          plugins: ${{ steps.fixtures.outputs.plugin-glob }}
 
       - name: "Action: validate (missing plugin, expected to fail)"
         id: validate-missing
@@ -156,7 +164,8 @@ jobs:
         shell: bash
         run: |
           check() { echo "$1: got '$2', expected '$3'"; [ "$2" = "$3" ] || exit 1; }
-          check "validate passed"            "${{ steps.validate.outputs.passed }}"           4
+          [ "${{ steps.fixtures.outputs.plugin-count }}" -gt 0 ] || { echo "No dogfood plugins found"; exit 1; }
+          check "validate passed"            "${{ steps.validate.outputs.passed }}"           "${{ steps.fixtures.outputs.plugin-count }}"
           check "validate failed"            "${{ steps.validate.outputs.failed }}"           0
           check "validate-missing outcome"   "${{ steps.validate-missing.outcome }}"          failure
           check "validate-missing passed"    "${{ steps.validate-missing.outputs.passed }}"   1
