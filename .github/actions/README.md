@@ -42,6 +42,23 @@ Every `pluginval validate` option can also be set as an environment variable on
 the step (e.g. `env: { TIMEOUT_MS: 60000 }`), which is the way to pass values
 containing spaces.
 
+To skip tests, set `DISABLED_TESTS` to their names, comma-separated (or to an
+absolute path to a file listing one name per line). Test names contain spaces,
+so they can't be given as `--disabled-tests` in `args`. For example, at strictness
+8 and above "Discrete parameter state restoration" fails for plugins using
+`juce::AudioParameterBool`, until [JUCE snaps its value to 0 or 1](https://forum.juce.com/t/pluginval-can-set-an-audioparameterbools-to-odd-values/50971):
+
+```yaml
+- uses: Tracktion/pluginval/validate@v2
+  env:
+    DISABLED_TESTS: Discrete parameter state restoration
+  with:
+    plugins: build/MyPlugin_artefacts/Release/VST3/MyPlugin.vst3
+    strictness-level: 10
+```
+
+Run `pluginval strictness-help <level>` to list the test names.
+
 ## acceptance
 
 Runs the [acceptance tests](../../docs/Acceptance%20testing.md) for every config
