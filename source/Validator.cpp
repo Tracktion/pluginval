@@ -17,6 +17,7 @@
 #include "CrashHandler.h"
 #include "CommandLine.h"
 #include "ReportWriter.h"
+#include "TestUtilities.h"
 #include <numeric>
 #include <thread>
 #include <chrono>
@@ -387,6 +388,8 @@ private:
 
 
         // Flush the output from the process
+        ChildProcessOutputDecoder outputDecoder;
+
         for (;;)
         {
             for (;;)
@@ -396,10 +399,10 @@ private:
                 if (const auto numBytesRead = childProcess.readProcessOutput (buffer, sizeof (buffer));
                     numBytesRead > 0)
                 {
-                    std::string msg (buffer, (size_t) numBytesRead);
+                    const auto msg = outputDecoder.decode (buffer, (size_t) numBytesRead);
 
-                    if (outputGenerated)
-                        outputGenerated (msg);
+                    if (outputGenerated && ! msg.empty())
+                        outputGenerated (juce::String::fromUTF8 (msg.data(), (int) msg.size()));
                 }
                 else
                 {

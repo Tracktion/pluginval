@@ -605,6 +605,11 @@ struct CommandLineTests : public juce::UnitTest
                 const auto d = settings_parser::dispatch (settings_parser::tokenise ("test --output-dir=out config.json"));
                 expect (d.error.contains ("--output-dir"));
             }
+            {
+                // A flag doesn't take a value, so the value isn't taken as the config path
+                const auto d = settings_parser::dispatch (settings_parser::tokenise ("test --record-missing=1 config.json"));
+                expect (d.error.contains ("--record-missing"));
+            }
         }
 
         beginTest ("Report writer: JUnit XML");

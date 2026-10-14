@@ -400,6 +400,12 @@ Precedence (lowest to highest): defaults, environment variables, --config, comma
                 {
                     const auto& token = tokensIn.getReference (i);
 
+                    if (token.startsWith ("--record-missing="))
+                    {
+                        result.error = "--record-missing doesn't take a value (got \"" + token + "\")";
+                        return result;
+                    }
+
                     if (token.startsWith ("--") && token.contains ("="))
                     {
                         tokens.add (token.upToFirstOccurrenceOf ("=", false, false));

@@ -897,6 +897,7 @@ struct AUvalTest    : public PluginTest
             return;
 
         juce::MemoryOutputStream outputBuffer;
+        ChildProcessOutputDecoder outputDecoder;
 
         for (;;)
         {
@@ -907,9 +908,9 @@ struct AUvalTest    : public PluginTest
                 if (const auto numBytesRead = cp.readProcessOutput (buffer, sizeof (buffer));
                     numBytesRead > 0)
                 {
-                    std::string msg (buffer, (size_t) numBytesRead);
+                    const auto msg = juce::String::fromUTF8 (outputDecoder.decode (buffer, (size_t) numBytesRead).c_str());
                     ut.logVerboseMessage (msg);
-                    outputBuffer << juce::String (msg);
+                    outputBuffer << msg;
                 }
                 else
                 {
@@ -993,6 +994,7 @@ struct VST3validator    : public PluginTest
             return;
 
         juce::MemoryOutputStream outputBuffer;
+        ChildProcessOutputDecoder outputDecoder;
 
         for (;;)
         {
@@ -1003,9 +1005,9 @@ struct VST3validator    : public PluginTest
                 if (const auto numBytesRead = cp.readProcessOutput (buffer, sizeof (buffer));
                     numBytesRead > 0)
                 {
-                    std::string msg (buffer, (size_t) numBytesRead);
+                    const auto msg = juce::String::fromUTF8 (outputDecoder.decode (buffer, (size_t) numBytesRead).c_str());
                     ut.logVerboseMessage (msg);
-                    outputBuffer << juce::String (msg);
+                    outputBuffer << msg;
                 }
                 else
                 {

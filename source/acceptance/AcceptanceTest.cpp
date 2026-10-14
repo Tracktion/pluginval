@@ -111,19 +111,7 @@ namespace
     /** Deletes the plugin on the message thread, as hosts are expected to. */
     void deleteOnMessageThread (std::unique_ptr<juce::AudioPluginInstance> instance)
     {
-        if (juce::MessageManager::getInstance()->isThisTheMessageThread())
-        {
-            instance.reset();
-            return;
-        }
-
-        juce::WaitableEvent deleted;
-        juce::MessageManager::callAsync ([&]
-                                         {
-                                             instance.reset();
-                                             deleted.signal();
-                                         });
-        deleted.wait();
+        callOnMessageThreadAndWait ([&] { instance.reset(); });
     }
 
     /** Owns the plugin for the duration of the render. On the way out (including
@@ -136,12 +124,20 @@ namespace
             if (instance == nullptr)
                 return;
 
-            instance->setPlayHead (nullptr);
+            // Can be called while an exception unwinds the render, so nothing may escape
+            try
+            {
+                instance->setPlayHead (nullptr);
 
-            if (prepared)
-                callReleaseResourcesOnMessageThreadIfVST3 (*instance);
+                if (prepared)
+                    callReleaseResourcesOnMessageThreadIfVST3 (*instance);
 
-            deleteOnMessageThread (std::move (instance));
+                deleteOnMessageThread (std::move (instance));
+            }
+            catch (...)
+            {
+                std::cout << "!!! WARNING: The plugin threw an exception while being released" << std::endl;
+            }
         }
 
         std::unique_ptr<juce::AudioPluginInstance> instance;
