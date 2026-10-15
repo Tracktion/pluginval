@@ -605,11 +605,12 @@ Run internal tests via CLI:
 3. Commit: `git commit -am "Version X.Y.Z"`
 4. Tag: `git tag -a vX.Y.Z -m "X.Y.Z release"`
 5. Push: `git push --tags`
-6. Once the release binaries are published, bump the `pluginval-version` default
-   in `validate/action.yml` and `acceptance/action.yml` (and the README tables) to the new tag
-
-A tag with a hyphen (e.g. `v2.0.0-beta1`) is published as a pre-release, so it
-doesn't become the "latest" release that the download URLs in the docs point at.
+6. The tag build publishes the release as a **pre-release** (whatever the tag), so
+   it doesn't yet become the "latest" release that the download URLs in the docs
+   point at. Check it, then promote it by hand:
+   `gh release edit vX.Y.Z -R Tracktion/pluginval --prerelease=false --latest`
+7. Bump the `pluginval-version` default in `validate/action.yml` and
+   `acceptance/action.yml` (and the README tables) to the new tag
 
 ## Common Tasks for AI Assistants
 
