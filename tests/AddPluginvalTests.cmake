@@ -81,13 +81,14 @@ function (add_pluginval_tests pluginTarget)
 
 	add_test (NAME "${test_name}"
 			  COMMAND "${PLUGINVAL_PROGRAM}"
+						validate
 						--strictness-level "${PLUGINVAL_STRICTNESS}"
 						--sample-rates "${sample_rates}"
 						--block-sizes "${block_sizes}"
 						--repeat "${PLUGINVAL_REPEATS}"
 						--randomise
-						--validate "${plugin_artefact}"
 						${log_dir_arg}
+						"${plugin_artefact}"
 	)
 
 	set_tests_properties (

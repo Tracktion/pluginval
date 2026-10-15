@@ -1,0 +1,16 @@
+{
+    "name": "gain-half",
+    "plugin": "@GAIN_PLUGIN@",
+    "input": { "audio": "@ACCEPTANCE_INPUT_DIR@/sine-full.wav" },
+    "reference": "@ACCEPTANCE_REF_DIR@/gain-half.wav",
+    "state": {
+        "parameters": {
+            "gain": 0.5
+        }
+    },
+    "sample_rate": 48000,
+    "block_size": 512,
+    "comparison": {
+        "sample": 0.0
+    }
+}

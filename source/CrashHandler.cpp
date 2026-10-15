@@ -1,0 +1,85 @@
+/*==============================================================================
+
+  Copyright 2018 by Tracktion Corporation.
+  For more information visit www.tracktion.com
+
+   You may also use this code under the terms of the GPL v3 (see
+   www.gnu.org/licenses).
+
+   pluginval IS PROVIDED "AS IS" WITHOUT ANY WARRANTY, AND ALL WARRANTIES, WHETHER
+   EXPRESSED OR IMPLIED, INCLUDING MERCHANTABILITY AND FITNESS FOR PURPOSE, ARE
+   DISCLAIMED.
+
+ ==============================================================================*/
+
+#include "juce_core/juce_core.h"
+#include "CrashHandler.h"
+
+#if ! JUCE_WINDOWS
+ #include "native/pluginval_native_posix.h"
+
+ // Set by initialiseCrashHandler(), as the crash handler can't allocate to build it
+ static char crashLogPath[1024] {};
+#endif
+
+namespace
+{
+    juce::String getCrashLogContents()
+    {
+        return "\n" + juce::SystemStats::getStackBacktrace();
+    }
+
+    static juce::File getCrashTraceFile()
+    {
+        return juce::File::getSpecialLocation (juce::File::tempDirectory).getChildFile ("pluginval_crash.txt");
+    }
+
+   #if JUCE_WINDOWS
+    static void handleCrash (void*)
+    {
+        const auto log = getCrashLogContents();
+        std::cout << "\n*** FAILED: VALIDATION CRASHED\n" << log << std::endl;
+        getCrashTraceFile().replaceWithText (log);
+    }
+   #else
+    static void handleCrash (void*)
+    {
+        const char* header = "\n*** FAILED: VALIDATION CRASHED\n";
+        [[ maybe_unused]] auto r = write (STDERR_FILENO, header, strlen (header));
+
+        writeStackTrace (crashLogPath);
+
+        // Terminate normally to work around a bug in juce::ChildProcess::ActiveProcess::getExitStatus()
+        // which returns 0 (a "pass" in the host process) if the child process terminates abnormally.
+        // - https://github.com/Tracktion/pluginval/issues/125
+        // - https://forum.juce.com/t/killed-childprocess-activeprocess-exit-code/61645/3
+        // Use _Exit() instead of exit() so that static destructors don't run (they may not be async-signal-safe).
+        // FIXME: exiting here prevents Apple's Crash Reporter from creating reports.
+        std::_Exit (SIGKILL);
+    }
+  #endif
+}
+
+//==============================================================================
+void initialiseCrashHandler()
+{
+    // Delete the crash file, this will be created if possible
+    const auto crashTraceFile = getCrashTraceFile();
+    crashTraceFile.deleteFile();
+
+   #if ! JUCE_WINDOWS
+    crashTraceFile.getFullPathName().copyToUTF8 (crashLogPath, sizeof (crashLogPath));
+   #endif
+
+    juce::SystemStats::setApplicationCrashHandler (handleCrash);
+}
+
+juce::String getCrashLog()
+{
+    const auto f = getCrashTraceFile();
+
+    if (f.existsAsFile())
+        return f.loadFileAsString();
+
+    return getCrashLogContents();
+}

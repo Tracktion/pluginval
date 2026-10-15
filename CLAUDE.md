@@ -4,9 +4,9 @@
 
 **pluginval** is a cross-platform audio plugin validator and tester application developed by Tracktion Corporation. It tests VST, VST3, AU (Audio Unit), LV2, and LADSPA plugins for compatibility and stability with host applications.
 
-- **Version**: 1.0.4 (see `VERSION` file)
+- **Version**: 2.0.0 (see `VERSION` file)
 - **License**: GPLv3
-- **Framework**: Built on JUCE (v8.0.x)
+- **Framework**: Built on JUCE (v9.0.x)
 - **Language**: C++20
 
 ### Key Features
@@ -75,21 +75,31 @@ Replace `<run_id>` with the ID from step 2.
 
 ```
 pluginval/
-├── Source/                    # Main application source code
+├── source/                    # Main application source code
 │   ├── Main.cpp              # Application entry point
 │   ├── MainComponent.cpp/h   # GUI main window component
 │   ├── Validator.cpp/h       # Core validation orchestration
 │   ├── PluginTests.cpp/h     # Test framework and base classes
-│   ├── CommandLine.cpp/h     # CLI argument parsing
+│   ├── CommandLine.cpp/h     # Thin CLI adapter (delegates to SettingsParser)
+│   ├── PluginvalSettings.h   # Unified settings struct + JSON mapping + toPluginTestOptions()
+│   ├── SettingsParser.cpp/h  # CLI/env/config -> merged JSON -> settings; child-process handoff
+│   ├── SettingsSerializer.cpp/h # JSON load/save + value coercions (comma lists, hex seed)
+│   ├── ReportWriter.cpp/h    # JUnit XML + JSON report files (shared by validate and test)
 │   ├── CrashHandler.cpp/h    # Crash reporting utilities
 │   ├── TestUtilities.cpp/h   # Helper functions for tests
 │   ├── RTCheck.h             # Real-time safety checking macros
 │   ├── PluginvalLookAndFeel.h # Custom UI styling
 │   ├── StrictnessInfoPopup.h # Strictness level info UI
 │   ├── binarydata/           # Binary resources (icons)
+│   ├── native/               # Platform helpers (pluginval_native_posix.h: async-signal-safe stack trace writing)
 │   ├── vst3validator/        # Embedded VST3 validator integration
 │   │   ├── VST3ValidatorRunner.h
 │   │   └── VST3ValidatorRunner.cpp
+│   ├── acceptance/           # `pluginval test` golden-file subsystem (parallel to validate)
+│   │   ├── TestConfig.cpp/h        # snake_case JSON config struct (independent of PluginvalSettings)
+│   │   ├── AcceptanceTest.cpp/h    # plugin load + state + input + render; record-or-compare orchestrator
+│   │   ├── ReferenceComparator.cpp/h # Comparator interface + registry + SampleComparator
+│   │   └── TestReporter.cpp/h      # text + JSON result, exit code, conversion to a report_writer::Report
 │   └── tests/                # Individual test implementations
 │       ├── BasicTests.cpp    # Core plugin tests (info, state, audio)
 │       ├── BusTests.cpp      # Audio bus configuration tests
@@ -97,16 +107,24 @@ pluginval/
 │       ├── ParameterFuzzTests.cpp  # Parameter fuzzing tests
 │       ├── LocaleTest.cpp    # Locale handling tests
 │       └── ExtremeTests.cpp  # Edge case tests
-├── modules/
-│   └── juce/                 # JUCE framework (git submodule)
 ├── cmake/
 │   ├── CPM.cmake             # CMake Package Manager
 │   └── GenerateBinaryHeader.cmake  # Binary-to-C-header converter
 ├── tests/
 │   ├── AddPluginvalTests.cmake  # CMake module for CTest integration
 │   ├── test_plugins/         # Test plugin files
+│   │   ├── tone_generator/   # Deterministic dogfood generator (PLUGINVAL_BUILD_TEST_PLUGINS)
+│   │   ├── gain/             # Deterministic dogfood gain effect (for the input.audio path)
+│   │   ├── playhead_probe/   # Writes the host transport to output (for the playhead path)
+│   │   └── discrete_params/  # Bool/choice-only plugin (for the discrete parameter state test)
+│   ├── acceptance/           # Acceptance self-tests: configs (*.json.in), inputs/, checked-in refs/ WAVs
 │   ├── mac_tests/            # macOS-specific tests
 │   └── windows_tests.bat     # Windows test scripts
+├── .github/
+│   ├── actions/              # Scripts + README for the composite actions: validate/, acceptance/, common/
+│   └── workflows/            # build.yaml (release build), acceptance.yml (acceptance self-tests + action dogfooding)
+├── validate/action.yml       # Composite action: Tracktion/pluginval/validate (runs .github/actions/validate/validate.sh)
+├── acceptance/action.yml     # Composite action: Tracktion/pluginval/acceptance (runs .github/actions/acceptance/acceptance.sh)
 ├── docs/                     # Documentation
 │   ├── Adding pluginval to CI.md
 │   ├── Command line options.md
@@ -123,15 +141,12 @@ pluginval/
 ### Prerequisites
 - CMake 3.15+
 - C++20 compatible compiler
-- Git (for submodules)
+- Git (CPM uses it to fetch JUCE and the other dependencies at configure time)
 
 ### Building
 
 ```bash
-# Initialize JUCE submodule
-git submodule update --init
-
-# Configure (Debug build)
+# Configure (Debug build) - fetches JUCE etc. via CPM
 cmake -B Builds/Debug -DCMAKE_BUILD_TYPE=Debug .
 
 # Build
@@ -142,11 +157,11 @@ cmake --build Builds/Debug --config Debug
 
 | Option | Description | Default |
 |--------|-------------|---------|
-| `PLUGINVAL_FETCH_JUCE` | Fetch JUCE with pluginval | ON |
 | `PLUGINVAL_VST3_VALIDATOR` | Build with embedded VST3 validator | ON |
 | `WITH_ADDRESS_SANITIZER` | Enable AddressSanitizer | OFF |
 | `WITH_THREAD_SANITIZER` | Enable ThreadSanitizer | OFF |
 | `VST2_SDK_DIR` | Path to VST2 SDK (env var) | - |
+| `PLUGINVAL_BUILD_TEST_PLUGINS` | Build the in-repo dogfood plugins + acceptance CTest self-tests | OFF |
 
 ### Enabling VST2 Support
 
@@ -188,6 +203,154 @@ VST2_SDK_DIR=/path/to/vst2sdk cmake -B Builds/Debug .
    - Auto-registers via static instance pattern
    - Defines requirements (thread, GUI needs)
 
+### CLI Settings Pipeline
+
+#### Subcommand dispatch layer
+
+The command line is structured into subcommands, peeled off by a thin verb
+dispatcher in front of the settings pipeline (it does **not** use CLI11-native
+subcommands, so the env/config/CLI layering below is untouched):
+
+- `pluginval validate [options] <plugin>` - the default; `<plugin>` is a
+  positional argument. `pluginval <plugin>` and `pluginval [options] <plugin>`
+  (no verb) also resolve to validate.
+- `pluginval run-tests` - runs the internal unit tests.
+- `pluginval strictness-help [level]` - lists tests at a strictness level.
+
+`settings_parser::dispatch()` (in `SettingsParser.cpp`) takes the `tokenise()`d
+command line and returns a `DispatchResult { command, validateTokens,
+deprecatedAlias, strictnessLevel }`. For `validate` it strips the verb and hands
+`validateTokens` to `parseTokens` unchanged. `CommandLine.cpp`'s
+`performCommandLine()` switches on `command` and emits a one-line stderr notice
+when `deprecatedAlias` is set.
+
+The old flat flags (`--validate <plugin>`, `--run-tests`, `--strictness-help`)
+are kept as **deprecated aliases** that route to the same commands with
+`deprecatedAlias = true` (the bare-path shorthand and the internal child handoff
+stay silent). `preprocess()` is now `tokenise()` + `insertImplicitValidate()`.
+The child process is launched with the explicit verb:
+`validate --config-base64 <b64> <path>`.
+
+Note: `--config` is parsed manually (it is stripped from the tokens fed to the
+CLI11 pass) so its greedy CLI11 vector parsing can't swallow the positional
+plugin path; it stays registered only so it appears in `--help`.
+
+#### Settings layering
+
+Command-line parsing centres on one plain settings struct (`PluginvalSettings`)
+that CLI11 binds to directly. A single instance is filled by successive layers,
+**lowest to highest precedence: defaults → environment → `--config` → CLI**
+(in `SettingsParser::parseTokens`):
+
+1. **preprocess** the raw command line - rewrite the deprecated `strictnessLevel`,
+   strip the macOS `-NSDocumentRevisionsDebugMode YES` flag, and insert an
+   implicit `--validate` when the last argument is a bare plugin path.
+2. **Environment layer.** Env-var names are *derived* from the registered
+   options (`--strictness-level` → `STRICTNESS_LEVEL`), so there is no separate
+   env table. A synthetic `--name=value` argv is built from the environment and
+   parsed by CLI11, reusing all its coercion.
+3. **`--config` layer.** Repeatable; each JSON file is `merge_patch`-ed in
+   command-line order (later files win per key). Beats the environment.
+4. **CLI layer.** The real arguments are parsed last and beat everything;
+   CLI11 only overwrites a member when its option was actually provided.
+
+`configureApp()` registers every option (bound to the struct) and is used for
+both the env pass and the CLI pass. Comma lists use `->delimiter(',')`, the enum
+uses a `CheckedTransformer`, and the hex/int seed is a small callback.
+`PluginvalSettings::toPluginTestOptions()` converts to the JUCE-flavoured
+`PluginTests::Options` at the boundary.
+
+Adding a new option is three edits: a struct member, an entry in the nlohmann
+macro list, and one `add_option(...)` line - its environment variable then works
+automatically. `SettingsSerializer` handles JSON load/save plus the two
+remaining conversions (hex seed, disabled-tests file).
+
+The child validation process receives a fully-resolved, **authoritative**
+settings set via a base64-encoded JSON argument (`--config-base64`), avoiding
+per-flag re-serialisation and command-line quoting hazards. `--help`/`--version`
+are handled by CLI11 (auto usage + a footer with the env-var/commands notes).
+
+### Acceptance Testing (`pluginval test`)
+
+A **parallel subsystem** to validate, in `source/acceptance/`. It answers "does
+this plugin produce the expected output for a known input + state?" - a
+deterministic *render + golden-file comparison*, not a unit-test pass/fail. Full
+spec: `tests/acceptance/Acceptance testing design.md`; end-user guide:
+`docs/Acceptance testing.md`.
+
+- **CLI**: `pluginval test <config.json>`. A new `Command::test` is recognised
+  by `settings_parser::dispatch()` (captures the positional config path into
+  `DispatchResult::testConfigPath`, plus `recordMissing` / `timeoutMs` from
+  `--record-missing` / `--timeout-ms` or `RECORD_MISSING` / `TIMEOUT_MS`, and
+  `testPluginOverride` from `--plugin`, which replaces the config's `plugin`
+  in `loadAndRunTestFile()` - so `plugin` is only required when `--plugin` is absent),
+  `isCommandLine()` and `getFooterText()`; `CommandLine.cpp`'s
+  `performCommandLine()` has a `Command::test` branch that starts an
+  `acceptance::TestRunner`, which renders on a **background thread** (message
+  thread left free; plugin deleted on it), with a watchdog for the timeout, and
+  quits via `callAsync` when done.
+- **Config**: `acceptance::TestConfig` (`TestConfig.cpp/h`) - std-typed struct,
+  **snake_case JSON keys** mapped via explicit `to_json`/`from_json` (members
+  stay camelCase). It is **independent** of `PluginvalSettings` / the `--config`
+  layering: the test config is a positional argument loaded standalone.
+- **Flow** (`AcceptanceTest.cpp`): load plugin → apply `state.file` then
+  `state.parameters` (normalised, applied in file order via `ordered_json`,
+  matched by index / case-insensitive `HostedParameter` ID or name) → feed `input.audio`/`input.midi` or silence → if a `playhead` is
+  configured, point a fixed-tempo transport (`FixedPlayHead`, position advances
+  per block) at the plugin → render a fixed duration block-by-block (reusing the
+  `AudioProcessingTest` shape + the VST3-safe helpers in `TestUtilities.h`). If
+  no reference exists it fails, or with `--record-missing` **records** one
+  (32-bit float WAV + `<name>.wav.json` sidecar manifest, whose `config_hash` is
+  XXH3 of the config minus paths, with input/state files hashed by content);
+  otherwise it **compares** and writes a diff WAV on failure. Exit `0`/`1`.
+- **Comparators** (`ReferenceComparator.cpp/h`): pluggable `Comparator` +
+  `createComparator(name)` registry. v1 ships only `sample` (per-sample abs-diff
+  tolerance, default one 16-bit LSB = `1/32768`; `0` = bit-exact). Adding
+  `spectrum`/`crosscorr`/etc. is one registry entry, no config/runner changes.
+- **Dogfood + self-tests**: three minimal deterministic `juce_add_plugin` targets
+  behind `PLUGINVAL_BUILD_TEST_PLUGINS` - `tests/test_plugins/tone_generator/`
+  (closed-form sine/square generator, phase resets on `prepareToPlay`),
+  `tests/test_plugins/gain/` (a gain effect, dogfoods the `input.audio` path) and
+  `tests/test_plugins/playhead_probe/` (writes the host transport to its output,
+  dogfoods the `playhead` path). `tests/acceptance/` holds checked-in configs
+  (`*.json.in`, the plugin paths + input dir substituted at configure time),
+  `inputs/` and reference WAVs, run via CTest (`pluginval.acceptance.*`: sine-440,
+  square-220, square-state, gain-half, playhead-120). Phase 2 items (config-array
+  multiplexing, automation, extra comparators, child-process isolation) are notes
+  only.
+
+### Report Output (`--junit-xml` / `--json-results`)
+
+Both `validate` and `test` can write machine-readable report files through one
+shared writer, `report_writer` (`source/ReportWriter.cpp/h`). Stdout and the text
+log are unaffected.
+
+- **Model**: a neutral `report_writer::Report` (command, target, properties and a
+  list of `TestCase`s with a `passed` / `failed` / `error` status, messages,
+  duration and optional JSON `details`). `toJUnitXml()` builds a single
+  `<testsuite>` with `juce::XmlElement`; `toJson()` emits snake_case keys with a
+  `summary` block. `write()` skips unset files and creates parent directories; if it fails, the
+  run fails (exit `1`).
+- **Two adapters**: `toReport()` in `Validator.cpp` converts the
+  `juce::UnitTestRunner::TestResult` array collected in `runTests()` (one case per
+  `beginTest`); `acceptance::reporter::toReport()` converts an acceptance
+  `TestResult` (its existing JSON goes in `details`).
+- **Options**: for `validate` they are ordinary settings (`junitXml` /
+  `jsonResults` in `PluginvalSettings`, resolved to `juce::File`s on
+  `PluginTests::Options`), so env vars (`JUNIT_XML` / `JSON_RESULTS`), `--config`
+  and the child-process handoff all work. For `test` they are parsed in
+  `settings_parser::dispatch()` into `DispatchResult` and carried on
+  `acceptance::RunOptions`.
+- **Incomplete runs**: before a run starts, `makeIncomplete()` writes a
+  placeholder report with a single `error` case; the real report overwrites it on
+  completion, so a crash leaves an error report rather than a stale or missing
+  one. On a timeout the thread that ends the process writes a "timed out" error
+  report as its last act (`PluginsUnitTestRunner`'s `onTimeout` for validate, the
+  acceptance `Watchdog` for test). The two writers never overlap: validate stops
+  the timeout thread before writing the real report, and for test the worker and
+  the `Watchdog` each claim the report (an atomic flag) and only the first to
+  claim it writes, so the report always agrees with the exit code.
+
 ### Test Framework
 
 Tests are self-registering. To find all tests, look for static instances:
@@ -213,7 +376,7 @@ struct Requirements {
 
 | File | Tests Included |
 |------|----------------|
-| `BasicTests.cpp` | PluginInfo, Programs, Editor, AudioProcessing, PluginState, Automation, auval, VST3validator |
+| `BasicTests.cpp` | PluginInfo, Programs, Editor, AudioProcessing, PluginState, DiscreteParameterState, Automation, auval, VST3validator |
 | `BusTests.cpp` | Bus layout, channel configuration |
 | `EditorTests.cpp` | Editor creation, resizing |
 | `ParameterFuzzTests.cpp` | Random parameter value testing |
@@ -228,12 +391,12 @@ The VST3 validator (Steinberg's vstvalidator) is embedded into pluginval when bu
 1. The VST3 SDK is fetched via CPM during CMake configure
 2. The SDK's own `validator` target is built as a separate executable
 3. A CMake script (`cmake/GenerateBinaryHeader.cmake`) converts the compiled binary into a C byte array header
-4. `VST3ValidatorRunner` (`Source/vst3validator/`) extracts the embedded binary to a temp file on first use
+4. `VST3ValidatorRunner` (`source/vst3validator/`) extracts the embedded binary to a temp file on first use
 5. When the `VST3validator` test runs, it spawns the extracted validator as a subprocess
 
 **Key files:**
-- `cmake/GenerateBinaryHeader.cmake` — binary-to-C-header conversion script
-- `Source/vst3validator/VST3ValidatorRunner.h/cpp` — extracts embedded binary, returns `juce::File`
+- `cmake/GenerateBinaryHeader.cmake` - binary-to-C-header conversion script
+- `source/vst3validator/VST3ValidatorRunner.h/cpp` - extracts embedded binary, returns `juce::File`
 
 **Disabling embedded validator:**
 ```bash
@@ -277,10 +440,13 @@ static MyNewTest myNewTest;
 
 Located in `TestUtilities.h`:
 - `getNonBypassAutomatableParameters()` - Get automatable params
+- `getRandomParameterValue()` - Random value to set on a param (only 0 or 1 for two-step params below strictness 8)
 - `fillNoise()` - Fill buffer with random audio
 - `countNaNs()`, `countInfs()`, `countSubnormals()` - Audio validation
 - `ScopedEditorShower` - RAII editor creation/destruction
 - `callPrepareToPlayOnMessageThreadIfVST3()` - VST3-safe lifecycle
+- `callOnMessageThreadAndWait()` - Run code on the message thread and wait; rethrows its exceptions on the caller
+- `ChildProcessOutputDecoder` - Decode child-process output read in chunks without splitting UTF-8 characters
 - `ScopedAllocationDisabler` - Detect allocations in audio thread
 
 ### Real-time Safety Checking
@@ -322,17 +488,25 @@ ut.logVerboseMessage("Detail message");  // Only with --verbose flag
 
 Basic usage:
 ```bash
-./pluginval --strictness-level 5 /path/to/plugin.vst3
+./pluginval validate --strictness-level 5 /path/to/plugin.vst3
 ```
 
-Key options:
-- `--validate [path]` - Validate plugin at path
+Commands:
+- `validate [options] <plugin>` - Validate the plugin at the given path/AU id (the default; `./pluginval <plugin>` also works)
+- `run-tests` - Run the internal unit tests
+- `strictness-help [level]` - List the tests that run at a strictness level
+
+The flat flags `--validate <plugin>`, `--run-tests` and `--strictness-help [level]` are deprecated aliases.
+
+Key options (for `validate`):
+- `--config [file.json]` - Load a full settings set from JSON (overridden by env vars and CLI options)
 - `--strictness-level [1-10]` - Test thoroughness (default: 5)
 - `--skip-gui-tests` - Skip GUI tests (for headless CI)
-- `--validate-in-process` - Don't use child process (for debugging)
 - `--timeout-ms [ms]` - Test timeout (default: 30000, -1 for none)
 - `--verbose` - Enable verbose logging
 - `--output-dir [dir]` - Directory for log files
+- `--junit-xml [file]` - Write a JUnit XML report (also accepted by `test`)
+- `--json-results [file]` - Write a JSON report (also accepted by `test`)
 - `--sample-rates [list]` - Comma-separated sample rates
 - `--block-sizes [list]` - Comma-separated block sizes
 - `--rtcheck [disabled|enabled|relaxed]` - Real-time safety checking
@@ -356,7 +530,32 @@ add_pluginval_tests(MyPluginTarget
 )
 ```
 
-### GitHub Actions Example
+### GitHub Actions
+
+Two composite actions for other repositories, referenced as
+`Tracktion/pluginval/validate@v2` and `Tracktion/pluginval/acceptance@v2`. Only
+their `action.yml` files sit at the repo root (`validate/`, `acceptance/`), to
+keep those references short; the scripts and `README.md` are in `.github/actions/`:
+
+- `validate/` - validates a newline-separated list of plugins / globs / AU ids.
+- `acceptance/` - runs `pluginval test` for every `*.json` (recursively, skipping
+  the `*.wav.json` manifests and rejecting array configs) under a directory,
+  optionally passing one built plugin via `--plugin`.
+
+Each `action.yml` only maps its inputs to `INPUT_*` environment variables and
+runs its bash script (`.github/actions/validate/validate.sh` / `acceptance/acceptance.sh`,
+found relative to `$GITHUB_ACTION_PATH`); shared helpers
+(downloading the release or using `pluginval-path`, the Linux `xvfb-run` wrapper)
+are in `common/common.sh`. The scripts must stay bash 3.2 compatible (macOS
+runners) and can be run locally by setting the `INPUT_*` variables. They run
+every item, write a job-summary table and `passed` / `failed` / `report-dir`
+outputs, and exit non-zero if anything failed. Pass / fail comes from the exit
+code; the per-test counts, failed-test names and messages in the summary and
+error annotations are parsed from each item's `--junit-xml` report by
+`common/junit.awk` (POSIX awk, no gawk extensions). `.github/workflows/acceptance.yml`
+dogfoods both against the in-repo build, including the expected-failure cases.
+
+Without the actions:
 
 ```yaml
 - name: Download pluginval
@@ -372,8 +571,10 @@ add_pluginval_tests(MyPluginTarget
 ## Dependencies
 
 ### External
-- **JUCE** (v8.0.x) - Audio application framework (git submodule)
+- **JUCE** (v9.0.x, currently 9.0.4) - Audio application framework (fetched via CPM when pluginval is the top-level project; otherwise the parent project provides it)
 - **magic_enum** (v0.9.7) - Enum reflection (fetched via CPM)
+- **CLI11** (v2.6.2) - CLI argument parsing, header-only (fetched via CPM)
+- **nlohmann/json** (3.12.0) - JSON settings layering/serialisation (fetched via CPM)
 - **rtcheck** (optional, macOS) - Real-time safety checking (fetched via CPM)
 - **VST3 SDK** (v3.7.x) - Steinberg VST3 SDK for embedded validator (fetched via CPM, optional)
 
@@ -394,7 +595,7 @@ Debug unit tests run automatically in debug builds:
 
 Run internal tests via CLI:
 ```bash
-./pluginval --run-tests
+./pluginval run-tests
 ```
 
 ## Release Process
@@ -404,11 +605,17 @@ Run internal tests via CLI:
 3. Commit: `git commit -am "Version X.Y.Z"`
 4. Tag: `git tag -a vX.Y.Z -m "X.Y.Z release"`
 5. Push: `git push --tags`
+6. The tag build publishes the release as a **pre-release** (whatever the tag), so
+   it doesn't yet become the "latest" release that the download URLs in the docs
+   point at. Check it, then promote it by hand:
+   `gh release edit vX.Y.Z -R Tracktion/pluginval --prerelease=false --latest`
+7. Bump the `pluginval-version` default in `validate/action.yml` and
+   `acceptance/action.yml` (and the README tables) to the new tag
 
 ## Common Tasks for AI Assistants
 
 ### Finding Where Tests Are Defined
-- All test classes are in `Source/tests/*.cpp`
+- All test classes are in `source/tests/*.cpp`
 - Search for `static.*Test.*Test;` to find registrations
 - Each test subclasses `PluginTest`
 
@@ -439,6 +646,6 @@ Run internal tests via CLI:
 
 - Always test changes on multiple platforms when possible
 - VST3 plugins have specific threading requirements - use the `*OnMessageThreadIfVST3` helpers
-- Child process validation is the default and recommended for production use
-- In-process validation (`--validate-in-process`) is useful for debugging but a crashing plugin will crash pluginval
+- The GUI runs each validation in a separate child process for crash isolation (the default)
+- The CLI `--validate` path runs in-process; a crashing plugin will terminate pluginval, and the signal handler reports it as a failure rather than a pass
 - Real-time safety checking is only available on macOS currently (uses rtcheck library)

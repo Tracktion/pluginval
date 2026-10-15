@@ -1,0 +1,18 @@
+{
+    "name": "square-220",
+    "plugin": "@TONE_GENERATOR_PLUGIN@",
+    "reference": "@ACCEPTANCE_REF_DIR@/square-220.wav",
+    "state": {
+        "parameters": {
+            "waveform": 1.0,
+            "frequency": 0.010010010010010,
+            "gain": 0.5
+        }
+    },
+    "sample_rate": 48000,
+    "block_size": 512,
+    "render_duration": 0.25,
+    "comparison": {
+        "sample": 0.0
+    }
+}
