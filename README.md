@@ -27,8 +27,7 @@ The easiest way to get started with pluginval is to grab pre-compiled binaries f
 Once you need to [debug a failed validation](https://github.com/Tracktion/pluginval/blob/develop/docs/Debugging%20a%20failed%20validation.md#quick-debugging) you'll probably want to build locally in Debug:
 
 ```
-git submodule update --init # grab JUCE 
-cmake -B Builds/Debug -DCMAKE_BUILD_TYPE=Debug . # configure
+cmake -B Builds/Debug -DCMAKE_BUILD_TYPE=Debug . # configure (downloads JUCE and the other dependencies)
 cmake --build Builds/Debug --config Debug # build
 ```
 

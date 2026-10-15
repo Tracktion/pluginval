@@ -107,8 +107,6 @@ pluginval/
 │       ├── ParameterFuzzTests.cpp  # Parameter fuzzing tests
 │       ├── LocaleTest.cpp    # Locale handling tests
 │       └── ExtremeTests.cpp  # Edge case tests
-├── modules/
-│   └── juce/                 # JUCE framework (git submodule)
 ├── cmake/
 │   ├── CPM.cmake             # CMake Package Manager
 │   └── GenerateBinaryHeader.cmake  # Binary-to-C-header converter
@@ -143,15 +141,12 @@ pluginval/
 ### Prerequisites
 - CMake 3.15+
 - C++20 compatible compiler
-- Git (for submodules)
+- Git (CPM uses it to fetch JUCE and the other dependencies at configure time)
 
 ### Building
 
 ```bash
-# Initialize JUCE submodule
-git submodule update --init
-
-# Configure (Debug build)
+# Configure (Debug build) - fetches JUCE etc. via CPM
 cmake -B Builds/Debug -DCMAKE_BUILD_TYPE=Debug .
 
 # Build
@@ -162,7 +157,6 @@ cmake --build Builds/Debug --config Debug
 
 | Option | Description | Default |
 |--------|-------------|---------|
-| `PLUGINVAL_FETCH_JUCE` | Fetch JUCE with pluginval | ON |
 | `PLUGINVAL_VST3_VALIDATOR` | Build with embedded VST3 validator | ON |
 | `WITH_ADDRESS_SANITIZER` | Enable AddressSanitizer | OFF |
 | `WITH_THREAD_SANITIZER` | Enable ThreadSanitizer | OFF |
@@ -577,7 +571,7 @@ Without the actions:
 ## Dependencies
 
 ### External
-- **JUCE** (v9.0.x) - Audio application framework (git submodule)
+- **JUCE** (v9.0.x, currently 9.0.4) - Audio application framework (fetched via CPM when pluginval is the top-level project; otherwise the parent project provides it)
 - **magic_enum** (v0.9.7) - Enum reflection (fetched via CPM)
 - **CLI11** (v2.6.2) - CLI argument parsing, header-only (fetched via CPM)
 - **nlohmann/json** (3.12.0) - JSON settings layering/serialisation (fetched via CPM)
