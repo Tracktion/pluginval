@@ -23,7 +23,7 @@ inputs:
     default: ''
   pluginval-version:
     description: The pluginval release to download - a tag (e.g. v2.0.0-beta1) or "latest".
-    default: v2.0.0-beta1
+    default: v2.0.0-beta3
   pluginval-path:
     description: Path to an existing pluginval binary to use instead of downloading one.
     default: ''
