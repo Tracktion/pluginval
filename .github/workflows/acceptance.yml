@@ -1,0 +1,178 @@
+name: Acceptance tests
+
+# Builds the in-repo dogfood plugins and runs the acceptance (golden-file)
+# self-tests via CTest. This is independent of Tracktion's main private build
+# pipeline; it exists so the `pluginval test` feature has a public, reproducible
+# regression check across the three desktop platforms.
+
+on:
+  push:
+    branches: [ master, develop, v2 ]
+  pull_request:
+  workflow_dispatch:
+
+concurrency:
+  group: acceptance-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  acceptance:
+    name: ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ ubuntu-latest, macos-latest, windows-latest ]
+
+    env:
+      # Cache CPM's downloads (JUCE etc.) so reruns don't re-fetch them.
+      CPM_SOURCE_CACHE: ${{ github.workspace }}/.cpm-cache
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Cache CPM sources
+        uses: actions/cache@v4
+        with:
+          path: ${{ github.workspace }}/.cpm-cache
+          key: cpm-${{ matrix.os }}-${{ hashFiles('CMakeLists.txt', 'cmake/CPM.cmake') }}
+          restore-keys: cpm-${{ matrix.os }}-
+
+      - name: Install Linux dependencies
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            libasound2-dev libx11-dev libxext-dev libxi-dev libxinerama-dev libxrandr-dev \
+            libxcursor-dev libxcomposite-dev libfreetype6-dev libfontconfig1-dev \
+            libgl1-mesa-dev libcurl4-openssl-dev ladspa-sdk ninja-build xvfb
+
+      # The acceptance tests host the dogfood plugins via JUCE's own VST3 hosting,
+      # so the embedded VST3 validator (and its heavy SDK build) isn't needed here.
+      - name: Configure
+        run: >
+          cmake -B build
+          -DCMAKE_BUILD_TYPE=Release
+          -DPLUGINVAL_BUILD_TEST_PLUGINS=ON
+          -DPLUGINVAL_VST3_VALIDATOR=OFF
+
+      - name: Build
+        run: cmake --build build --config Release
+
+      - name: Run acceptance tests (Linux)
+        if: runner.os == 'Linux'
+        working-directory: build
+        run: xvfb-run --auto-servernum ctest -C Release --output-on-failure -R pluginval.acceptance
+
+      - name: Run acceptance tests (macOS / Windows)
+        if: runner.os != 'Linux'
+        working-directory: build
+        run: ctest -C Release --output-on-failure -R pluginval.acceptance
+
+      # The reusable actions (validate/ and acceptance/), run against the build above
+      # (pluginval-path) rather than a downloaded release.
+      - name: Prepare action fixtures
+        id: fixtures
+        shell: bash
+        run: |
+          case "$RUNNER_OS" in
+            macOS)   echo "pluginval=build/pluginval_artefacts/Release/pluginval.app/Contents/MacOS/pluginval" >> "$GITHUB_OUTPUT" ;;
+            Windows) echo "pluginval=build/pluginval_artefacts/Release/pluginval.exe" >> "$GITHUB_OUTPUT" ;;
+            *)       echo "pluginval=build/pluginval_artefacts/Release/pluginval" >> "$GITHUB_OUTPUT" ;;
+          esac
+
+          # Every dogfood plugin is validated, so count them rather than hard-coding
+          # the number the check step expects.
+          shopt -s nullglob
+          glob='build/tests/test_plugins/*/*_artefacts/Release/VST3/*.vst3'
+          plugins=( $glob )
+          echo "plugin-glob=$glob" >> "$GITHUB_OUTPUT"
+          echo "plugin-count=${#plugins[@]}" >> "$GITHUB_OUTPUT"
+
+          # Tone generator configs with the plugin removed, so it has to come from
+          # the action's "plugin" input. One is nested and a reference manifest is
+          # added, to check the recursion and that manifests aren't run as configs.
+          generated=build/tests/acceptance/Release
+          fixtures=build/action-fixtures
+          mkdir -p $fixtures/good/nested $fixtures/bad $fixtures/missing
+          sed '/"plugin"/d' $generated/sine-440.json > $fixtures/good/sine-440.json
+          sed '/"plugin"/d' $generated/square-220.json > $fixtures/good/nested/square-220.json
+          cp tests/acceptance/refs/sine-440.wav.json $fixtures/good/nested/
+
+          # A mismatching reference and an (unsupported) array config.
+          sed -e '/"plugin"/d' -e 's#refs/sine-440.wav#refs/square-220.wav#' $generated/sine-440.json > $fixtures/bad/wrong-ref.json
+          (echo "["; cat $fixtures/good/sine-440.json; echo "]") > $fixtures/bad/array.json
+
+          # A reference that doesn't exist yet.
+          sed -e '/"plugin"/d' -e 's#"reference": ".*"#"reference": "recorded.wav"#' $generated/sine-440.json > $fixtures/missing/missing.json
+
+      - name: "Action: validate"
+        id: validate
+        uses: ./validate
+        with:
+          pluginval-path: ${{ steps.fixtures.outputs.pluginval }}
+          args: --skip-gui-tests
+          plugins: ${{ steps.fixtures.outputs.plugin-glob }}
+
+      - name: "Action: validate (missing plugin, expected to fail)"
+        id: validate-missing
+        continue-on-error: true
+        uses: ./validate
+        with:
+          pluginval-path: ${{ steps.fixtures.outputs.pluginval }}
+          args: --skip-gui-tests
+          plugins: |
+            build/tests/test_plugins/gain/*_artefacts/Release/VST3/*.vst3
+            build/Missing.vst3
+
+      - name: "Action: acceptance"
+        id: acceptance
+        uses: ./acceptance
+        with:
+          pluginval-path: ${{ steps.fixtures.outputs.pluginval }}
+          config-dir: build/action-fixtures/good
+          plugin: build/tests/test_plugins/tone_generator/pluginval_tone_generator_artefacts/Release/VST3/pluginval Tone Generator.vst3
+
+      - name: "Action: acceptance (bad configs, expected to fail)"
+        id: acceptance-bad
+        continue-on-error: true
+        uses: ./acceptance
+        with:
+          pluginval-path: ${{ steps.fixtures.outputs.pluginval }}
+          config-dir: build/action-fixtures/bad
+          plugin: build/tests/test_plugins/tone_generator/pluginval_tone_generator_artefacts/Release/VST3/pluginval Tone Generator.vst3
+
+      - name: "Action: acceptance (missing reference, expected to fail)"
+        id: acceptance-missing
+        continue-on-error: true
+        uses: ./acceptance
+        with:
+          pluginval-path: ${{ steps.fixtures.outputs.pluginval }}
+          config-dir: build/action-fixtures/missing
+          plugin: build/tests/test_plugins/tone_generator/pluginval_tone_generator_artefacts/Release/VST3/pluginval Tone Generator.vst3
+
+      - name: "Action: acceptance (record the missing reference)"
+        id: acceptance-record
+        uses: ./acceptance
+        with:
+          pluginval-path: ${{ steps.fixtures.outputs.pluginval }}
+          config-dir: build/action-fixtures/missing
+          plugin: build/tests/test_plugins/tone_generator/pluginval_tone_generator_artefacts/Release/VST3/pluginval Tone Generator.vst3
+          record-missing: true
+
+      - name: Check the action results
+        shell: bash
+        run: |
+          check() { echo "$1: got '$2', expected '$3'"; [ "$2" = "$3" ] || exit 1; }
+          [ "${{ steps.fixtures.outputs.plugin-count }}" -gt 0 ] || { echo "No dogfood plugins found"; exit 1; }
+          check "validate passed"            "${{ steps.validate.outputs.passed }}"           "${{ steps.fixtures.outputs.plugin-count }}"
+          check "validate failed"            "${{ steps.validate.outputs.failed }}"           0
+          check "validate-missing outcome"   "${{ steps.validate-missing.outcome }}"          failure
+          check "validate-missing passed"    "${{ steps.validate-missing.outputs.passed }}"   1
+          check "validate-missing failed"    "${{ steps.validate-missing.outputs.failed }}"   1
+          check "acceptance passed"          "${{ steps.acceptance.outputs.passed }}"         2
+          check "acceptance failed"          "${{ steps.acceptance.outputs.failed }}"         0
+          check "acceptance-bad outcome"     "${{ steps.acceptance-bad.outcome }}"            failure
+          check "acceptance-bad failed"      "${{ steps.acceptance-bad.outputs.failed }}"     2
+          check "acceptance-missing outcome" "${{ steps.acceptance-missing.outcome }}"        failure
+          check "acceptance-record passed"   "${{ steps.acceptance-record.outputs.passed }}"  1

@@ -1,0 +1,17 @@
+{
+    "name": "square-state",
+    "plugin": "@TONE_GENERATOR_PLUGIN@",
+    "reference": "@ACCEPTANCE_REF_DIR@/square-state.wav",
+    "state": {
+        "file": "@ACCEPTANCE_REF_DIR@/square-state.state",
+        "parameters": {
+            "gain": 0.25
+        }
+    },
+    "sample_rate": 48000,
+    "block_size": 512,
+    "render_duration": 0.25,
+    "comparison": {
+        "sample": 0.0
+    }
+}

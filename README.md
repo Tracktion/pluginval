@@ -27,8 +27,7 @@ The easiest way to get started with pluginval is to grab pre-compiled binaries f
 Once you need to [debug a failed validation](https://github.com/Tracktion/pluginval/blob/develop/docs/Debugging%20a%20failed%20validation.md#quick-debugging) you'll probably want to build locally in Debug:
 
 ```
-git submodule update --init # grab JUCE 
-cmake -B Builds/Debug -DCMAKE_BUILD_TYPE=Debug . # configure
+cmake -B Builds/Debug -DCMAKE_BUILD_TYPE=Debug . # configure (downloads JUCE and the other dependencies)
 cmake --build Builds/Debug --config Debug # build
 ```
 
@@ -49,7 +48,7 @@ CPMAddPackage("gh:tracktion/pluginval#develop")
 
 Then all you need to do is call `add_subdirectory ("modules/pluginval")` in your `CMakeLists.txt`. This should be done **after** your call to `juce_add_plugin`. 
 
-Note that only JUCE 8 is currently supported/tested for this method. 
+Note that only JUCE 8 and 9 are currently supported/tested for this method. 
 
 ### Third-party Installation
 ###### _Chocolatey (Windows):_
@@ -102,6 +101,7 @@ This means you can check the exit code on your various CI and mark builds a fail
  - [Testing plugins with pluginval](<docs/Testing plugins with pluginval.md>)
  - [Debugging a failed validation](<docs/Debugging a failed validation.md>)
  - [Adding pluginval to CI](<docs/Adding pluginval to CI.md>)
+ - [Acceptance testing](<docs/Acceptance testing.md>)
 
 ### Contributing
 If you would like to contribute to the project please do! It's very simple to add tests, simply:

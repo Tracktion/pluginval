@@ -1,0 +1,53 @@
+name: pluginval validate
+description: Validates one or more audio plugins with pluginval.
+
+inputs:
+  plugins:
+    description: >
+      The plugins to validate, one per line. Each is a path, a glob (e.g.
+      build/*_artefacts/Release/VST3/*.vst3) or an AU id.
+    required: true
+  strictness-level:
+    description: The strictness level (1-10).
+    default: '5'
+  args:
+    description: >
+      Extra options for "pluginval validate", split on whitespace (e.g.
+      "--skip-gui-tests --timeout-ms 60000"). Any option can also be set as an
+      environment variable on the step.
+    default: ''
+  report-dir:
+    description: Directory to write the JUnit XML reports to (a temporary directory if empty).
+    default: ''
+  pluginval-version:
+    description: The pluginval release to download - a tag (e.g. v2.0.0-beta1) or "latest".
+    default: v2.0.0-beta3
+  pluginval-path:
+    description: Path to an existing pluginval binary to use instead of downloading one.
+    default: ''
+
+outputs:
+  passed:
+    description: The number of plugins that passed.
+    value: ${{ steps.run.outputs.passed }}
+  failed:
+    description: The number of plugins that failed.
+    value: ${{ steps.run.outputs.failed }}
+  report-dir:
+    description: Directory holding a JUnit XML report per plugin.
+    value: ${{ steps.run.outputs.report-dir }}
+
+runs:
+  using: composite
+  steps:
+    - id: run
+      shell: bash
+      env:
+        INPUT_PLUGINS: ${{ inputs.plugins }}
+        INPUT_STRICTNESS_LEVEL: ${{ inputs.strictness-level }}
+        INPUT_ARGS: ${{ inputs.args }}
+        INPUT_REPORT_DIR: ${{ inputs.report-dir }}
+        INPUT_PLUGINVAL_VERSION: ${{ inputs.pluginval-version }}
+        INPUT_PLUGINVAL_PATH: ${{ inputs.pluginval-path }}
+      # The scripts live in .github/actions so only this file sits at the repo root.
+      run: bash "$GITHUB_ACTION_PATH/../.github/actions/validate/validate.sh"
