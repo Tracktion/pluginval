@@ -32,7 +32,7 @@ struct AllocationsInRealTimeThreadTest  : public PluginTest
         const std::vector<int>& blockSizes = ut.getOptions().blockSizes;
 
         jassert (sampleRates.size() > 0 && blockSizes.size() > 0);
-        instance.prepareToPlay (sampleRates[0], blockSizes[0]);
+        callPrepareToPlayOnMessageThreadIfVST3 (instance, sampleRates[0], blockSizes[0]);
 
         const int numBlocks = 10;
         auto r = ut.getRandom();
@@ -44,8 +44,8 @@ struct AllocationsInRealTimeThreadTest  : public PluginTest
                 ut.logMessage (juce::String ("Testing with sample rate [SR] and block size [BS]")
                                    .replace ("SR",juce::String (sr, 0), false)
                                    .replace ("BS",juce::String (bs), false));
-                instance.releaseResources();
-                instance.prepareToPlay (sr, bs);
+                callReleaseResourcesOnMessageThreadIfVST3 (instance);
+                callPrepareToPlayOnMessageThreadIfVST3 (instance, sr, bs);
 
                 const int numChannelsRequired = juce::jmax (instance.getTotalNumInputChannels(), instance.getTotalNumOutputChannels());
                 juce::AudioBuffer<float> ab (numChannelsRequired, bs);
@@ -126,8 +126,8 @@ struct LargerThanPreparedBlockSizeTest   : public PluginTest
                                    .replace ("SR",juce::String (sr, 0), false)
                                    .replace ("BSP",juce::String (processingBlockSize), false)
                                    .replace ("BS",juce::String (preparedBlockSize), false));
-                instance.releaseResources();
-                instance.prepareToPlay (sr, preparedBlockSize);
+                callReleaseResourcesOnMessageThreadIfVST3 (instance);
+                callPrepareToPlayOnMessageThreadIfVST3 (instance, sr, preparedBlockSize);
 
                 const int numChannelsRequired = juce::jmax (instance.getTotalNumInputChannels(), instance.getTotalNumOutputChannels());
                 juce::AudioBuffer<float> ab (numChannelsRequired, processingBlockSize);
